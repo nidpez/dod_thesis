@@ -1,0 +1,75 @@
+{"frames": [
+
+{
+	"filename": "astronaut1.png",
+	"frame": {"x":33,"y":103,"w":19,"h":20},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":1,"y":0,"w":19,"h":20},
+	"sourceSize": {"w":20,"h":20},
+	"pivot": {"x":0.5,"y":1}
+},
+{
+	"filename": "astronaut2.png",
+	"frame": {"x":54,"y":103,"w":19,"h":20},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":1,"y":0,"w":19,"h":20},
+	"sourceSize": {"w":20,"h":20},
+	"pivot": {"x":0.5,"y":1}
+},
+{
+	"filename": "astronaut3.png",
+	"frame": {"x":75,"y":103,"w":19,"h":20},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":1,"y":0,"w":19,"h":20},
+	"sourceSize": {"w":20,"h":20},
+	"pivot": {"x":0.5,"y":1}
+},
+{
+	"filename": "astronaut4.png",
+	"frame": {"x":96,"y":103,"w":19,"h":20},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":1,"y":0,"w":19,"h":20},
+	"sourceSize": {"w":20,"h":20},
+	"pivot": {"x":0.5,"y":1}
+},
+{
+	"filename": "astronaut5.png",
+	"frame": {"x":103,"y":1,"w":16,"h":20},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":2,"y":0,"w":16,"h":20},
+	"sourceSize": {"w":20,"h":20},
+	"pivot": {"x":0.5,"y":0.5}
+},
+{
+	"filename": "moose.png",
+	"frame": {"x":1,"y":103,"w":30,"h":24},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":30,"h":24},
+	"sourceSize": {"w":30,"h":24},
+	"pivot": {"x":0.533333,"y":1}
+},
+{
+	"filename": "planetSurface.png",
+	"frame": {"x":1,"y":1,"w":100,"h":100},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":100,"h":100},
+	"sourceSize": {"w":100,"h":100},
+	"pivot": {"x":0.5,"y":0.5}
+}],
+"meta": {
+	"app": "http://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "atlas.png",
+	"format": "RGBA8888",
+	"size": {"w":120,"h":128},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:f0d700ec0a07570f0c959eb6e2cd3719:0ada29652fa53bb0658b983f51417940:cbce6b53f0f49e0bf15173c25c41f876$"
+}
+}

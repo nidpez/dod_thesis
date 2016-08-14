@@ -1,0 +1,8 @@
+
+* controller movement
+* rendering layers
+* sorting in layers
+* n² collision detection
+* gradual orientation changes in movement
+* use cppcheck
+* create rebuild target
