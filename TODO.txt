@@ -1,21 +1,22 @@
 
+* fix logging of function wehere assertion failed at
+* only log errors to file
+* set collider radius to sprite max( width, height ) by default
+* handle errors in shader creation
+* remove duplicated code in managers
 * get and set things in batches
-* handle comp inds internally only
-* crash on unexpected errors
-* create assert function that also prints
-* destroy entities
 * use chrono lib
 * update api to include expected errors
-* use rect for uvs in sprite shader
 * create animation component using a rect per frame
-* implement sprite manager
 * implement camera
+* destroy entities
 * create and destroy entities at random for test
-* render entities without sorting or frustrum culling
 * use matrices for projections
 * controller movement
 * rendering layers
 * sorting in layers
 * n² collision detection
+* space-partitiones collision detection
+* implement obb colliders
+* allow multiple colliders per entity
 * use cppcheck
-* create rebuild target

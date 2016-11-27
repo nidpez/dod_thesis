@@ -11,9 +11,6 @@ struct Ortho {
 };
 
 uniform Ortho projection;
-// uniform vec2 entityPosition;
-// uniform float entityOrientation;
-// uniform vec2 entityScale;
 
 layout ( location = 0 ) in vec2 position;
 layout ( location = 1 ) in vec2 texCoords;
@@ -21,13 +18,6 @@ layout ( location = 1 ) in vec2 texCoords;
 out vec2 interpTexCoords;
 
 void main( ) {
-  //do model transform
-  // float _cos = cos( entityOrientation );
-  // float _sin = sin( entityOrientation );
-  // vec2 pos = vec2( position.x * _cos - position.y * _sin,
-  // 		       position.y * _cos + position.x * _sin );
-  // pos *= entityScale;
-  // pos += entityPosition;
   vec2 pos = position;
   
   //TODO: do view transform
