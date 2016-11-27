@@ -251,14 +251,20 @@ public:
   static void write( const char* format, va_list args );
 };
 
-void haltWithMessage( const char* failedCond, const char* file, int line, ... );
+void haltWithMessage( const char* failedCond, const char* file, const char* function, int line, ... );
 
+#ifdef __GNUC__
+#define __FUNC__ __PRETTY_FUNCTION__
+#else
+#define __FUNC__ __func__
+#endif
+  
 #ifdef NDEBUG
 #define ASSERT( condition, ... ) ( ( void )0 )
 #else
 #define ASSERT( condition, ... ) {					\
     if ( !( condition ) ) {						\
-      haltWithMessage( #condition, __FILE__, __LINE__, __VA_ARGS__ );	\
+      haltWithMessage( #condition, __FILE__, __FUNC__,  __LINE__, __VA_ARGS__ ); \
     }									\
   }
 #endif
@@ -277,7 +283,7 @@ int main() {
   //AnimationManager animationManager;
   AssetManager::initialize();
   DebugRenderer::initialize();
-
+  
   //configure viewport and orthographic projection
   //TODO put projection info in a Camera component
   int windowWidth, windowHeight;
@@ -746,9 +752,9 @@ void Logger::write( const char* format, va_list args ) {
   //TODO assert failure
 }
   
-void haltWithMessage( const char* failedCond, const char* file, int line, ... ) {
+void haltWithMessage( const char* failedCond, const char* file, const char* function, int line, ... ) {
   Logger::write( "Assertion %s failed at %s, %s, line %d: ",
-		 failedCond, file, __func__, line ); 
+		 failedCond, file, function, line ); 
   va_list args;
   va_start( args, line );
   char* msgFormat = va_arg( args, char* );

@@ -1,5 +1,4 @@
 
-* fix logging of function wehere assertion failed at
 * only log errors to file
 * set collider radius to sprite max( width, height ) by default
 * handle errors in shader creation
