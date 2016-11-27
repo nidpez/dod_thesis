@@ -1,4 +1,7 @@
 
+* make sprite handle 0 invalid
+* fix sprite rotation
+* invert v on sprites
 * only log errors to file
 * set collider radius to sprite max( width, height ) by default
 * handle errors in shader creation

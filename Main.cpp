@@ -40,6 +40,12 @@ Vec2 operator*( Vec2 a, Vec2 b );
 
 Vec2& operator*=( Vec2& a, Vec2 b );
 
+Vec2 operator*( Vec2 vec, float scale );
+
+Vec2 operator*( float scale, Vec2 vec );
+
+Vec2& operator*=( Vec2& vec, float scale );
+
 float dot( Vec2 a, Vec2 b );
 
 Vec2 rotate( Vec2 vec, float orientation );
@@ -140,6 +146,7 @@ public:
   static void add( EntityHandle entity, Vec2 center, float radius );
   static void remove( EntityHandle entity );
   static bool has( EntityHandle entity );
+  static void fitToSpriteSize( std::vector< EntityHandle > entities );
   static void updateAndCollide();
 };
 
@@ -160,8 +167,15 @@ struct RenderInfo {
   uint32_t shaderProgramId;
 };
 
+struct SpriteComp {
+  EntityHandle entity;
+  TextureHandle textureId;
+  Rect texCoords;
+  Vec2 size;
+};
+    
 class SpriteManager {
-  struct SpriteComp {
+  struct __SpriteComp {
     EntityHandle entity;
     TextureHandle textureId;
     Rect texCoords;
@@ -170,8 +184,9 @@ class SpriteManager {
     Vec2 position;
     Vec2 scale;
     float orientation;
+    explicit operator SpriteComp() const;
   };
-  static std::vector< SpriteComp > spriteComps;
+  static std::vector< __SpriteComp > spriteComps;
   static std::unordered_map< uint32_t, ComponentIndex > map;
   //rendering data
   struct Pos {
@@ -191,6 +206,7 @@ public:
   static void set( EntityHandle entity, TextureHandle textureId, Rect texCoords );
   static void remove( EntityHandle entity );
   static bool has( EntityHandle entity );
+  static std::vector< SpriteComp > get( std::vector< EntityHandle > entities );
   static void updateAndRender();
   static void setOrthoProjection( float aspectRatio, float height );
 };
@@ -303,7 +319,6 @@ int main() {
   // float r1 = BASE_SCALE.x / 2.0f;
   EntityHandle astronautId = EntityManager::create();
   TransformManager::set( astronautId, { -30.0f, 30.0f }, { 1.0f, 1.0f }, 0.0f );
-  CircleColliderManager::add( astronautId, { 0.0f, 0.0f }, 1.0f );
   AnimationFrame runFrames[] = {
     { { 0.0f, 0.0f },		{ 1.0f / 5.0f, 1.0f } },
     { { 1.0f / 5.0f, 0.0f },	{ 2.0f / 5.0f, 1.0f } },
@@ -311,6 +326,7 @@ int main() {
     { { 3.0f / 5.0f, 0.0f },	{ 4.0f / 5.0f, 1.0f } } };
   //AnimationFrame jumpFrames[] = { { { 4.0f / 5.0f, 0.0f }, { 1.0f, 1.0f } } };
   SpriteManager::set( astronautId, astronautTex, ( Rect )runFrames[ 0 ] );
+  CircleColliderManager::add( astronautId, { 0.0f, 0.0f }, 2.5f );
   //example usage code
   // AnimationHandle astronautRunAnimId = animationManager::add( astronautId, runFrames, 24, true, false );
   // AnimationHandle astronautJumpAnimId = animationManager::add( astronautId, jumpFrames, 24, false, false );
@@ -318,13 +334,17 @@ int main() {
   //test planet sprite entity
   EntityHandle planetId = EntityManager::create();
   TransformManager::set( planetId, { 0.0f, 15.0f }, { 1.5f, 1.0f }, 4.0f );
-  CircleColliderManager::add( planetId, { 0.0f, 0.0f }, 1.0f );
   Rect planetTexCoords = { { 0.0f, 0.0f }, {1.0f, 1.0f } };
   SpriteManager::set( planetId, planetTex, planetTexCoords );
+  CircleColliderManager::add( planetId, { 0.0f, 0.0f }, 15.0f );
   
   EntityHandle planet2Id = EntityManager::create();
   TransformManager::set( planet2Id, { 30.0f, -30.0f }, { 1.0f, 1.0f }, 0.0f );
   SpriteManager::set( planet2Id, planetTex, planetTexCoords );
+  CircleColliderManager::add( planet2Id, { 0.0f, 0.0f }, 15.0f );
+
+  std::vector< EntityHandle > entities{ astronautId, planetId, planet2Id };
+  CircleColliderManager::fitToSpriteSize( entities );
   
   //main loop      
   // float tempPos[ 2 ];
@@ -792,6 +812,19 @@ Vec2& operator*=( Vec2& a, Vec2 b ) {
   return a;
 }
 
+Vec2 operator*( Vec2 vec, float scale ) {
+  return { vec.x * scale, vec.y * scale };
+}
+
+Vec2 operator*( float scale, Vec2 vec ) {
+  return { vec.x * scale, vec.y * scale };
+}
+
+Vec2& operator*=( Vec2& vec, float scale ) {
+  vec = vec * scale;
+  return vec;
+}
+
 float dot( Vec2 a, Vec2 b ) {
   return a.x * b.x + a.y * b.y;
 }
@@ -939,7 +972,7 @@ bool TransformManager::has( EntityHandle entity ) {
 }
 
 ComponentIndex TransformManager::lookup( EntityHandle entity ) {
-  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );  
+  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );
   auto iterator = map.find( entityToInt( entity ) ); 
   ASSERT( iterator != map.end(), "Entity %d has no Transform component", entityToInt( entity ) );	  
   return iterator->second;
@@ -954,7 +987,8 @@ std::vector< CircleColliderManager::CircleColliderComp > CircleColliderManager::
 std::unordered_map< uint32_t, ComponentIndex > CircleColliderManager::map;
 
 void CircleColliderManager::add( EntityHandle entity, Vec2 center, float radius ) {
-  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );  
+  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );
+  ASSERT( radius > 0.0f, "A collider of radius %f is useless", radius );
   circleColliderComps.push_back( { entity, center, radius, { 0, 0 }, { 0, 0 } } );
   uint32_t compInd = circleColliderComps.size() - 1;
   map.emplace( entityToInt( entity ), compInd );
@@ -1018,9 +1052,10 @@ void CircleColliderManager::updateAndCollide() {
   for ( uint32_t colInd = 0; colInd < circleColliderComps.size(); ++colInd ) {
     CircleColliderComp circleColliderComp = circleColliderComps[ colInd ];
     DebugCircle circle;
-    circle.position = circleColliderComp.position + circleColliderComp.center;
     float scaleX = circleColliderComp.scale.x, scaleY = circleColliderComp.scale.y;
-    circle.radius = circleColliderComp.radius * ( scaleX > scaleY ) ? scaleX : scaleY;
+    float maxScale = ( scaleX > scaleY ) ? scaleX : scaleY;
+    circle.position = circleColliderComp.position + circleColliderComp.center * maxScale;
+    circle.radius = circleColliderComp.radius * maxScale;
     circle.color[ 0 ] =  0.0f;
     circle.color[ 1 ] =  1.0f;
     circle.color[ 2 ] =  0.0f;
@@ -1028,6 +1063,25 @@ void CircleColliderManager::updateAndCollide() {
     circles.push_back( circle );
   }
   DebugRenderer::addCircles( circles );
+}
+
+void CircleColliderManager::fitToSpriteSize( std::vector< EntityHandle > entities ) {
+  for ( uint32_t i = 0; i < entities.size(); ++i ) {
+    EntityHandle entity = entities[ i ];
+    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );
+  }
+  std::vector< LookupResult > colliderLookupResults = lookup( entities );
+  std::vector< SpriteComp > spriteComps = SpriteManager::get( entities );
+  for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
+    SpriteComp spriteComp = spriteComps[ entityInd ];
+    bool hasSpriteComp = entityToInt( spriteComp.entity ) > 0;
+    LookupResult lookupResult = colliderLookupResults[ entityInd ];
+    if ( lookupResult.found && hasSpriteComp ) {
+      Vec2 size = spriteComp.size;
+      float maxSize = ( size.x > size.y ) ? size.x : size.y;
+      circleColliderComps[ lookupResult.index ].radius = maxSize / 2.0f;
+    }
+  }
 }
 
 std::vector< TextureAsset > AssetManager::textures;
@@ -1070,11 +1124,15 @@ TextureAsset AssetManager::getTexture( TextureHandle texture ) {
   return textures[ texture ];
 }
 
-std::vector< SpriteManager::SpriteComp > SpriteManager::spriteComps;
+std::vector< SpriteManager::__SpriteComp > SpriteManager::spriteComps;
 std::unordered_map< uint32_t, ComponentIndex > SpriteManager::map;
 RenderInfo SpriteManager::renderInfo;
 SpriteManager::Pos* SpriteManager::posBufferData;
 SpriteManager::UV* SpriteManager::texCoordsBufferData;
+
+SpriteManager::__SpriteComp::operator SpriteComp() const {
+  return { this->entity, this->textureId, this->texCoords, this->size };
+}
 
 void SpriteManager::initialize() {
   //configure buffers
@@ -1112,7 +1170,7 @@ void SpriteManager::shutdown() {
 void SpriteManager::set( EntityHandle entity, TextureHandle textureId, Rect texCoords ) {
   ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );
   ASSERT( AssetManager::isTextureAlive( textureId ), "Invalid texture id %d", textureId ); 
-  SpriteComp spriteComp = {};
+  __SpriteComp spriteComp = {};
   spriteComp.entity = entity;
   spriteComp.textureId = textureId;
   spriteComp.texCoords = texCoords;
@@ -1127,6 +1185,26 @@ void SpriteManager::set( EntityHandle entity, TextureHandle textureId, Rect texC
   Logger::write( "Sprite component added to entity %d\n", entityToInt( entity ) );
 }
 
+std::vector< SpriteComp > SpriteManager::get( std::vector< EntityHandle > entities ) {
+  for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
+    EntityHandle entity = entities[ entityInd ];
+    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );
+  }
+  std::vector< LookupResult > lookupResults = lookup( entities );
+  std::vector< SpriteComp > resultSpriteComps;
+  resultSpriteComps.reserve( entities.size() );
+  for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
+    if ( lookupResults[ entityInd ].found ) {
+      SpriteComp spriteComp = static_cast< SpriteComp >( spriteComps[ lookupResults[ entityInd ].index ] );
+      resultSpriteComps.push_back( spriteComp );
+    } else {
+      //push a zero initialized SpriteComp, making it's entity 0 which is invalid 
+      resultSpriteComps.push_back( {} ); 
+    }
+  }
+  return resultSpriteComps;
+}
+    
 void SpriteManager::setOrthoProjection( float aspectRatio, float height ) {
   float halfHeight = height / 2.0f;
   glUseProgram( renderInfo.shaderProgramId );
@@ -1190,7 +1268,7 @@ void SpriteManager::updateAndRender() {
     { 0.5f,	 0.5f }
   };
   for ( uint32_t spriteInd = 0; spriteInd < spritesToRenderCount; ++spriteInd ) {
-    SpriteComp spriteComp = spriteComps[ spriteInd ];
+    __SpriteComp spriteComp = spriteComps[ spriteInd ];
     for ( uint32_t vertInd = 0; vertInd < vertsPerSprite; ++vertInd ) {
       Vec2 vert = rotate( baseGeometry[ vertInd ], spriteComp.orientation );
       vert *= spriteComp.size * spriteComp.scale;
@@ -1204,7 +1282,7 @@ void SpriteManager::updateAndRender() {
   delete[] posBufferData;
   //build the texture coordinates buffer
   for ( uint32_t spriteInd = 0; spriteInd < spritesToRenderCount; ++spriteInd ) {
-    SpriteComp spriteComp = spriteComps[ spriteInd ];
+    __SpriteComp spriteComp = spriteComps[ spriteInd ];
     Vec2 texCoords[] = {
       spriteComp.texCoords.min,
       spriteComp.texCoords.max,
