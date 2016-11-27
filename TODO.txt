@@ -1,5 +1,4 @@
 
-* make sprite handle 0 invalid
 * fix sprite rotation
 * invert v on sprites
 * only log errors to file

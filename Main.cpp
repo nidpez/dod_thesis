@@ -78,6 +78,7 @@ const int HANDLE_GENERATION_BITS = 32 - HANDLE_INDEX_BITS;
 //With 21 index bits 2 million entities are possible at a time.
 const int MAX_ENTITIES = 1 << HANDLE_INDEX_BITS;
 
+//index 0 is invalid so an EntityHandle can be set to 0 by default 
 struct EntityHandle {
   uint32_t index : HANDLE_INDEX_BITS;
   uint32_t generation : HANDLE_GENERATION_BITS;
@@ -927,19 +928,19 @@ EntityHandle EntityManager::create() {
   uint32_t index;
   if ( freeIndices.size() < MIN_FREE_INDICES ) {
     generations.push_back( { 0 } );
-    index = generations.size() - 1;    
+    index = generations.size();    
     ASSERT( index < MAX_ENTITIES, "Tried to create more than %d entities", MAX_ENTITIES ); 
   } else {
     index = freeIndices.front();
     freeIndices.pop_front();
   }
-  EntityHandle newEntity = { index, generations[ index ].generation };
+  EntityHandle newEntity = { index, generations[ index - 1 ].generation };
   Logger::write( "Entity %d created\n", newEntity );
   return newEntity;
 }
 
 bool EntityManager::isAlive( EntityHandle entity ) {
-  return generations[ entity.index ].generation == entity.generation;
+  return entity.index > 0 && generations[ entity.index - 1 ].generation == entity.generation;
 }
 
 std::vector< TransformComp > TransformManager::transformComps;
