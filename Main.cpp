@@ -14,7 +14,6 @@
 #include <deque>
 #include <vector>
 #include <unordered_map>
-#include <cassert>
 #include <cstdarg>
 
 const float PIXELS_PER_UNIT = 4.0f;
@@ -27,33 +26,44 @@ struct Vec2 {
   union {
     float y, v;
   };
-  Vec2( float x, float y )
-    : x( x ), y( y )
-  {}
-  Vec2() : x( 0.0f ), y( 0.0f )
-  {}
 };
 
 Vec2 operator+( Vec2 a, Vec2 b );
 
+Vec2& operator+=( Vec2& a, Vec2 b );
+
 Vec2 operator-( Vec2 a, Vec2 b );
 
+Vec2& operator-=( Vec2& a, Vec2 b );
+
 Vec2 operator*( Vec2 a, Vec2 b );
+
+Vec2& operator*=( Vec2& a, Vec2 b );
 
 float dot( Vec2 a, Vec2 b );
 
 Vec2 rotate( Vec2 vec, float orientation );
 
 //resources
-struct TextureRsrc {
+typedef uint32_t TextureHandle;
+
+struct TextureAsset {
   const char* name;
   const uint32_t width, height;
   const uint32_t glId;
 };
-  
-TextureRsrc loadTexture( const char* name );
-void deleteTexture( TextureRsrc texture );
 
+class AssetManager {
+  static std::vector< TextureAsset > textures;
+public:
+  static void initialize();
+  static void shutdown();
+  static TextureHandle loadTexture( const char* name );
+  static void destroyTexture( TextureHandle texture );
+  static bool isTextureAlive( TextureHandle texture );
+  static TextureAsset getTexture( TextureHandle texture );
+};
+  
 //entity and component managers
 
 /*Entity Handle system based on http://bitsquid.blogspot.com.co/2014/08/building-data-oriented-entity-system.html and http://gamesfromwithin.com/managing-data-relationships*/
@@ -65,28 +75,23 @@ const int MAX_ENTITIES = 1 << HANDLE_INDEX_BITS;
 struct EntityHandle {
   uint32_t index : HANDLE_INDEX_BITS;
   uint32_t generation : HANDLE_GENERATION_BITS;
-  EntityHandle( uint32_t index, uint32_t generation )
-    : index( index ), generation ( generation )
-  {}
-  EntityHandle() : index( 0 ), generation( 0 )
-  {}
-  uint32_t toInt() const;
 };
 
+uint32_t entityToInt( EntityHandle entity );
+
 class EntityManager {
-  const uint32_t MIN_FREE_INDICES = 1024;
   struct Generation { //can't just use uint32_t since they overflow at different values
     uint32_t generation : HANDLE_GENERATION_BITS;
-    Generation(uint32_t g)
-      : generation( g )
-    {}
   };
-  std::vector< Generation > generations;
-  std::deque< uint32_t > freeIndices;
+  const static uint32_t MIN_FREE_INDICES = 1024;
+  static std::vector< Generation > generations;
+  static std::deque< uint32_t > freeIndices;
 public:
-  EntityHandle create();
-  void destroy( EntityHandle entity );
-  bool isAlive( EntityHandle entity ) const;
+  static void initialize();
+  static void shutdown();
+  static EntityHandle create();
+  static void destroy( EntityHandle entity );
+  static bool isAlive( EntityHandle entity );
 };
 
 typedef uint32_t ComponentIndex;
@@ -101,53 +106,47 @@ struct TransformComp {
   Vec2 position;
   Vec2 scale;
   float orientation;
-  TransformComp( EntityHandle entity, Vec2 position, Vec2 scale, float orientation )
-    : entity( entity ), position( position ), scale( scale ), orientation( orientation )
-  {}
 };
 
 class TransformManager {
-  std::vector< TransformComp > transformComps;
-  std::unordered_map< uint32_t, ComponentIndex > map;
-  /*Can't trust the index retrieved to belong to the same entity
-   even within the same frame since they can change
-   when some entity's component is deleted*/
-  ComponentIndex getTempComponentIndex( EntityHandle entity ) const;
+  static std::vector< TransformComp > transformComps;
+  static std::unordered_map< uint32_t, ComponentIndex > map;
+  static ComponentIndex lookup( EntityHandle entity );
 public:
-  void set( EntityHandle entity, Vec2 position, Vec2 scale, float orientation );
-  void remove( ComponentIndex compInd );
-  bool has( EntityHandle entity ) const;
+  static void initialize();
+  static void shutdown();
+  static void set( EntityHandle entity, Vec2 position, Vec2 scale, float orientation );
+  static void remove( EntityHandle entity );
+  static bool has( EntityHandle entity );
+  static std::vector< TransformComp > getLastUpdated();
 };
 
+//TODO allow multiple colliders per entity (with linked list?)
 class CircleColliderManager {
   struct CircleColliderComp {
     EntityHandle entity;
     Vec2 center;
     float radius;
-    CircleColliderComp( EntityHandle entity, Vec2 center, float radius )
-      : entity( entity ), center( center ), radius( radius )
-    {}
+    //transform cache
+    Vec2 position;
+    Vec2 scale;
   };
-  std::vector< CircleColliderComp > circleColliderComps;
-  std::unordered_multimap< uint32_t, ComponentIndex > map;
-  //TODO allow multiple colliders per entity (with linked list?)
-  /*Can't trust the indices retrieved to belong to the same entity
-   even within the same frame since they can change
-   when some entity's component is deleted*/
-  std::vector< ComponentIndex > getTempComponentIndices( EntityHandle entity ) const;
+  static std::vector< CircleColliderComp > circleColliderComps;
+  static std::unordered_map< uint32_t, ComponentIndex > map;
+  static std::vector< LookupResult > lookup( std::vector< EntityHandle > entities );
 public:
-  void add( EntityHandle entity, Vec2 center, float radius );
-  void remove( ComponentIndex compInd );
-  uint32_t count( EntityHandle entity ) const;
+  static void initialize();
+  static void shutdown();
+  static void add( EntityHandle entity, Vec2 center, float radius );
+  static void remove( EntityHandle entity );
+  static bool has( EntityHandle entity );
+  static void updateAndCollide();
 };
 
 //Axis aligned bounding box 
 struct Rect {
   Vec2 min;
   Vec2 max;
-  Rect( Vec2 min, Vec2 max )
-    : min( min ), max( max )
-  {}
 };
 
 //assumes a single possible shader per system
@@ -164,7 +163,7 @@ struct RenderInfo {
 class SpriteManager {
   struct SpriteComp {
     EntityHandle entity;
-    TextureRsrc baseTexture;
+    TextureHandle textureId;
     Rect texCoords;
     Vec2 size;
     //transform cache
@@ -172,8 +171,8 @@ class SpriteManager {
     Vec2 scale;
     float orientation;
   };
-  std::vector< SpriteComp > spriteComps;
-  std::unordered_map< uint32_t, ComponentIndex > map;
+  static std::vector< SpriteComp > spriteComps;
+  static std::unordered_map< uint32_t, ComponentIndex > map;
   //rendering data
   struct Pos {
     Vec2 pos;
@@ -181,40 +180,50 @@ class SpriteManager {
   struct UV {
     Vec2 uv;
   };
-  RenderInfo renderInfo;
+  static RenderInfo renderInfo;
   //TODO merge into single vertex attrib pointer
-  Pos* posBufferData;
-  UV* texCoordsBufferData;
-  /*Can't trust the index retrieved to belong to the same entity
-   even within the same frame since they can change
-   when some entity's component is deleted*/
-  std::vector< LookupResult > lookup( std::vector< EntityHandle > entities ) const;
+  static Pos* posBufferData;
+  static UV* texCoordsBufferData;
+  static std::vector< LookupResult > lookup( std::vector< EntityHandle > entities );
 public:
-  void initialize();
-  void shutdown();
-  void set( EntityHandle entity, TextureRsrc texture, Rect texCoords );
-  void remove( EntityHandle entity );
-  bool has( EntityHandle entity ) const;
-  void updateAndRender( const TransformManager& transformManager );
-  void setOrthoProjection( float aspectRatio, float height );
+  static void initialize();
+  static void shutdown();
+  static void set( EntityHandle entity, TextureHandle textureId, Rect texCoords );
+  static void remove( EntityHandle entity );
+  static bool has( EntityHandle entity );
+  static void updateAndRender();
+  static void setOrthoProjection( float aspectRatio, float height );
 };
 
-class CircleColliderDebugRenderer {
-  //buffer data (posx, posy, radius)
-  GLfloat* bufferData;
-  GLuint vaoId;
-  GLuint vboId;
-  //shader handle
-  GLuint shaderProgramId;
-  //shader's constants' locations
-  int32_t projLeftUnifLoc;
-  int32_t projRightUnifLoc;
-  int32_t projBottomUnifLoc;
-  int32_t projTopUnifLoc;
+typedef uint32_t AnimationHandle;
+//so we are able to later redefine AnimationFrame as something more robust
+//that can handle more than uv flipbook animation
+typedef Rect AnimationFrame; 
+
+class AnimationManager {
+  static std::vector< AnimationFrame > animations;
 public:
-  CircleColliderDebugRenderer();
-  ~CircleColliderDebugRenderer();
-  void setOrthoProjection( float aspectRatio, float height );
+  static void initialize();
+  static void shutdown();
+  static AnimationHandle add( EntityHandle entity, const AnimationFrame* frames, float fps, bool loops, bool autoplay );
+  static void play( AnimationHandle animation );
+};
+
+struct DebugCircle {
+  Vec2 position;
+  float radius;
+  float color[ 4 ];
+};
+
+class DebugRenderer {
+  static RenderInfo renderInfo;
+  static std::vector< DebugCircle > circleBufferData;
+public:
+  static void initialize();
+  static void shutdown();
+  static void addCircles( std::vector< DebugCircle > circles );
+  static void renderAndClear();
+  static void setOrthoProjection( float aspectRatio, float height );
 };
 
 //shader and material stuff
@@ -238,24 +247,36 @@ class Logger {
 public:
   static void initialize();
   static void shutdown();
-  static void write( const char* const format, ... );
+  static void write( const char* format, ... );
+  static void write( const char* format, va_list args );
 };
+
+void haltWithMessage( const char* failedCond, const char* file, int line, ... );
+
+#ifdef NDEBUG
+#define ASSERT( condition, ... ) ( ( void )0 )
+#else
+#define ASSERT( condition, ... ) {					\
+    if ( !( condition ) ) {						\
+      haltWithMessage( #condition, __FILE__, __LINE__, __VA_ARGS__ );	\
+    }									\
+  }
+#endif
 
 //misc
 GLFWwindow* createWindowAndGlContext( const char* const windowTitle );
 
 int main() {
   //initialize managers
-  EntityManager entityManager;
-  TransformManager transformManager;
-  CircleColliderManager circleColliderManager;
-  SpriteManager spriteManager;
   Logger::initialize();
-  spriteManager.initialize();
-
   GLFWwindow* window = createWindowAndGlContext( "Space Adventure (working title)" );
-
-  CircleColliderDebugRenderer circleColliderDebugRenderer;
+  EntityManager::initialize();
+  TransformManager::initialize();
+  CircleColliderManager::initialize();
+  SpriteManager::initialize();
+  //AnimationManager animationManager;
+  AssetManager::initialize();
+  DebugRenderer::initialize();
 
   //configure viewport and orthographic projection
   //TODO put projection info in a Camera component
@@ -264,66 +285,40 @@ int main() {
   glViewport( 0, 0, windowWidth, windowHeight );
   float aspect = windowWidth / ( float )windowHeight;
 
-  spriteManager.setOrthoProjection( aspect, 100 );
-  circleColliderDebugRenderer.setOrthoProjection( aspect, 100 );
+  SpriteManager::setOrthoProjection( aspect, 100 );
+  DebugRenderer::setOrthoProjection( aspect, 100 );
   
   //load textures
-  TextureRsrc astronautTex = loadTexture( "astronaut.png" );
-  TextureRsrc planetTex = loadTexture( "planetSurface.png" );
+  TextureHandle astronautTex = AssetManager::loadTexture( "astronaut.png" );
+  TextureHandle planetTex = AssetManager::loadTexture( "planetSurface.png" );
   
-  //astronaut transform
-  // Vec2 pos1 = { -30.0f, 30.0f };
-  // float angle = 0.0f;
-  // float frameW1 = w1 / 5.0f;
-  // const Vec2 BASE_SCALE = { frameW1 / PIXELS_PER_UNIT, h1 / PIXELS_PER_UNIT };
-  // Vec2 scale = { 1.0f, 1.0f };
-  // float speed = 20.0f;
+  //test astronaut sprite entity
   // //bounding geometry
   // float r1 = BASE_SCALE.x / 2.0f;
-  // //uv coords
-  // //use inverted Y coords to work with SOIL
-  // GLfloat texCoords1DefaultX[] = {
-  //   0.0f,		1.0f,
-  //   1.0f / 5.0f,	1.0f,
-  //   1.0f / 5.0f,	0.0f,
-  //   0.0f,		0.0f };
-  // GLfloat texCoords1FlippedX[] = {
-  //   1.0f / 5.0f,	1.0f,
-  //   0.0f,		1.0f,
-  //   0.0f,		0.0f,
-  //   1.0f / 5.0f,	0.0f };
-  // GLfloat texCoords1[ 8 ];
-  // for ( int i = 0; i < 8; ++i ) {
-  //   texCoords1[ i ] = texCoords1DefaultX[ i ];
-  // }
-  EntityHandle astronautId = entityManager.create();
-  transformManager.set( astronautId, { -30.0f, 30.0f }, { 1.0f, 1.0f }, 0.0f );
-  circleColliderManager.add( astronautId, { 0.0f, 0.0f }, 1.0f );
-  Rect runFrames[] = {
+  EntityHandle astronautId = EntityManager::create();
+  TransformManager::set( astronautId, { -30.0f, 30.0f }, { 1.0f, 1.0f }, 0.0f );
+  CircleColliderManager::add( astronautId, { 0.0f, 0.0f }, 1.0f );
+  AnimationFrame runFrames[] = {
     { { 0.0f, 0.0f },		{ 1.0f / 5.0f, 1.0f } },
     { { 1.0f / 5.0f, 0.0f },	{ 2.0f / 5.0f, 1.0f } },
     { { 2.0f / 5.0f, 0.0f },	{ 3.0f / 5.0f, 1.0f } },
     { { 3.0f / 5.0f, 0.0f },	{ 4.0f / 5.0f, 1.0f } } };
-  Rect jumpFrames[] = { { { 4.0f / 5.0f, 0.0f }, { 1.0f, 1.0f } } };
-  spriteManager.set( astronautId, astronautTex, runFrames[ 0 ] );
-  animationManager.add( astronautId, ( char* )"run", runFrames, 24/*fps*/, true/*looping*/, false/*autoplay*/ );
-  animationManager.add( astronautId, ( char* )"jump", jumpFrames, 24, false, false );
-  // //planet transform
-  // float pos2[] = { 5.0f, 0.0f };
-  // //bounding geometry
-  // float r2 = ( w2 / 2.0f ) / PIXELS_PER_UNIT;
-  // //uv coords
-  // //use inverted Y coords to work with SOIL
-  // GLfloat texCoords2[] = {
-  //   0.0f,	1.0f,
-  //   1.0f,	1.0f,
-  //   1.0f,	0.0f,
-  //   0.0f,	0.0f };
-  EntityHandle planetId = entityManager.create();
-  transformManager.set( planetId, { 5.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f );
-  circleColliderManager.add( planetId, { 0.0f, 0.0f }, 1.0f );
-  Rect planetTexCoords( { 0.0f, 0.0f }, {1.0f, 1.0f } );
-  spriteManager.set( planetId, astronautTex, planetTexCoords );
+  //AnimationFrame jumpFrames[] = { { { 4.0f / 5.0f, 0.0f }, { 1.0f, 1.0f } } };
+  SpriteManager::set( astronautId, astronautTex, ( Rect )runFrames[ 0 ] );
+  //example usage code
+  // AnimationHandle astronautRunAnimId = animationManager::add( astronautId, runFrames, 24, true, false );
+  // AnimationHandle astronautJumpAnimId = animationManager::add( astronautId, jumpFrames, 24, false, false );
+  
+  //test planet sprite entity
+  EntityHandle planetId = EntityManager::create();
+  TransformManager::set( planetId, { 0.0f, 15.0f }, { 1.5f, 1.0f }, 4.0f );
+  CircleColliderManager::add( planetId, { 0.0f, 0.0f }, 1.0f );
+  Rect planetTexCoords = { { 0.0f, 0.0f }, {1.0f, 1.0f } };
+  SpriteManager::set( planetId, planetTex, planetTexCoords );
+  
+  EntityHandle planet2Id = EntityManager::create();
+  TransformManager::set( planet2Id, { 30.0f, -30.0f }, { 1.0f, 1.0f }, 0.0f );
+  SpriteManager::set( planet2Id, planetTex, planetTexCoords );
   
   //main loop      
   // float tempPos[ 2 ];
@@ -333,6 +328,7 @@ int main() {
   double t1 = glfwGetTime();
   double t2;
   double deltaT = 0.0;
+  Logger::write( "About to enter main loop.\n" );
   while ( !glfwWindowShouldClose( window ) ) {
     //process input
     glfwPollEvents();
@@ -396,21 +392,14 @@ int main() {
     //   tempPos[ 0 ] = pos1.x;
     //   tempPos[ 1 ] = pos1.y;
     // }
+    CircleColliderManager::updateAndCollide();
     
     //render scene
     glClear( GL_COLOR_BUFFER_BIT );
-    spriteManager.updateAndRender( transformManager );
+    SpriteManager::updateAndRender();
   
     // //render debug shapes
-    // glUseProgram( circleColliderDebugRenderer.shaderProgramId );
-    // glBindVertexArray( circleColliderDebugRenderer.vaoId );
-    // circlePositions[ 0 ] = pos1.x;
-    // circlePositions[ 1 ] = pos1.y;
-    // circlePositions[ 7 ] = pos2[ 0 ];
-    // circlePositions[ 8 ] = pos2[ 1 ];
-    // glBindBuffer( GL_ARRAY_BUFFER, circleColliderDebugRenderer.vboId );
-    // glBufferData( GL_ARRAY_BUFFER, sizeof( circlePositions ), circlePositions, GL_STATIC_DRAW );
-    // glDrawArrays( GL_POINTS, 0, 2 );
+    DebugRenderer::renderAndClear();
     
     glfwSwapBuffers( window );
 
@@ -432,27 +421,27 @@ int main() {
   
   //free OpenGL resources
   glUseProgram( 0 );
-  deleteTexture( astronautTex );
-  deleteTexture( planetTex );
+  AssetManager::destroyTexture( astronautTex );
+  AssetManager::destroyTexture( planetTex );
   Logger::write( "Resources freed.\n" );
 
   glfwDestroyWindow( window );
   glfwTerminate();
 
   //shut down managers
-  spriteManager.shutdown();
+  AssetManager::shutdown();
+  SpriteManager::shutdown();
+  CircleColliderManager::shutdown();
+  TransformManager::shutdown();
+  EntityManager::shutdown();
   Logger::shutdown();
   
   return 0;
 }
 
 GLFWwindow* createWindowAndGlContext( const char* const windowTitle ) {  
-  glfwSetErrorCallback( printGlfwError );
-  
-  if ( !glfwInit() ) {
-    //TODO assert
-    printf( "GLFW failed to initialize!\n" );
-  }
+  glfwSetErrorCallback( printGlfwError );  
+  ASSERT( glfwInit(), "GLFW failed to initialize" );  
   glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
   glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 3 );
   glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
@@ -476,11 +465,8 @@ GLFWwindow* createWindowAndGlContext( const char* const windowTitle ) {
   glfwWindowHint( GLFW_GREEN_BITS, mode->greenBits ); 
   glfwWindowHint( GLFW_BLUE_BITS, mode->blueBits ); 
   glfwWindowHint( GLFW_REFRESH_RATE, mode->refreshRate );
-  GLFWwindow* window = glfwCreateWindow( mode->width, mode->height , windowTitle, monitor, nullptr );
-  if ( !window ) {
-    //TODO assert
-    printf( "Error creating the window!\n" );
-  }
+  GLFWwindow* window = glfwCreateWindow( mode->width, mode->height , windowTitle, monitor, nullptr );  
+  ASSERT( window, "Error creating the window" );  
   glfwMakeContextCurrent( window );
   /*NOTE: glfwSwapInterval( 1 ) causes an error on the dev machine where terminating
     the program leaves the last rendered frame there covering everything.
@@ -492,16 +478,10 @@ GLFWwindow* createWindowAndGlContext( const char* const windowTitle ) {
   Logger::write( "Window created.\nOpenGL version %d.%d used.\n", glfwGetWindowAttrib( window, GLFW_CONTEXT_VERSION_MAJOR ), glfwGetWindowAttrib( window, GLFW_CONTEXT_VERSION_MINOR ) );  
   //initialize advanced opengl functionality
   glewExperimental = GL_TRUE;
-  GLenum glewError = glewInit();
-  if ( glewError != GLEW_OK ) {
-    //TODO assert
-    printf( "GLEW failed to initialize! %s\n", glewGetErrorString( glewError ) );
-  }
-  if ( !GLEW_VERSION_3_3 ) {
-    //TODO assert
-    //is this even possible when glfw already gave us a 3.3 context?
-    printf( "Required OpenGL version 3.3 unavailable, says GLEW!\n" );
-  }
+  GLenum glewError = glewInit();  
+  ASSERT( glewError == GLEW_OK, "GLEW failed to initialize: %s", glewGetErrorString( glewError ) );  
+  //is this even possible when glfw already gave us a 3.3 context?
+  ASSERT( GLEW_VERSION_3_3, "Required OpenGL version 3.3 unavailable, says GLEW" );    
   Logger::write( "OpenGL functionality successfully loaded.\n" );
 
   //setup opengl debugging
@@ -715,8 +695,9 @@ printOpenglError( GLenum source, GLenum type, GLuint id, GLenum severity,
     severityStr = ( char* )"Low";
     break;
   case GL_DEBUG_SEVERITY_NOTIFICATION :
-    severityStr = ( char* )"Notification";
-    break;
+    return;
+    // severityStr = ( char* )"Notification";
+    // break;
   default :
     severityStr = ( char* )"Undefined";
   }
@@ -747,28 +728,62 @@ void Logger::shutdown() {
   //TODO assert failure
 }
 
-void Logger::write( const char* const format, ... ) {
+void Logger::write( const char* format, ... ) {
+  va_list args;
+  va_start( args, format );
+  write( format, args );
+  va_end( args );
+}
+
+void Logger::write( const char* format, va_list args ) {
+  //TODO should we open and close the log file here?
   //TODO measure performance
-  va_list args1, args2;
-  va_start( args1, format );
-  va_copy( args2, args1 );
-  vprintf( format, args1 );
-  va_end( args1 );
+  va_list args2;
+  va_copy( args2, args );
+  vprintf( format, args );
   vfprintf( log, format, args2 );
   va_end( args2 );
   //TODO assert failure
+}
+  
+void haltWithMessage( const char* failedCond, const char* file, int line, ... ) {
+  Logger::write( "Assertion %s failed at %s, %s, line %d: ",
+		 failedCond, file, __func__, line ); 
+  va_list args;
+  va_start( args, line );
+  char* msgFormat = va_arg( args, char* );
+  Logger::write( msgFormat, args );
+  va_end( args );
+  Logger::write( "\n" );
+  Logger::shutdown();
+  std::abort();
 }
 
 Vec2 operator+( Vec2 a, Vec2 b ) {
   return { a.x + b.x, a.y + b.y };
 }
 
+Vec2& operator+=( Vec2& a, Vec2 b ) {
+  a = a + b;
+  return a;
+}
+
 Vec2 operator-( Vec2 a, Vec2 b ) {
   return { a.x - b.x, a.y - b.y };
 }
 
+Vec2& operator-=( Vec2& a, Vec2 b ) {
+  a = a - b;
+  return a;
+}
+
 Vec2 operator*( Vec2 a, Vec2 b ){
   return { a.x * b.x, a.y * b.y };
+}
+
+Vec2& operator*=( Vec2& a, Vec2 b ) {
+  a = a * b;
+  return a;
 }
 
 float dot( Vec2 a, Vec2 b ) {
@@ -778,214 +793,287 @@ float dot( Vec2 a, Vec2 b ) {
 Vec2 rotate( Vec2 vec, float orientation ){
   float _cos = cos( orientation );
   float _sin = sin( orientation );
-  return Vec2( vec.x * _cos - vec.y * _sin, vec.y * _cos + vec.x * _sin );
+  return { vec.x * _cos - vec.y * _sin, vec.y * _cos + vec.x * _sin };
 }
 
-CircleColliderDebugRenderer::CircleColliderDebugRenderer() {
-  //debug circle geometry
-  GLfloat circlePositions[] = {
-    //position		//radius	//color
-    30.0f, 30.0f,	50.0f,		0.0f, 1.0f, 0.0f, 1.0f,
-    45.0f, 30.0f,	20.0f,		0.0f, 1.0f, 0.0f, 0.7f };
-  
+RenderInfo DebugRenderer::renderInfo;
+std::vector< DebugCircle > DebugRenderer::circleBufferData;
+
+void DebugRenderer::initialize() {
+#ifndef NDEBUG
   //configure buffers
-  glGenVertexArrays( 1, &vaoId );
-  glBindVertexArray( vaoId );
-  glGenBuffers( 1, &vboId );
-  glBindBuffer( GL_ARRAY_BUFFER, vboId );
-  glBufferData( GL_ARRAY_BUFFER, sizeof( circlePositions ), circlePositions, GL_STATIC_DRAW );
+  glGenVertexArrays( 1, &renderInfo.vaoId );
+  glBindVertexArray( renderInfo.vaoId );
+  glGenBuffers( 1, &renderInfo.vboIds[ 0 ] );
+  glBindBuffer( GL_ARRAY_BUFFER, renderInfo.vboIds[ 0 ] );
   glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, 7 * sizeof( GLfloat ), ( void* )0 );
   glEnableVertexAttribArray( 0 );
   glVertexAttribPointer( 1, 1, GL_FLOAT, GL_FALSE, 7 * sizeof( GLfloat ), ( void* )( 2 * sizeof( GLfloat ) ) );
   glEnableVertexAttribArray( 1 );
-  glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, 7 * sizeof( GLfloat ), ( void* )( 3 * sizeof( GLfloat ) ) );
+  glVertexAttribPointer( 2, 4, GL_FLOAT, GL_FALSE, 7 * sizeof( GLfloat ), ( void* )( 3 * sizeof( GLfloat ) ) );
   glEnableVertexAttribArray( 2 );
   glBindVertexArray( 0 );
-
   //create shader program
-  int error = createShaderProgram( &shaderProgramId,
+  int error = createShaderProgram( &renderInfo.shaderProgramId,
 			       "shaders/DebugShape.vert", "shaders/DebugShape.frag",
 			       "shaders/DebugShape.geom" );
   if ( error ) {
-    //TODO implement error logging and maybe hardcode a default shader here
+    //TODO maybe hardcode a default shader here
   }
-
   //get shader's constants' locations
-  projLeftUnifLoc = glGetUniformLocation( shaderProgramId, "projection.left" );
-  projRightUnifLoc = glGetUniformLocation( shaderProgramId, "projection.right" );
-  projBottomUnifLoc = glGetUniformLocation( shaderProgramId, "projection.bottom" );
-  projTopUnifLoc = glGetUniformLocation( shaderProgramId, "projection.top" );
-  /*const int32_t
-    cirlcesEntityScaleUnifLoc = glGetUniformLocation( circlesShaderProgramId, "entityScale" );*/
+  renderInfo.projUnifLoc[ 0 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.left" );
+  renderInfo.projUnifLoc[ 1 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.right" );
+  renderInfo.projUnifLoc[ 2 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.bottom" );
+  renderInfo.projUnifLoc[ 3 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.top" );
+#endif
 }
 
-CircleColliderDebugRenderer::~CircleColliderDebugRenderer() {
-  glDeleteProgram( shaderProgramId );
-  glDeleteVertexArrays( 1, &vaoId );
-  glDeleteBuffers( 1, &vboId );
+void DebugRenderer::shutdown() {
+#ifndef NDEBUG
+  glDeleteProgram( renderInfo.shaderProgramId );
+  glDeleteVertexArrays( 1, &renderInfo.vaoId );
+  glDeleteBuffers( 1, &renderInfo.vboIds[ 0 ] );
+#endif
 }
 
-void CircleColliderDebugRenderer::setOrthoProjection( float aspectRatio, float height ) {
+void DebugRenderer::addCircles( std::vector< DebugCircle > circles ) {
+#ifndef NDEBUG
+  for ( uint32_t i = 0; i < circles.size(); ++i ) {
+    float radius = circles[ i ].radius; 
+    ASSERT( radius > 0.0f, "Asked to draw a circle of radius %f", radius );
+  }
+  circleBufferData.insert( circleBufferData.end(), circles.begin(), circles.end() );
+#endif
+}
+
+void DebugRenderer::renderAndClear() {
+#ifndef NDEBUG
+  //configure buffers
+  glUseProgram( renderInfo.shaderProgramId );
+  glBindVertexArray( renderInfo.vaoId );
+  glBindBuffer( GL_ARRAY_BUFFER, renderInfo.vboIds[ 0 ] );
+  glBufferData( GL_ARRAY_BUFFER, sizeof( DebugCircle ) * circleBufferData.size(), circleBufferData.data(), GL_STATIC_DRAW );
+  glDrawArrays( GL_POINTS, 0, circleBufferData.size() );
+  circleBufferData.clear();
+#endif
+}
+
+void DebugRenderer::setOrthoProjection( float aspectRatio, float height ) {
+#ifndef NDEBUG
   float halfHeight = height / 2.0f;
-  glUniform1f( projLeftUnifLoc, -halfHeight * aspectRatio );
-  glUniform1f( projRightUnifLoc, halfHeight * aspectRatio );
-  glUniform1f( projBottomUnifLoc, -halfHeight );
-  glUniform1f( projTopUnifLoc, halfHeight );
+  glUseProgram( renderInfo.shaderProgramId );
+  glUniform1f( renderInfo.projUnifLoc[ 0 ], -halfHeight * aspectRatio );
+  glUniform1f( renderInfo.projUnifLoc[ 1 ], halfHeight * aspectRatio );
+  glUniform1f( renderInfo.projUnifLoc[ 2 ], -halfHeight );
+  glUniform1f( renderInfo.projUnifLoc[ 3 ], halfHeight );
+#endif
 }
 
-uint32_t EntityHandle::toInt() const {
-  return generation << HANDLE_INDEX_BITS | index;
+std::vector< EntityManager::Generation > EntityManager::generations;
+std::deque< uint32_t > EntityManager::freeIndices;
+
+uint32_t entityToInt( EntityHandle entity ) {
+  return entity.generation << HANDLE_INDEX_BITS | entity.index;
+}
+
+void EntityManager::initialize() {
+  generations = std::vector< Generation >();
+  freeIndices = std::deque< uint32_t >();
+}
+
+void EntityManager::shutdown() {
 }
 
 EntityHandle EntityManager::create() {
   uint32_t index;
   if ( freeIndices.size() < MIN_FREE_INDICES ) {
-    generations.emplace_back( 0 );
-    index = generations.size() - 1;
-    //check if tried to create more entities than is possible
-    //TODO use assert with message
-    assert( index < MAX_ENTITIES );
+    generations.push_back( { 0 } );
+    index = generations.size() - 1;    
+    ASSERT( index < MAX_ENTITIES, "Tried to create more than %d entities", MAX_ENTITIES ); 
   } else {
     index = freeIndices.front();
     freeIndices.pop_front();
   }
-  return EntityHandle( index, generations[ index ].generation );
+  EntityHandle newEntity = { index, generations[ index ].generation };
+  Logger::write( "Entity %d created\n", newEntity );
+  return newEntity;
 }
 
-void EntityManager::destroy( EntityHandle entity ) {
-  ++generations[ entity.index ].generation;
-  freeIndices.emplace_back( ( uint32_t )entity.index );
-}
-
-bool EntityManager::isAlive( EntityHandle entity ) const {
+bool EntityManager::isAlive( EntityHandle entity ) {
   return generations[ entity.index ].generation == entity.generation;
 }
 
-void TransformManager::
-set( EntityHandle entity, Vec2 position, Vec2 scale, float orientation ) {
-  //TODO assert isalive( entity )
-  transformComps.emplace_back( entity, position, scale, orientation );
+std::vector< TransformComp > TransformManager::transformComps;
+std::unordered_map< uint32_t, ComponentIndex > TransformManager::map;
+
+void TransformManager::initialize() {
+  transformComps = std::vector< TransformComp >();
+  map = std::unordered_map< uint32_t, ComponentIndex >();
+}
+
+void TransformManager::shutdown() {
+}
+
+void TransformManager::set( EntityHandle entity, Vec2 position, Vec2 scale, float orientation ) {
+  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );  
+  transformComps.push_back( { entity, position, scale, orientation } );
   uint32_t compInd = transformComps.size() - 1;
-  std::pair< uint32_t, ComponentIndex > mapArg( entity.toInt(), compInd );
-  auto result = map.insert( mapArg );
-  if ( result.second ) {
-    return;
-  } else {//if entity already has transform component
-    //then the transform we just inserted is invalid
-    transformComps.pop_back();
-    //and we need to update the previous transfrom
-    compInd = result.first->second;
-    TransformComp transform = transformComps[ compInd ];
-    transform.position = position;
-    transform.scale = scale;
-    transform.orientation = orientation;
-  }
+  bool inserted = map.insert( { entityToInt( entity ), compInd } ).second;  
+  ASSERT( inserted, "Could not map entity %d to component index %d", entityToInt( entity ), compInd );
+  Logger::write( "Transform component added to entity %d\n", entityToInt( entity ) );
 }
 
-void TransformManager::remove( ComponentIndex compInd ) {
-  //TODO assert compInd in range
-  EntityHandle entity = transformComps[ compInd ].entity;
-  //TODO measure which method is faster
-  //transformComps.erase( transformComps.begin() + compInd );
-  uint32_t lastCompInd = transformComps.size() - 1;
-  EntityHandle lastEntity = transformComps[ lastCompInd ].entity;
-  transformComps[ compInd ] = transformComps[ lastCompInd ];
-  transformComps.pop_back();
-  auto iterator = map.find( lastEntity.toInt() );
-  iterator->second = compInd;
-  map.erase( entity.toInt() );
-}
-
-bool TransformManager::has( EntityHandle entity ) const {
-  //TODO assert isalive( entity )
-  auto iterator = map.find( entity.toInt() );
+bool TransformManager::has( EntityHandle entity ) {
+  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );  
+  auto iterator = map.find( entityToInt( entity ) );
   if ( iterator != map.end() ) {
     return true;
   }
   return false;
 }
 
-ComponentIndex TransformManager::getTempComponentIndex( EntityHandle entity ) const {
-  //TODO assert isalive( entity )
-  auto iterator = map.find( entity.toInt() );
-  if ( iterator == map.end() ) {
-    //TODO make this into an assert
-  }
+ComponentIndex TransformManager::lookup( EntityHandle entity ) {
+  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );  
+  auto iterator = map.find( entityToInt( entity ) ); 
+  ASSERT( iterator != map.end(), "Entity %d has no Transform component", entityToInt( entity ) );	  
   return iterator->second;
 }
 
+std::vector< TransformComp > TransformManager::getLastUpdated() {
+  //TODO actually compute which transforms have been updated since last frame
+  return transformComps;
+}
+
+std::vector< CircleColliderManager::CircleColliderComp > CircleColliderManager::circleColliderComps;
+std::unordered_map< uint32_t, ComponentIndex > CircleColliderManager::map;
+
 void CircleColliderManager::add( EntityHandle entity, Vec2 center, float radius ) {
-  circleColliderComps.emplace_back( entity, center, radius );
+  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );  
+  circleColliderComps.push_back( { entity, center, radius, { 0, 0 }, { 0, 0 } } );
   uint32_t compInd = circleColliderComps.size() - 1;
-  map.emplace( entity.toInt(), compInd );
+  map.emplace( entityToInt( entity ), compInd );
+  Logger::write( "CircleCollider component added to entity %d\n", entityToInt( entity ) );
 }
 
-void CircleColliderManager::remove( ComponentIndex compInd ) {
-  //TODO assert compInd in range
-  //swap element to remove with last element and remove last element
-  EntityHandle entity = circleColliderComps[ compInd ].entity;
-  uint32_t lastCompInd = circleColliderComps.size() - 1;
-  EntityHandle lastEntity = circleColliderComps[ lastCompInd ].entity;
-  circleColliderComps[ compInd ] = circleColliderComps[ lastCompInd ];
-  //update index of swapped element in map
-  auto range = map.equal_range( lastEntity.toInt() );
-  for ( auto iterator = range.first; iterator != range.second; ++iterator ) {
-    if ( iterator->second == lastCompInd ) {
-      iterator->second = compInd;
-      break;
+bool CircleColliderManager::has( EntityHandle entity ) {
+  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );  
+  auto iterator = map.find( entityToInt( entity ) );
+  if ( iterator != map.end() ) {
+    return true;
+  }
+  return false;
+}
+
+void CircleColliderManager::initialize() {
+  circleColliderComps = std::vector< CircleColliderComp >();
+  map = std::unordered_map< uint32_t, ComponentIndex >();
+}
+
+void CircleColliderManager::shutdown() {
+}
+
+std::vector< LookupResult > CircleColliderManager::lookup( std::vector< EntityHandle > entities ) {
+  //TODO refactor this duplicated code
+  std::vector< LookupResult > result( entities.size() );
+  for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
+    auto iterator = map.find( entityToInt( entities[ entityInd ] ) );
+    if ( iterator != map.end() ) {
+      result[ entityInd ] = { iterator->second, true };
+    } else {
+      result[ entityInd ].found = false;
     }
   }
-  //remove element in map
-  range = map.equal_range( entity.toInt() );
-  for ( auto iterator = range.first; iterator != range.second; ++iterator ) {
-    if ( iterator->second == compInd ) {
-      map.erase( iterator );
-      break;
+  return result;
+}
+
+void CircleColliderManager::updateAndCollide() {
+  if ( circleColliderComps.size() == 0 ) {
+    return;
+  }
+  std::vector< TransformComp > updatedTransforms = TransformManager::getLastUpdated();
+  //update local transform cache
+  std::vector< EntityHandle > updatedEntities;
+  updatedEntities.reserve( updatedTransforms.size() );
+  for ( uint32_t trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
+    updatedEntities.push_back( updatedTransforms[ trInd ].entity );
+  }
+  std::vector< LookupResult > updatedCircleColliders = lookup( updatedEntities );
+  for ( uint32_t trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
+    if ( updatedCircleColliders[ trInd ].found ) {
+      TransformComp transformComp = updatedTransforms[ trInd ];
+      ComponentIndex circleColliderCompInd = updatedCircleColliders[ trInd ].index;
+      circleColliderComps[ circleColliderCompInd ].position = transformComp.position;
+      circleColliderComps[ circleColliderCompInd ].scale = transformComp.scale;
     }
   }
-}
-
-uint32_t CircleColliderManager::count( EntityHandle entity ) const {
-  return map.count( entity.toInt() );
-}
-
-std::vector< ComponentIndex >
-CircleColliderManager::getTempComponentIndices( EntityHandle entity ) const {
-  //TODO assert count > 0
-  std::vector< ComponentIndex > indices;
-  auto range = map.equal_range( entity.toInt() );
-  for ( auto iterator = range.first; iterator != range.second; ++iterator ) {
-    indices.push_back( iterator->second );
+  //TODO do frustrum culling
+  std::vector< DebugCircle > circles;
+  circles.reserve( circleColliderComps.size() );
+  for ( uint32_t colInd = 0; colInd < circleColliderComps.size(); ++colInd ) {
+    CircleColliderComp circleColliderComp = circleColliderComps[ colInd ];
+    DebugCircle circle;
+    circle.position = circleColliderComp.position + circleColliderComp.center;
+    float scaleX = circleColliderComp.scale.x, scaleY = circleColliderComp.scale.y;
+    circle.radius = circleColliderComp.radius * ( scaleX > scaleY ) ? scaleX : scaleY;
+    circle.color[ 0 ] =  0.0f;
+    circle.color[ 1 ] =  1.0f;
+    circle.color[ 2 ] =  0.0f;
+    circle.color[ 3 ] =  1.0f;
+    circles.push_back( circle );
   }
-  return indices;
+  DebugRenderer::addCircles( circles );
 }
 
-TextureRsrc loadTexture( const char* name ) {
+std::vector< TextureAsset > AssetManager::textures;
+
+void AssetManager::initialize() {
+  textures = std::vector< TextureAsset >();
+}
+
+void AssetManager::shutdown() {
+}
+ 
+TextureHandle AssetManager::loadTexture( const char* name ) {
   uint32_t glId;
   glGenTextures( 1, &glId );
   glBindTexture( GL_TEXTURE_2D, glId );
   uint32_t width, height;
-  unsigned char* texData = SOIL_load_image( name, ( int* )&width, ( int* )&height, nullptr, SOIL_LOAD_RGBA );
-  if ( texData == 0 ) {
-    //TODO make into assertion
-    Logger::write( "Error loading texture %s: %s\n", name, SOIL_last_result() );
-  }
+  unsigned char* texData = SOIL_load_image( name, ( int* )&width, ( int* )&height, nullptr, SOIL_LOAD_RGBA );  
+  ASSERT( texData != 0, "Error loading texture %s: %s", name, SOIL_last_result() );  
   glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texData );
   SOIL_free_image_data( texData );
   glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ); 
   glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-  return { name, width, height, glId };
+  textures.push_back( { name, width, height, glId } );
+  Logger::write( "Texture '%s' successfully loaded (glId = %d)\n", name, glId );
+  return textures.size() - 1;
 }
 
-void deleteTexture( TextureRsrc texture ) {
-  glDeleteTextures( 1, &texture.glId );
+void AssetManager::destroyTexture( TextureHandle texture ) {
+  ASSERT( isTextureAlive( texture ), "Invalid texture id %d", texture );  
+  glDeleteTextures( 1, &textures[ texture ].glId );
+  std::memset(  &textures[ texture ], 0, sizeof( TextureAsset ) );
 }
+
+bool AssetManager::isTextureAlive( TextureHandle texture ) {
+  return texture < textures.size() && textures[ texture ].glId > 0;
+}
+
+TextureAsset AssetManager::getTexture( TextureHandle texture ) {
+  ASSERT( isTextureAlive( texture ), "Invalid texture id %d", texture );  
+  return textures[ texture ];
+}
+
+std::vector< SpriteManager::SpriteComp > SpriteManager::spriteComps;
+std::unordered_map< uint32_t, ComponentIndex > SpriteManager::map;
+RenderInfo SpriteManager::renderInfo;
+SpriteManager::Pos* SpriteManager::posBufferData;
+SpriteManager::UV* SpriteManager::texCoordsBufferData;
 
 void SpriteManager::initialize() {
   //configure buffers
   glGenVertexArrays( 1, &renderInfo.vaoId );
   glBindVertexArray( renderInfo.vaoId );
-  //glBufferData is different for every sprite
   glGenBuffers( 2, renderInfo.vboIds );
   //positions buffer
   glBindBuffer( GL_ARRAY_BUFFER, renderInfo.vboIds[ 0 ] );
@@ -1000,7 +1088,7 @@ void SpriteManager::initialize() {
   int error = createShaderProgram( &renderInfo.shaderProgramId,
 				   "shaders/SpriteUnlit.vert", "shaders/SpriteUnlit.frag" );
   if ( error ) {
-    //TODO implement error logging and maybe hardcode a default shader here
+    //TODO maybe hardcode a default shader here
   }  
   //get shader's constants' locations
   renderInfo.projUnifLoc[ 0 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.left" );
@@ -1015,6 +1103,24 @@ void SpriteManager::shutdown() {
   glDeleteBuffers( 2, renderInfo.vboIds );
 }
 
+void SpriteManager::set( EntityHandle entity, TextureHandle textureId, Rect texCoords ) {
+  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );
+  ASSERT( AssetManager::isTextureAlive( textureId ), "Invalid texture id %d", textureId ); 
+  SpriteComp spriteComp = {};
+  spriteComp.entity = entity;
+  spriteComp.textureId = textureId;
+  spriteComp.texCoords = texCoords;
+  TextureAsset texture = AssetManager::getTexture( textureId );
+  float width = texture.width * ( texCoords.max.u - texCoords.min.u ) / PIXELS_PER_UNIT;
+  float height = texture.height * ( texCoords.max.v - texCoords.min.v ) / PIXELS_PER_UNIT;
+  spriteComp.size = { width, height };
+  spriteComps.push_back( spriteComp );
+  uint32_t compInd = spriteComps.size() - 1;
+  bool inserted = map.insert( { entityToInt( entity ), compInd } ).second;  
+  ASSERT( inserted, "Could not map entity %d to component index %d", entityToInt( entity ), compInd );
+  Logger::write( "Sprite component added to entity %d\n", entityToInt( entity ) );
+}
+
 void SpriteManager::setOrthoProjection( float aspectRatio, float height ) {
   float halfHeight = height / 2.0f;
   glUseProgram( renderInfo.shaderProgramId );
@@ -1024,10 +1130,28 @@ void SpriteManager::setOrthoProjection( float aspectRatio, float height ) {
   glUniform1f( renderInfo.projUnifLoc[ 3 ], halfHeight );
 }
 
-void SpriteManager::updateAndRender( const TransformManager& transformManager ) {
-  std::vector< TransformComp > updatedTransforms = transformManager.getLastUpdated();
+std::vector< LookupResult > SpriteManager::lookup( std::vector< EntityHandle > entities ) {
+  //TODO refactor this duplicated code
+  std::vector< LookupResult > result( entities.size() );
+  for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
+    auto iterator = map.find( entityToInt( entities[ entityInd ] ) );
+    if ( iterator != map.end() ) {
+      result[ entityInd ] = { iterator->second, true };
+    } else {
+      result[ entityInd ].found = false;
+    }
+  }
+  return result;
+}
+
+void SpriteManager::updateAndRender() {
+  if ( spriteComps.size() == 0 ) {
+    return;
+  }
+  std::vector< TransformComp > updatedTransforms = TransformManager::getLastUpdated();
   //update local transform cache
-  std::vector< EntityHandle > updatedEntities( updatedTransforms.size() );
+  std::vector< EntityHandle > updatedEntities;
+  updatedEntities.reserve( updatedTransforms.size() );
   for ( uint32_t trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
     updatedEntities.push_back( updatedTransforms[ trInd ].entity );
   }
@@ -1041,52 +1165,78 @@ void SpriteManager::updateAndRender( const TransformManager& transformManager ) 
       spriteComps[ spriteCompInd ].orientation = transformComp.orientation;
     }
   }
-  //build vertex buffer and render for sprites with same texture    
+  //build vertex buffer and render for sprites with same texture
   glUseProgram( renderInfo.shaderProgramId );
   glBindVertexArray( renderInfo.vaoId );
-  //we render every sprite every time
+  //TODO don't render every sprite every time
   uint32_t spritesToRenderCount = spriteComps.size();
-  posBufferData = new Pos[ spritesToRenderCount * 4 ]; //4 verts per sprite
-  texCoordsBufferData = new UV[ spritesToRenderCount * 4 ];
-  uint32_t currentTexGlId = spriteComps[ 0 ].baseTexture.glId;
-  glBindTexture( GL_TEXTURE_2D, currentTexGlId );
-  //mark where a sub-buffer with sprites sharing a texture ends and a new one begins
-  uint32_t currentSubBufferStart = 0;
-  Vec2 baseGeometry[ 4 ] = {
+  //TODO use triangle indices to reduce vertex count
+  uint32_t vertsPerSprite = 6; 
+  posBufferData = new Pos[ spritesToRenderCount * vertsPerSprite ];
+  texCoordsBufferData = new UV[ spritesToRenderCount * vertsPerSprite ];
+  //build the positions buffer
+  Vec2 baseGeometry[] = {
+    { -0.5f,	-0.5f },
+    { 0.5f,	 0.5f },
+    { -0.5f,	 0.5f },
     { -0.5f,	-0.5f },
     { 0.5f,	-0.5f },
-    { 0.5f,	 0.5f },
-    { -0.5f,	 0.5f } };
-  for ( uint32_t spriteInd = 0; spriteInd < spriteComps.size(); ++spriteInd ) {
-    //add to the vertex buffer
+    { 0.5f,	 0.5f }
+  };
+  for ( uint32_t spriteInd = 0; spriteInd < spritesToRenderCount; ++spriteInd ) {
     SpriteComp spriteComp = spriteComps[ spriteInd ];
-    Vec2 texCoords[ 4 ] = {
-      spriteComp.texCoords.min,
-      { spriteComp.texCoords.max.u, spriteComp.texCoords.min.v },
-      spriteComp.texCoords.max,
-      { spriteComp.texCoords.min.u, spriteComp.texCoords.max.v } };
-    for ( int vertInd = 0; vertInd < 4; ++vertInd ) {
+    for ( uint32_t vertInd = 0; vertInd < vertsPerSprite; ++vertInd ) {
       Vec2 vert = rotate( baseGeometry[ vertInd ], spriteComp.orientation );
       vert *= spriteComp.size * spriteComp.scale;
       vert += spriteComp.position;
-      posBufferData[ spriteInd * 4 + vertInd ].pos = vert;
-      texCoordsBufferData[ spriteInd * 4 + vertInd ].uv = texCoords[ vertInd ];
+      posBufferData[ spriteInd * vertsPerSprite + vertInd ].pos = vert;
     }
-    if ( spriteComps[ spriteInd ].baseTexture.glId != currentTexGlId ) {
+  } 
+  glBindBuffer( GL_ARRAY_BUFFER, renderInfo.vboIds[ 0 ] );
+  glBufferData( GL_ARRAY_BUFFER, spritesToRenderCount * vertsPerSprite * sizeof( Pos ), posBufferData, GL_STATIC_DRAW );
+  //TODO measure how expensive these allocations and deallocations are!
+  delete[] posBufferData;
+  //build the texture coordinates buffer
+  for ( uint32_t spriteInd = 0; spriteInd < spritesToRenderCount; ++spriteInd ) {
+    SpriteComp spriteComp = spriteComps[ spriteInd ];
+    Vec2 texCoords[] = {
+      spriteComp.texCoords.min,
+      spriteComp.texCoords.max,
+      { spriteComp.texCoords.min.u, spriteComp.texCoords.max.v },
+      spriteComp.texCoords.min,
+      { spriteComp.texCoords.max.u, spriteComp.texCoords.min.v },
+      spriteComp.texCoords.max
+    };
+    for ( uint32_t vertInd = 0; vertInd < vertsPerSprite; ++vertInd ) {
+      texCoordsBufferData[ spriteInd * vertsPerSprite + vertInd ].uv = texCoords[ vertInd ];
+    }
+  }
+  glBindBuffer( GL_ARRAY_BUFFER, renderInfo.vboIds[ 1 ] );
+  glBufferData( GL_ARRAY_BUFFER, spritesToRenderCount * vertsPerSprite * sizeof( UV ), texCoordsBufferData, GL_STATIC_DRAW );
+  //TODO measure how expensive these allocations and deallocations are!
+  delete[] texCoordsBufferData;
+  //issue render commands
+  //TODO maybe sort by texture id
+  uint32_t currentTexId = spriteComps[ 0 ].textureId;  
+  ASSERT( AssetManager::isTextureAlive( currentTexId ), "Invalid texture id %d", currentTexId );  
+  uint32_t currentTexGlId = AssetManager::getTexture( currentTexId ).glId;
+  glBindTexture( GL_TEXTURE_2D, currentTexGlId );
+  //mark where a sub-buffer with sprites sharing a texture ends and a new one begins
+  uint32_t currentSubBufferStart = 0;
+  for ( uint32_t spriteInd = 1; spriteInd < spritesToRenderCount; ++spriteInd ) {
+    if ( spriteComps[ spriteInd ].textureId != currentTexId ) {
       //send current vertex sub-buffer and render it
-      uint32_t subBufferSize = sizeof( Vec2 ) * 4 * ( spriteInd - currentSubBufferStart );
-      glBindBuffer( GL_ARRAY_BUFFER, renderInfo.vboIds[ 0 ] );
-      glBufferData( GL_ARRAY_BUFFER, subBufferSize, posBufferData + currentSubBufferStart, GL_STATIC_DRAW );
-      glBindBuffer( GL_ARRAY_BUFFER, renderInfo.vboIds[ 1 ] );
-      glBufferData( GL_ARRAY_BUFFER, subBufferSize, texCoordsBufferData + currentSubBufferStart, GL_STATIC_DRAW );
-      glDrawArrays( GL_TRIANGLE_FAN, 0, 4 );
+      uint32_t spriteCountInSubBuffer = spriteInd - currentSubBufferStart;
+      glDrawArrays( GL_TRIANGLES, vertsPerSprite * currentSubBufferStart, vertsPerSprite * spriteCountInSubBuffer );
       //and start a new one
-      currentTexGlId = spriteComps[ spriteInd ].baseTexture.glId;
+      currentTexId = spriteComps[ spriteInd ].textureId;      
+      ASSERT( AssetManager::isTextureAlive( currentTexId ), "Invalid texture id %d", currentTexId );
+      currentTexGlId = AssetManager::getTexture( currentTexId ).glId;
       glBindTexture( GL_TEXTURE_2D, currentTexGlId );
       currentSubBufferStart = spriteInd;
     }
   }
-  //TODO measure how expensive these allocations and deallocations are!
-  delete[] posBufferData;
-  delete[] texCoordsBufferData;
+  //render the last sub-buffer
+  uint32_t spriteCountInSubBuffer = spritesToRenderCount - currentSubBufferStart;
+  glDrawArrays( GL_TRIANGLES, vertsPerSprite * currentSubBufferStart, vertsPerSprite * spriteCountInSubBuffer );
 }
