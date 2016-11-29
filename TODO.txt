@@ -1,7 +1,7 @@
 
 * fix sprite rotation
 * invert v on sprites
-* only log errors to file
+* log errors to separate file
 * set collider radius to sprite max( width, height ) by default
 * handle errors in shader creation
 * remove duplicated code in managers

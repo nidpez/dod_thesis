@@ -82,9 +82,8 @@ const int MAX_ENTITIES = 1 << HANDLE_INDEX_BITS;
 struct EntityHandle {
   uint32_t index : HANDLE_INDEX_BITS;
   uint32_t generation : HANDLE_GENERATION_BITS;
+  operator uint32_t() const;
 };
-
-uint32_t entityToInt( EntityHandle entity );
 
 class EntityManager {
   struct Generation { //can't just use uint32_t since they overflow at different values
@@ -912,8 +911,8 @@ void DebugRenderer::setOrthoProjection( float aspectRatio, float height ) {
 std::vector< EntityManager::Generation > EntityManager::generations;
 std::deque< uint32_t > EntityManager::freeIndices;
 
-uint32_t entityToInt( EntityHandle entity ) {
-  return entity.generation << HANDLE_INDEX_BITS | entity.index;
+EntityHandle::operator uint32_t() const {
+  return this->generation << HANDLE_INDEX_BITS | this->index;
 }
 
 void EntityManager::initialize() {
@@ -955,17 +954,17 @@ void TransformManager::shutdown() {
 }
 
 void TransformManager::set( EntityHandle entity, Vec2 position, Vec2 scale, float orientation ) {
-  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );  
+  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );  
   transformComps.push_back( { entity, position, scale, orientation } );
   uint32_t compInd = transformComps.size() - 1;
-  bool inserted = map.insert( { entityToInt( entity ), compInd } ).second;  
-  ASSERT( inserted, "Could not map entity %d to component index %d", entityToInt( entity ), compInd );
-  Logger::write( "Transform component added to entity %d\n", entityToInt( entity ) );
+  bool inserted = map.insert( { entity, compInd } ).second;  
+  ASSERT( inserted, "Could not map entity %d to component index %d", entity, compInd );
+  Logger::write( "Transform component added to entity %d\n", entity );
 }
 
 bool TransformManager::has( EntityHandle entity ) {
-  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );  
-  auto iterator = map.find( entityToInt( entity ) );
+  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );  
+  auto iterator = map.find( entity );
   if ( iterator != map.end() ) {
     return true;
   }
@@ -973,9 +972,9 @@ bool TransformManager::has( EntityHandle entity ) {
 }
 
 ComponentIndex TransformManager::lookup( EntityHandle entity ) {
-  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );
-  auto iterator = map.find( entityToInt( entity ) ); 
-  ASSERT( iterator != map.end(), "Entity %d has no Transform component", entityToInt( entity ) );	  
+  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
+  auto iterator = map.find( entity ); 
+  ASSERT( iterator != map.end(), "Entity %d has no Transform component", entity );	  
   return iterator->second;
 }
 
@@ -988,17 +987,17 @@ std::vector< CircleColliderManager::CircleColliderComp > CircleColliderManager::
 std::unordered_map< uint32_t, ComponentIndex > CircleColliderManager::map;
 
 void CircleColliderManager::add( EntityHandle entity, Vec2 center, float radius ) {
-  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );
+  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
   ASSERT( radius > 0.0f, "A collider of radius %f is useless", radius );
   circleColliderComps.push_back( { entity, center, radius, { 0, 0 }, { 0, 0 } } );
   uint32_t compInd = circleColliderComps.size() - 1;
-  map.emplace( entityToInt( entity ), compInd );
-  Logger::write( "CircleCollider component added to entity %d\n", entityToInt( entity ) );
+  map.emplace( entity, compInd );
+  Logger::write( "CircleCollider component added to entity %d\n", entity );
 }
 
 bool CircleColliderManager::has( EntityHandle entity ) {
-  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );  
-  auto iterator = map.find( entityToInt( entity ) );
+  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );  
+  auto iterator = map.find( entity );
   if ( iterator != map.end() ) {
     return true;
   }
@@ -1017,7 +1016,7 @@ std::vector< LookupResult > CircleColliderManager::lookup( std::vector< EntityHa
   //TODO refactor this duplicated code
   std::vector< LookupResult > result( entities.size() );
   for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
-    auto iterator = map.find( entityToInt( entities[ entityInd ] ) );
+    auto iterator = map.find( entities[ entityInd ] );
     if ( iterator != map.end() ) {
       result[ entityInd ] = { iterator->second, true };
     } else {
@@ -1069,13 +1068,13 @@ void CircleColliderManager::updateAndCollide() {
 void CircleColliderManager::fitToSpriteSize( std::vector< EntityHandle > entities ) {
   for ( uint32_t i = 0; i < entities.size(); ++i ) {
     EntityHandle entity = entities[ i ];
-    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );
+    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
   }
   std::vector< LookupResult > colliderLookupResults = lookup( entities );
   std::vector< SpriteComp > spriteComps = SpriteManager::get( entities );
   for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
     SpriteComp spriteComp = spriteComps[ entityInd ];
-    bool hasSpriteComp = entityToInt( spriteComp.entity ) > 0;
+    bool hasSpriteComp = spriteComp.entity > 0;
     LookupResult lookupResult = colliderLookupResults[ entityInd ];
     if ( lookupResult.found && hasSpriteComp ) {
       Vec2 size = spriteComp.size;
@@ -1169,7 +1168,7 @@ void SpriteManager::shutdown() {
 }
 
 void SpriteManager::set( EntityHandle entity, TextureHandle textureId, Rect texCoords ) {
-  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );
+  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
   ASSERT( AssetManager::isTextureAlive( textureId ), "Invalid texture id %d", textureId ); 
   __SpriteComp spriteComp = {};
   spriteComp.entity = entity;
@@ -1181,15 +1180,15 @@ void SpriteManager::set( EntityHandle entity, TextureHandle textureId, Rect texC
   spriteComp.size = { width, height };
   spriteComps.push_back( spriteComp );
   uint32_t compInd = spriteComps.size() - 1;
-  bool inserted = map.insert( { entityToInt( entity ), compInd } ).second;  
-  ASSERT( inserted, "Could not map entity %d to component index %d", entityToInt( entity ), compInd );
-  Logger::write( "Sprite component added to entity %d\n", entityToInt( entity ) );
+  bool inserted = map.insert( { entity, compInd } ).second;  
+  ASSERT( inserted, "Could not map entity %d to component index %d", entity, compInd );
+  Logger::write( "Sprite component added to entity %d\n", entity );
 }
 
 std::vector< SpriteComp > SpriteManager::get( std::vector< EntityHandle > entities ) {
   for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
     EntityHandle entity = entities[ entityInd ];
-    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entityToInt( entity ) );
+    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
   }
   std::vector< LookupResult > lookupResults = lookup( entities );
   std::vector< SpriteComp > resultSpriteComps;
@@ -1219,7 +1218,7 @@ std::vector< LookupResult > SpriteManager::lookup( std::vector< EntityHandle > e
   //TODO refactor this duplicated code
   std::vector< LookupResult > result( entities.size() );
   for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
-    auto iterator = map.find( entityToInt( entities[ entityInd ] ) );
+    auto iterator = map.find( entities[ entityInd ] );
     if ( iterator != map.end() ) {
       result[ entityInd ] = { iterator->second, true };
     } else {
