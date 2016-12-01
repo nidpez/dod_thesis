@@ -1066,21 +1066,23 @@ void CircleColliderManager::updateAndCollide() {
 }
 
 void CircleColliderManager::fitToSpriteSize( std::vector< EntityHandle > entities ) {
-  for ( uint32_t i = 0; i < entities.size(); ++i ) {
-    EntityHandle entity = entities[ i ];
+  for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
+    EntityHandle entity = entities[ entityInd ];
     ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
   }
   std::vector< LookupResult > colliderLookupResults = lookup( entities );
   std::vector< SpriteComp > spriteComps = SpriteManager::get( entities );
   for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
+    EntityHandle entity = entities[ entityInd ];
+    ASSERT( colliderLookupResults[ entityInd ].found, "Entity %d has no CircleCollider component", entity );
+    ASSERT( spriteComps[ entityInd ].entity > 0, "Entity %d has no Sprite component", entity );
+  }
+  for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
     SpriteComp spriteComp = spriteComps[ entityInd ];
-    bool hasSpriteComp = spriteComp.entity > 0;
     LookupResult lookupResult = colliderLookupResults[ entityInd ];
-    if ( lookupResult.found && hasSpriteComp ) {
-      Vec2 size = spriteComp.size;
-      float maxSize = ( size.x > size.y ) ? size.x : size.y;
-      circleColliderComps[ lookupResult.index ].radius = maxSize / 2.0f;
-    }
+    Vec2 size = spriteComp.size;
+    float maxSize = ( size.x > size.y ) ? size.x : size.y;
+    circleColliderComps[ lookupResult.index ].radius = maxSize / 2.0f;
   }
 }
 
@@ -1094,14 +1096,15 @@ void AssetManager::shutdown() {
 }
  
 TextureHandle AssetManager::loadTexture( const char* name ) {
-  uint32_t glId;
-  glGenTextures( 1, &glId );
-  glBindTexture( GL_TEXTURE_2D, glId );
   uint32_t width, height;
-  unsigned char* texData = SOIL_load_image( name, ( int* )&width, ( int* )&height, nullptr, SOIL_LOAD_RGBA );  
-  ASSERT( texData != 0, "Error loading texture %s: %s", name, SOIL_last_result() );  
-  glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texData );
+  int channels;
+  unsigned char* texData = SOIL_load_image( name, reinterpret_cast< int* >( &width ), reinterpret_cast< int* >( &height ), &channels, SOIL_LOAD_RGBA );  
+  ASSERT( texData != 0, "Error loading texture %s: %s", name, SOIL_last_result() );
+  //pixelart seems to not want to be compressed to DXT
+  int newWidth = width, newHeight = height;
+  uint32_t glId = SOIL_create_OGL_texture( texData, &newWidth, &newHeight, channels, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y ); 
   SOIL_free_image_data( texData );
+  ASSERT( glId > 0, "Error sending texture %s to OpenGL: %s", name, SOIL_last_result() );
   glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ); 
   glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
   textures.push_back( { name, width, height, glId } );
