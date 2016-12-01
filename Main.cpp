@@ -189,6 +189,7 @@ class SpriteManager {
     explicit operator SpriteComp() const;
   };
   static std::vector< __SpriteComp > spriteComps;
+  static ComponentMap componentMap;
   //rendering data
   struct Pos {
     Vec2 pos;
@@ -200,7 +201,6 @@ class SpriteManager {
   //TODO merge into single vertex attrib pointer
   static Pos* posBufferData;
   static UV* texCoordsBufferData;
-  static ComponentMap componentMap;
 public:
   static void initialize();
   static void shutdown();
@@ -315,8 +315,6 @@ int main() {
   TextureHandle planetTex = AssetManager::loadTexture( "planetSurface.png" );
   
   //test astronaut sprite entity
-  // //bounding geometry
-  // float r1 = BASE_SCALE.x / 2.0f;
   EntityHandle astronautId = EntityManager::create();
   TransformManager::set( astronautId, { -30.0f, 30.0f }, { 1.0f, 1.0f }, 0.0f );
   AnimationFrame runFrames[] = {
@@ -347,10 +345,6 @@ int main() {
   CircleColliderManager::fitToSpriteSize( entities );
   
   //main loop      
-  // float tempPos[ 2 ];
-  // tempPos[ 0 ] = pos1.x;
-  // tempPos[ 1 ] = pos1.y;
-  // float angle2 = 0.0f;
   double t1 = glfwGetTime();
   double t2;
   double deltaT = 0.0;
