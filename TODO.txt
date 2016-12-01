@@ -3,7 +3,6 @@
 * log errors to separate file
 * set collider radius to sprite max( width, height ) by default
 * handle errors in shader creation
-* remove duplicated code in managers
 * get and set things in batches
 * use chrono lib
 * update api to include expected errors

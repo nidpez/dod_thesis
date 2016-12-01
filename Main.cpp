@@ -107,6 +107,12 @@ struct LookupResult {
   bool found;
 };
 
+struct ComponentMap {
+  std::unordered_map< uint32_t, ComponentIndex > map;
+  void set( EntityHandle entity, ComponentIndex compInd );//TODO there are many
+  std::vector< LookupResult > lookup( std::vector< EntityHandle > entities );
+};
+
 struct TransformComp {
   EntityHandle entity;
   Vec2 position;
@@ -116,14 +122,12 @@ struct TransformComp {
 
 class TransformManager {
   static std::vector< TransformComp > transformComps;
-  static std::unordered_map< uint32_t, ComponentIndex > map;
-  static ComponentIndex lookup( EntityHandle entity );
+  static ComponentMap componentMap;
 public:
   static void initialize();
   static void shutdown();
   static void set( EntityHandle entity, Vec2 position, Vec2 scale, float orientation );
   static void remove( EntityHandle entity );
-  static bool has( EntityHandle entity );
   static std::vector< TransformComp > getLastUpdated();
 };
 
@@ -138,14 +142,12 @@ class CircleColliderManager {
     Vec2 scale;
   };
   static std::vector< CircleColliderComp > circleColliderComps;
-  static std::unordered_map< uint32_t, ComponentIndex > map;
-  static std::vector< LookupResult > lookup( std::vector< EntityHandle > entities );
+  static ComponentMap componentMap;
 public:
   static void initialize();
   static void shutdown();
   static void add( EntityHandle entity, Vec2 center, float radius );
   static void remove( EntityHandle entity );
-  static bool has( EntityHandle entity );
   static void fitToSpriteSize( std::vector< EntityHandle > entities );
   static void updateAndCollide();
 };
@@ -187,7 +189,6 @@ class SpriteManager {
     explicit operator SpriteComp() const;
   };
   static std::vector< __SpriteComp > spriteComps;
-  static std::unordered_map< uint32_t, ComponentIndex > map;
   //rendering data
   struct Pos {
     Vec2 pos;
@@ -199,13 +200,12 @@ class SpriteManager {
   //TODO merge into single vertex attrib pointer
   static Pos* posBufferData;
   static UV* texCoordsBufferData;
-  static std::vector< LookupResult > lookup( std::vector< EntityHandle > entities );
+  static ComponentMap componentMap;
 public:
   static void initialize();
   static void shutdown();
   static void set( EntityHandle entity, TextureHandle textureId, Rect texCoords );
   static void remove( EntityHandle entity );
-  static bool has( EntityHandle entity );
   static std::vector< SpriteComp > get( std::vector< EntityHandle > entities );
   static void updateAndRender();
   static void setOrthoProjection( float aspectRatio, float height );
@@ -916,8 +916,6 @@ EntityHandle::operator uint32_t() const {
 }
 
 void EntityManager::initialize() {
-  generations = std::vector< Generation >();
-  freeIndices = std::deque< uint32_t >();
 }
 
 void EntityManager::shutdown() {
@@ -942,78 +940,12 @@ bool EntityManager::isAlive( EntityHandle entity ) {
   return entity.index > 0 && generations[ entity.index - 1 ].generation == entity.generation;
 }
 
-std::vector< TransformComp > TransformManager::transformComps;
-std::unordered_map< uint32_t, ComponentIndex > TransformManager::map;
-
-void TransformManager::initialize() {
-  transformComps = std::vector< TransformComp >();
-  map = std::unordered_map< uint32_t, ComponentIndex >();
-}
-
-void TransformManager::shutdown() {
-}
-
-void TransformManager::set( EntityHandle entity, Vec2 position, Vec2 scale, float orientation ) {
-  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );  
-  transformComps.push_back( { entity, position, scale, orientation } );
-  uint32_t compInd = transformComps.size() - 1;
+void ComponentMap::set( EntityHandle entity, ComponentIndex compInd ) {
   bool inserted = map.insert( { entity, compInd } ).second;  
   ASSERT( inserted, "Could not map entity %d to component index %d", entity, compInd );
-  Logger::write( "Transform component added to entity %d\n", entity );
 }
 
-bool TransformManager::has( EntityHandle entity ) {
-  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );  
-  auto iterator = map.find( entity );
-  if ( iterator != map.end() ) {
-    return true;
-  }
-  return false;
-}
-
-ComponentIndex TransformManager::lookup( EntityHandle entity ) {
-  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
-  auto iterator = map.find( entity ); 
-  ASSERT( iterator != map.end(), "Entity %d has no Transform component", entity );	  
-  return iterator->second;
-}
-
-std::vector< TransformComp > TransformManager::getLastUpdated() {
-  //TODO actually compute which transforms have been updated since last frame
-  return transformComps;
-}
-
-std::vector< CircleColliderManager::CircleColliderComp > CircleColliderManager::circleColliderComps;
-std::unordered_map< uint32_t, ComponentIndex > CircleColliderManager::map;
-
-void CircleColliderManager::add( EntityHandle entity, Vec2 center, float radius ) {
-  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
-  ASSERT( radius > 0.0f, "A collider of radius %f is useless", radius );
-  circleColliderComps.push_back( { entity, center, radius, { 0, 0 }, { 0, 0 } } );
-  uint32_t compInd = circleColliderComps.size() - 1;
-  map.emplace( entity, compInd );
-  Logger::write( "CircleCollider component added to entity %d\n", entity );
-}
-
-bool CircleColliderManager::has( EntityHandle entity ) {
-  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );  
-  auto iterator = map.find( entity );
-  if ( iterator != map.end() ) {
-    return true;
-  }
-  return false;
-}
-
-void CircleColliderManager::initialize() {
-  circleColliderComps = std::vector< CircleColliderComp >();
-  map = std::unordered_map< uint32_t, ComponentIndex >();
-}
-
-void CircleColliderManager::shutdown() {
-}
-
-std::vector< LookupResult > CircleColliderManager::lookup( std::vector< EntityHandle > entities ) {
-  //TODO refactor this duplicated code
+std::vector< LookupResult > ComponentMap::lookup( std::vector< EntityHandle > entities ) {
   std::vector< LookupResult > result( entities.size() );
   for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
     auto iterator = map.find( entities[ entityInd ] );
@@ -1024,6 +956,46 @@ std::vector< LookupResult > CircleColliderManager::lookup( std::vector< EntityHa
     }
   }
   return result;
+}
+
+std::vector< TransformComp > TransformManager::transformComps;
+ComponentMap TransformManager::componentMap;
+
+void TransformManager::initialize() {
+}
+
+void TransformManager::shutdown() {
+}
+
+void TransformManager::set( EntityHandle entity, Vec2 position, Vec2 scale, float orientation ) {
+  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );  
+  transformComps.push_back( { entity, position, scale, orientation } );
+  uint32_t compInd = transformComps.size() - 1;
+  componentMap.set( entity, compInd );
+  Logger::write( "Transform component added to entity %d\n", entity );
+}
+
+std::vector< TransformComp > TransformManager::getLastUpdated() {
+  //TODO actually compute which transforms have been updated since last frame
+  return transformComps;
+}
+
+std::vector< CircleColliderManager::CircleColliderComp > CircleColliderManager::circleColliderComps;
+ComponentMap CircleColliderManager::componentMap;
+
+void CircleColliderManager::initialize() {
+}
+
+void CircleColliderManager::shutdown() {
+}
+
+void CircleColliderManager::add( EntityHandle entity, Vec2 center, float radius ) {
+  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
+  ASSERT( radius > 0.0f, "A collider of radius %f is useless", radius );
+  circleColliderComps.push_back( { entity, center, radius, { 0, 0 }, { 0, 0 } } );
+  uint32_t compInd = circleColliderComps.size() - 1;
+  componentMap.set( entity, compInd );
+  Logger::write( "CircleCollider component added to entity %d\n", entity );
 }
 
 void CircleColliderManager::updateAndCollide() {
@@ -1037,7 +1009,7 @@ void CircleColliderManager::updateAndCollide() {
   for ( uint32_t trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
     updatedEntities.push_back( updatedTransforms[ trInd ].entity );
   }
-  std::vector< LookupResult > updatedCircleColliders = lookup( updatedEntities );
+  std::vector< LookupResult > updatedCircleColliders = componentMap.lookup( updatedEntities );
   for ( uint32_t trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
     if ( updatedCircleColliders[ trInd ].found ) {
       TransformComp transformComp = updatedTransforms[ trInd ];
@@ -1070,7 +1042,7 @@ void CircleColliderManager::fitToSpriteSize( std::vector< EntityHandle > entitie
     EntityHandle entity = entities[ entityInd ];
     ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
   }
-  std::vector< LookupResult > colliderLookupResults = lookup( entities );
+  std::vector< LookupResult > colliderLookupResults = componentMap.lookup( entities );
   std::vector< SpriteComp > spriteComps = SpriteManager::get( entities );
   for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
     EntityHandle entity = entities[ entityInd ];
@@ -1089,7 +1061,6 @@ void CircleColliderManager::fitToSpriteSize( std::vector< EntityHandle > entitie
 std::vector< TextureAsset > AssetManager::textures;
 
 void AssetManager::initialize() {
-  textures = std::vector< TextureAsset >();
 }
 
 void AssetManager::shutdown() {
@@ -1128,7 +1099,7 @@ TextureAsset AssetManager::getTexture( TextureHandle texture ) {
 }
 
 std::vector< SpriteManager::__SpriteComp > SpriteManager::spriteComps;
-std::unordered_map< uint32_t, ComponentIndex > SpriteManager::map;
+ComponentMap SpriteManager::componentMap;
 RenderInfo SpriteManager::renderInfo;
 SpriteManager::Pos* SpriteManager::posBufferData;
 SpriteManager::UV* SpriteManager::texCoordsBufferData;
@@ -1183,8 +1154,7 @@ void SpriteManager::set( EntityHandle entity, TextureHandle textureId, Rect texC
   spriteComp.size = { width, height };
   spriteComps.push_back( spriteComp );
   uint32_t compInd = spriteComps.size() - 1;
-  bool inserted = map.insert( { entity, compInd } ).second;  
-  ASSERT( inserted, "Could not map entity %d to component index %d", entity, compInd );
+  componentMap.set( entity, compInd );
   Logger::write( "Sprite component added to entity %d\n", entity );
 }
 
@@ -1193,7 +1163,7 @@ std::vector< SpriteComp > SpriteManager::get( std::vector< EntityHandle > entiti
     EntityHandle entity = entities[ entityInd ];
     ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
   }
-  std::vector< LookupResult > lookupResults = lookup( entities );
+  std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
   std::vector< SpriteComp > resultSpriteComps;
   resultSpriteComps.reserve( entities.size() );
   for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
@@ -1217,20 +1187,6 @@ void SpriteManager::setOrthoProjection( float aspectRatio, float height ) {
   glUniform1f( renderInfo.projUnifLoc[ 3 ], halfHeight );
 }
 
-std::vector< LookupResult > SpriteManager::lookup( std::vector< EntityHandle > entities ) {
-  //TODO refactor this duplicated code
-  std::vector< LookupResult > result( entities.size() );
-  for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
-    auto iterator = map.find( entities[ entityInd ] );
-    if ( iterator != map.end() ) {
-      result[ entityInd ] = { iterator->second, true };
-    } else {
-      result[ entityInd ].found = false;
-    }
-  }
-  return result;
-}
-
 void SpriteManager::updateAndRender() {
   if ( spriteComps.size() == 0 ) {
     return;
@@ -1242,7 +1198,7 @@ void SpriteManager::updateAndRender() {
   for ( uint32_t trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
     updatedEntities.push_back( updatedTransforms[ trInd ].entity );
   }
-  std::vector< LookupResult > updatedSprites = lookup( updatedEntities );
+  std::vector< LookupResult > updatedSprites = componentMap.lookup( updatedEntities );
   for ( uint32_t trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
     if ( updatedSprites[ trInd ].found ) {
       TransformComp transformComp = updatedTransforms[ trInd ];
