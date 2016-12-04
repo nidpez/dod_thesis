@@ -13,9 +13,7 @@
 #include <cmath>
 #include <deque>
 #include <vector>
-#include <unordered_map>
 #include <cstdarg>
-#include <memory>
 
 typedef int64_t 	s64;
 typedef int32_t 	s32;
