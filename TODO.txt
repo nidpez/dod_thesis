@@ -17,4 +17,3 @@
 * implement obb colliders
 * allow multiple colliders per entity
 * use cppcheck
-* define short names for integer types ( u32, s8... )
