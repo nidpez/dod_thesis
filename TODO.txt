@@ -3,7 +3,6 @@
 * log errors to separate file
 * set collider radius to sprite max( width, height ) by default
 * handle errors in shader creation
-* get and set things in batches
 * use chrono lib
 * update api to include expected errors
 * create animation component using a rect per frame
@@ -15,7 +14,8 @@
 * rendering layers
 * sorting in layers
 * n² collision detection
-* space-partitiones collision detection
+* space-partitioned collision detection
 * implement obb colliders
 * allow multiple colliders per entity
 * use cppcheck
+* define short names for integer types ( u32, s8... )

@@ -15,6 +15,7 @@
 #include <vector>
 #include <unordered_map>
 #include <cstdarg>
+#include <memory>
 
 const float PIXELS_PER_UNIT = 4.0f;
 
@@ -60,12 +61,12 @@ struct TextureAsset {
 };
 
 class AssetManager {
-  static std::vector< TextureAsset > textures;
+  static std::vector< TextureAsset > textureAssets;
 public:
   static void initialize();
   static void shutdown();
-  static TextureHandle loadTexture( const char* name );
-  static void destroyTexture( TextureHandle texture );
+  static std::vector< TextureHandle > loadTextures( std::vector< const char* >& names );
+  static void destroyTextures( const std::vector< TextureHandle >& textures );
   static bool isTextureAlive( TextureHandle texture );
   static TextureAsset getTexture( TextureHandle texture );
 };
@@ -95,8 +96,8 @@ class EntityManager {
 public:
   static void initialize();
   static void shutdown();
-  static EntityHandle create();
-  static void destroy( EntityHandle entity );
+  static std::vector< EntityHandle > create( uint32_t amount );
+  static void destroy( const std::vector< EntityHandle >& entities );
   static bool isAlive( EntityHandle entity );
 };
 
@@ -107,10 +108,15 @@ struct LookupResult {
   bool found;
 };
 
+struct SetComponentMapArg {
+  EntityHandle entity;
+  ComponentIndex compInd;
+};
+
 struct ComponentMap {
   std::unordered_map< uint32_t, ComponentIndex > map;
-  void set( EntityHandle entity, ComponentIndex compInd );//TODO there are many
-  std::vector< LookupResult > lookup( std::vector< EntityHandle > entities );
+  void set( const std::vector< SetComponentMapArg >& mappedPairs );
+  std::vector< LookupResult > lookup( const std::vector< EntityHandle >& entities );
 };
 
 struct TransformComp {
@@ -126,14 +132,20 @@ class TransformManager {
 public:
   static void initialize();
   static void shutdown();
-  static void set( EntityHandle entity, Vec2 position, Vec2 scale, float orientation );
-  static void remove( EntityHandle entity );
+  static void set( const std::vector< TransformComp >& transforms );
+  static void remove( const std::vector< EntityHandle >& entities );
   static std::vector< TransformComp > getLastUpdated();
+};
+
+struct CircleColliderComp {
+  EntityHandle entity;
+  Vec2 center;
+  float radius;
 };
 
 //TODO allow multiple colliders per entity (with linked list?)
 class CircleColliderManager {
-  struct CircleColliderComp {
+  struct __CircleColliderComp {
     EntityHandle entity;
     Vec2 center;
     float radius;
@@ -141,14 +153,14 @@ class CircleColliderManager {
     Vec2 position;
     Vec2 scale;
   };
-  static std::vector< CircleColliderComp > circleColliderComps;
+  static std::vector< __CircleColliderComp > circleColliderComps;
   static ComponentMap componentMap;
 public:
   static void initialize();
   static void shutdown();
-  static void add( EntityHandle entity, Vec2 center, float radius );
-  static void remove( EntityHandle entity );
-  static void fitToSpriteSize( std::vector< EntityHandle > entities );
+  static void add( const std::vector< CircleColliderComp >& circleColliders );
+  static void remove( const std::vector< EntityHandle >& entities );
+  static void fitToSpriteSize( const std::vector< EntityHandle >& entities );
   static void updateAndCollide();
 };
 
@@ -174,6 +186,12 @@ struct SpriteComp {
   TextureHandle textureId;
   Rect texCoords;
   Vec2 size;
+};
+
+struct SetSpriteArg {
+  EntityHandle entity;
+  TextureHandle textureId;
+  Rect texCoords;
 };
     
 class SpriteManager {
@@ -204,9 +222,9 @@ class SpriteManager {
 public:
   static void initialize();
   static void shutdown();
-  static void set( EntityHandle entity, TextureHandle textureId, Rect texCoords );
-  static void remove( EntityHandle entity );
-  static std::vector< SpriteComp > get( std::vector< EntityHandle > entities );
+  static void set( const std::vector< SetSpriteArg >& sprites );
+  static void remove( const std::vector< EntityHandle >& entities );
+  static std::vector< SpriteComp > get( const std::vector< EntityHandle >& entities );
   static void updateAndRender();
   static void setOrthoProjection( float aspectRatio, float height );
 };
@@ -311,38 +329,44 @@ int main() {
   DebugRenderer::setOrthoProjection( aspect, 100 );
   
   //load textures
-  TextureHandle astronautTex = AssetManager::loadTexture( "astronaut.png" );
-  TextureHandle planetTex = AssetManager::loadTexture( "planetSurface.png" );
+  std::vector< const char* > textureNames = { "astronaut.png", "planetSurface.png" };
+  std::vector< TextureHandle > textureHandles = AssetManager::loadTextures( textureNames );
   
-  //test astronaut sprite entity
-  EntityHandle astronautId = EntityManager::create();
-  TransformManager::set( astronautId, { -30.0f, 30.0f }, { 1.0f, 1.0f }, 0.0f );
+  std::vector< EntityHandle > entityHandles = EntityManager::create( 3 );
+  
+  std::vector< TransformComp > transformComps = {
+    { entityHandles[ 0 ], { -30.0f, 30.0f }, { 1.0f, 1.0f }, 0.0f }, //astronaut
+    { entityHandles[ 1 ], { 0.0f, 15.0f }, { 1.5f, 1.0f }, 4.0f }, //planet 1
+    { entityHandles[ 2 ], { 30.0f, -30.0f }, { 1.0f, 1.0f }, 0.0f } //panet 2
+  };  
+  TransformManager::set( transformComps );
+  
   AnimationFrame runFrames[] = {
     { { 0.0f, 0.0f },		{ 1.0f / 5.0f, 1.0f } },
     { { 1.0f / 5.0f, 0.0f },	{ 2.0f / 5.0f, 1.0f } },
     { { 2.0f / 5.0f, 0.0f },	{ 3.0f / 5.0f, 1.0f } },
-    { { 3.0f / 5.0f, 0.0f },	{ 4.0f / 5.0f, 1.0f } } };
+    { { 3.0f / 5.0f, 0.0f },	{ 4.0f / 5.0f, 1.0f } }
+  };
   //AnimationFrame jumpFrames[] = { { { 4.0f / 5.0f, 0.0f }, { 1.0f, 1.0f } } };
-  SpriteManager::set( astronautId, astronautTex, ( Rect )runFrames[ 0 ] );
-  CircleColliderManager::add( astronautId, { 0.0f, 0.0f }, 2.5f );
   //example usage code
   // AnimationHandle astronautRunAnimId = animationManager::add( astronautId, runFrames, 24, true, false );
   // AnimationHandle astronautJumpAnimId = animationManager::add( astronautId, jumpFrames, 24, false, false );
-  
-  //test planet sprite entity
-  EntityHandle planetId = EntityManager::create();
-  TransformManager::set( planetId, { 0.0f, 15.0f }, { 1.5f, 1.0f }, 4.0f );
   Rect planetTexCoords = { { 0.0f, 0.0f }, {1.0f, 1.0f } };
-  SpriteManager::set( planetId, planetTex, planetTexCoords );
-  CircleColliderManager::add( planetId, { 0.0f, 0.0f }, 15.0f );
-  
-  EntityHandle planet2Id = EntityManager::create();
-  TransformManager::set( planet2Id, { 30.0f, -30.0f }, { 1.0f, 1.0f }, 0.0f );
-  SpriteManager::set( planet2Id, planetTex, planetTexCoords );
-  CircleColliderManager::add( planet2Id, { 0.0f, 0.0f }, 15.0f );
+  std::vector< SetSpriteArg > setSpriteArgs = {
+    { entityHandles[ 0 ], textureHandles[ 0 ], ( Rect )runFrames[ 0 ] }, //astronaut
+    { entityHandles[ 1 ], textureHandles[ 1 ], planetTexCoords }, //planet 1
+    { entityHandles[ 2 ], textureHandles[ 1 ], planetTexCoords } //planet 2
+  };
+  SpriteManager::set( setSpriteArgs );
 
-  std::vector< EntityHandle > entities{ astronautId, planetId, planet2Id };
-  CircleColliderManager::fitToSpriteSize( entities );
+  std::vector< CircleColliderComp > circleColliderComps = {
+    { entityHandles[ 0 ], { 0.0f, 0.0f },	2.5f }, //astronaut
+    { entityHandles[ 1 ], { 0.0f, 0.0f },	15.0f }, //planet 1
+    { entityHandles[ 2 ], { 0.0f, 0.0f },	15.0f } //planet 2
+  };  
+  CircleColliderManager::add( circleColliderComps );
+
+  CircleColliderManager::fitToSpriteSize( entityHandles );
   
   //main loop      
   double t1 = glfwGetTime();
@@ -441,8 +465,7 @@ int main() {
   
   //free OpenGL resources
   glUseProgram( 0 );
-  AssetManager::destroyTexture( astronautTex );
-  AssetManager::destroyTexture( planetTex );
+  AssetManager::destroyTextures( textureHandles );
   Logger::write( "Resources freed.\n" );
 
   glfwDestroyWindow( window );
@@ -915,31 +938,39 @@ void EntityManager::initialize() {
 void EntityManager::shutdown() {
 }
 
-EntityHandle EntityManager::create() {
-  uint32_t index;
-  if ( freeIndices.size() < MIN_FREE_INDICES ) {
-    generations.push_back( { 0 } );
-    index = generations.size();    
-    ASSERT( index < MAX_ENTITIES, "Tried to create more than %d entities", MAX_ENTITIES ); 
-  } else {
-    index = freeIndices.front();
-    freeIndices.pop_front();
+std::vector< EntityHandle > EntityManager::create( uint32_t amount ){
+  std::vector< EntityHandle > newEntities( amount );
+  for ( uint32_t entInd = 0; entInd < amount; ++entInd ) {
+    uint32_t index;
+    if ( freeIndices.size() < MIN_FREE_INDICES ) {
+      generations.push_back( { 0 } );
+      index = generations.size();    
+      ASSERT( index < MAX_ENTITIES, "Tried to create more than %d entities", MAX_ENTITIES ); 
+    } else {
+      index = freeIndices.front();
+      freeIndices.pop_front();
+    }
+    EntityHandle newEntity = { index, generations[ index - 1 ].generation };
+    Logger::write( "Entity %d created\n", newEntity );
+    newEntities[ entInd ] = newEntity;
   }
-  EntityHandle newEntity = { index, generations[ index - 1 ].generation };
-  Logger::write( "Entity %d created\n", newEntity );
-  return newEntity;
+  return newEntities;
 }
 
 bool EntityManager::isAlive( EntityHandle entity ) {
   return entity.index > 0 && generations[ entity.index - 1 ].generation == entity.generation;
 }
 
-void ComponentMap::set( EntityHandle entity, ComponentIndex compInd ) {
-  bool inserted = map.insert( { entity, compInd } ).second;  
-  ASSERT( inserted, "Could not map entity %d to component index %d", entity, compInd );
+void ComponentMap::set( const std::vector< SetComponentMapArg >& mappedPairs ) {
+  for ( uint32_t pairInd = 0; pairInd < mappedPairs.size(); ++pairInd ) {
+    EntityHandle entity = mappedPairs[ pairInd ].entity;
+    ComponentIndex compInd = mappedPairs[ pairInd ].compInd;
+    bool inserted = map.insert( { entity, compInd } ).second;  
+    ASSERT( inserted, "Could not map entity %d to component index %d", entity, compInd );
+  }
 }
 
-std::vector< LookupResult > ComponentMap::lookup( std::vector< EntityHandle > entities ) {
+std::vector< LookupResult > ComponentMap::lookup( const std::vector< EntityHandle >& entities ) {
   std::vector< LookupResult > result( entities.size() );
   for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
     auto iterator = map.find( entities[ entityInd ] );
@@ -961,12 +992,23 @@ void TransformManager::initialize() {
 void TransformManager::shutdown() {
 }
 
-void TransformManager::set( EntityHandle entity, Vec2 position, Vec2 scale, float orientation ) {
-  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );  
-  transformComps.push_back( { entity, position, scale, orientation } );
-  uint32_t compInd = transformComps.size() - 1;
-  componentMap.set( entity, compInd );
-  Logger::write( "Transform component added to entity %d\n", entity );
+void TransformManager::set( const std::vector< TransformComp >& transforms ) {
+  std::vector< SetComponentMapArg > mappedPairs( transforms.size() );
+  for ( uint32_t trInd = 0; trInd < transforms.size(); ++trInd ) {
+    TransformComp transform = transforms[ trInd ];
+    EntityHandle entity = transform.entity;
+    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );  
+    Vec2 position = transform.position;
+    Vec2 scale = transform.scale;
+    float orientation = transform.orientation;
+    transformComps.push_back( { entity, position, scale, orientation } );
+    uint32_t compInd = transformComps.size() - 1;
+    mappedPairs[ trInd ] = { entity, compInd };
+  }
+  componentMap.set( mappedPairs );
+  for ( uint32_t pairInd = 0; pairInd < mappedPairs.size(); ++pairInd ) {
+    Logger::write( "Transform component added to entity %d\n", mappedPairs[ pairInd ].entity );
+  }
 }
 
 std::vector< TransformComp > TransformManager::getLastUpdated() {
@@ -974,7 +1016,7 @@ std::vector< TransformComp > TransformManager::getLastUpdated() {
   return transformComps;
 }
 
-std::vector< CircleColliderManager::CircleColliderComp > CircleColliderManager::circleColliderComps;
+std::vector< CircleColliderManager::__CircleColliderComp > CircleColliderManager::circleColliderComps;
 ComponentMap CircleColliderManager::componentMap;
 
 void CircleColliderManager::initialize() {
@@ -983,13 +1025,23 @@ void CircleColliderManager::initialize() {
 void CircleColliderManager::shutdown() {
 }
 
-void CircleColliderManager::add( EntityHandle entity, Vec2 center, float radius ) {
-  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
-  ASSERT( radius > 0.0f, "A collider of radius %f is useless", radius );
-  circleColliderComps.push_back( { entity, center, radius, { 0, 0 }, { 0, 0 } } );
-  uint32_t compInd = circleColliderComps.size() - 1;
-  componentMap.set( entity, compInd );
-  Logger::write( "CircleCollider component added to entity %d\n", entity );
+void CircleColliderManager::add( const std::vector< CircleColliderComp >& circleColliders ) {
+  std::vector< SetComponentMapArg > mappedPairs( circleColliders.size() );
+  for ( uint32_t collInd = 0; collInd < circleColliders.size(); ++collInd ) {
+    CircleColliderComp circleColliderComp = circleColliders[ collInd ];
+    EntityHandle entity = circleColliderComp.entity;
+    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
+    float radius = circleColliderComp.radius;
+    ASSERT( radius > 0.0f, "A collider of radius %f is useless", radius );
+    Vec2 center = circleColliderComp.center;
+    circleColliderComps.push_back( { entity, center, radius, { 0, 0 }, { 0, 0 } } );
+    uint32_t compInd = circleColliderComps.size() - 1;
+    mappedPairs[ collInd ] = { entity, compInd };
+  }
+  componentMap.set( mappedPairs );
+  for ( uint32_t pairInd = 0; pairInd < mappedPairs.size(); ++pairInd ) {
+    Logger::write( "CircleCollider component added to entity %d\n", mappedPairs[ pairInd ].entity );
+  }
 }
 
 void CircleColliderManager::updateAndCollide() {
@@ -1016,7 +1068,7 @@ void CircleColliderManager::updateAndCollide() {
   std::vector< DebugCircle > circles;
   circles.reserve( circleColliderComps.size() );
   for ( uint32_t colInd = 0; colInd < circleColliderComps.size(); ++colInd ) {
-    CircleColliderComp circleColliderComp = circleColliderComps[ colInd ];
+    __CircleColliderComp circleColliderComp = circleColliderComps[ colInd ];
     DebugCircle circle;
     float scaleX = circleColliderComp.scale.x, scaleY = circleColliderComp.scale.y;
     float maxScale = ( scaleX > scaleY ) ? scaleX : scaleY;
@@ -1031,7 +1083,7 @@ void CircleColliderManager::updateAndCollide() {
   DebugRenderer::addCircles( circles );
 }
 
-void CircleColliderManager::fitToSpriteSize( std::vector< EntityHandle > entities ) {
+void CircleColliderManager::fitToSpriteSize( const std::vector< EntityHandle >& entities ) {
   for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
     EntityHandle entity = entities[ entityInd ];
     ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
@@ -1052,7 +1104,7 @@ void CircleColliderManager::fitToSpriteSize( std::vector< EntityHandle > entitie
   }
 }
 
-std::vector< TextureAsset > AssetManager::textures;
+std::vector< TextureAsset > AssetManager::textureAssets;
 
 void AssetManager::initialize() {
 }
@@ -1060,36 +1112,43 @@ void AssetManager::initialize() {
 void AssetManager::shutdown() {
 }
  
-TextureHandle AssetManager::loadTexture( const char* name ) {
-  uint32_t width, height;
-  int channels;
-  unsigned char* texData = SOIL_load_image( name, reinterpret_cast< int* >( &width ), reinterpret_cast< int* >( &height ), &channels, SOIL_LOAD_RGBA );  
-  ASSERT( texData != 0, "Error loading texture %s: %s", name, SOIL_last_result() );
-  //pixelart seems to not want to be compressed to DXT
-  int newWidth = width, newHeight = height;
-  uint32_t glId = SOIL_create_OGL_texture( texData, &newWidth, &newHeight, channels, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y ); 
-  SOIL_free_image_data( texData );
-  ASSERT( glId > 0, "Error sending texture %s to OpenGL: %s", name, SOIL_last_result() );
-  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ); 
-  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-  textures.push_back( { name, width, height, glId } );
-  Logger::write( "Texture '%s' successfully loaded (glId = %d)\n", name, glId );
-  return textures.size() - 1;
+std::vector< TextureHandle > AssetManager::loadTextures( std::vector< const char* >& names ) {
+  std::vector< TextureHandle > textureHandles( names.size() );
+  for ( uint32_t texInd = 0; texInd < names.size(); ++texInd ) {
+    uint32_t width, height;
+    int channels;
+    unsigned char* texData = SOIL_load_image( names[ texInd ], reinterpret_cast< int* >( &width ), reinterpret_cast< int* >( &height ), &channels, SOIL_LOAD_RGBA );  
+    ASSERT( texData != 0, "Error loading texture %s: %s", names[ texInd ], SOIL_last_result() );
+    //pixelart seems to not want to be compressed to DXT
+    int newWidth = width, newHeight = height;
+    uint32_t glId = SOIL_create_OGL_texture( texData, &newWidth, &newHeight, channels, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y ); 
+    SOIL_free_image_data( texData );
+    ASSERT( glId > 0, "Error sending texture %s to OpenGL: %s", names[ texInd ], SOIL_last_result() );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ); 
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+    textureAssets.push_back( { names[ texInd ], width, height, glId } );
+    Logger::write( "Texture '%s' successfully loaded (glId = %d)\n", names[ texInd ], glId );
+    textureHandles[ texInd ] = textureAssets.size() - 1;
+  }
+  return textureHandles;
 }
 
-void AssetManager::destroyTexture( TextureHandle texture ) {
-  ASSERT( isTextureAlive( texture ), "Invalid texture id %d", texture );  
-  glDeleteTextures( 1, &textures[ texture ].glId );
-  std::memset(  &textures[ texture ], 0, sizeof( TextureAsset ) );
+void AssetManager::destroyTextures( const std::vector< TextureHandle >& textures ) {
+  for ( uint32_t texInd = 0; texInd < textures.size(); ++texInd ) {
+    TextureHandle texture = textures[ texInd ];
+    ASSERT( isTextureAlive( texture ), "Invalid texture id %d", texture );  
+    glDeleteTextures( 1, &textureAssets[ texture ].glId );
+    std::memset(  &textureAssets[ texture ], 0, sizeof( TextureAsset ) );
+  }
 }
 
 bool AssetManager::isTextureAlive( TextureHandle texture ) {
-  return texture < textures.size() && textures[ texture ].glId > 0;
+  return texture < textureAssets.size() && textureAssets[ texture ].glId > 0;
 }
 
 TextureAsset AssetManager::getTexture( TextureHandle texture ) {
   ASSERT( isTextureAlive( texture ), "Invalid texture id %d", texture );  
-  return textures[ texture ];
+  return textureAssets[ texture ];
 }
 
 std::vector< SpriteManager::__SpriteComp > SpriteManager::spriteComps;
@@ -1135,24 +1194,34 @@ void SpriteManager::shutdown() {
   glDeleteBuffers( 2, renderInfo.vboIds );
 }
 
-void SpriteManager::set( EntityHandle entity, TextureHandle textureId, Rect texCoords ) {
-  ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
-  ASSERT( AssetManager::isTextureAlive( textureId ), "Invalid texture id %d", textureId ); 
-  __SpriteComp spriteComp = {};
-  spriteComp.entity = entity;
-  spriteComp.textureId = textureId;
-  spriteComp.texCoords = texCoords;
-  TextureAsset texture = AssetManager::getTexture( textureId );
-  float width = texture.width * ( texCoords.max.u - texCoords.min.u ) / PIXELS_PER_UNIT;
-  float height = texture.height * ( texCoords.max.v - texCoords.min.v ) / PIXELS_PER_UNIT;
-  spriteComp.size = { width, height };
-  spriteComps.push_back( spriteComp );
-  uint32_t compInd = spriteComps.size() - 1;
-  componentMap.set( entity, compInd );
-  Logger::write( "Sprite component added to entity %d\n", entity );
+void SpriteManager::set( const std::vector< SetSpriteArg >& sprites ) {
+  std::vector< SetComponentMapArg > mappedPairs( sprites.size() );
+  for ( uint32_t sprInd = 0; sprInd < sprites.size(); ++sprInd ) {
+    SetSpriteArg setSpriteArg = sprites[ sprInd ];
+    EntityHandle entity = setSpriteArg.entity;
+    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
+    TextureHandle textureId = setSpriteArg.textureId;
+    Rect texCoords = setSpriteArg.texCoords; 
+    ASSERT( AssetManager::isTextureAlive( textureId ), "Invalid texture id %d", textureId ); 
+    __SpriteComp spriteComp = {};
+    spriteComp.entity = entity;
+    spriteComp.textureId = textureId;
+    spriteComp.texCoords = texCoords;
+    TextureAsset texture = AssetManager::getTexture( textureId );
+    float width = texture.width * ( texCoords.max.u - texCoords.min.u ) / PIXELS_PER_UNIT;
+    float height = texture.height * ( texCoords.max.v - texCoords.min.v ) / PIXELS_PER_UNIT;
+    spriteComp.size = { width, height };
+    spriteComps.push_back( spriteComp );
+    uint32_t compInd = spriteComps.size() - 1;
+    mappedPairs[ sprInd ] = { entity, compInd };
+  }
+  componentMap.set( mappedPairs );
+  for ( uint32_t pairInd = 0; pairInd < mappedPairs.size(); ++pairInd ) {
+    Logger::write( "Sprite component added to entity %d\n", mappedPairs[ pairInd ].entity );
+  }
 }
 
-std::vector< SpriteComp > SpriteManager::get( std::vector< EntityHandle > entities ) {
+std::vector< SpriteComp > SpriteManager::get( const std::vector< EntityHandle >& entities ) {
   for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
     EntityHandle entity = entities[ entityInd ];
     ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
