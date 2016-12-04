@@ -168,6 +168,7 @@ public:
   static void initialize();
   static void shutdown();
   static void add( const std::vector< CircleColliderComp >& circleColliders );
+  static void addAndFitToSpriteSize( const std::vector< EntityHandle >& entities );
   static void remove( const std::vector< EntityHandle >& entities );
   static void fitToSpriteSize( const std::vector< EntityHandle >& entities );
   static void updateAndCollide();
@@ -368,14 +369,7 @@ s32 main() {
   };
   SpriteManager::set( setSpriteArgs );
 
-  std::vector< CircleColliderComp > circleColliderComps = {
-    { entityHandles[ 0 ], { 0.0f, 0.0f },	2.5f }, //astronaut
-    { entityHandles[ 1 ], { 0.0f, 0.0f },	15.0f }, //planet 1
-    { entityHandles[ 2 ], { 0.0f, 0.0f },	15.0f } //planet 2
-  };  
-  CircleColliderManager::add( circleColliderComps );
-
-  CircleColliderManager::fitToSpriteSize( entityHandles );
+  CircleColliderManager::addAndFitToSpriteSize( entityHandles );
   
   //main loop      
   double t1 = glfwGetTime();
@@ -1053,6 +1047,15 @@ void CircleColliderManager::add( const std::vector< CircleColliderComp >& circle
   }
 }
 
+void CircleColliderManager::addAndFitToSpriteSize( const std::vector< EntityHandle >& entities ) {
+  std::vector< CircleColliderComp > circleColliders( entities.size() );
+  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
+    circleColliders[ entInd ] = { entities[ entInd ], {}, 1.0f };
+  }
+  add( circleColliders );
+  fitToSpriteSize( entities );
+}
+  
 void CircleColliderManager::updateAndCollide() {
   if ( circleColliderComps.size() == 0 ) {
     return;
