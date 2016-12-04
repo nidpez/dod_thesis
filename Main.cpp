@@ -17,6 +17,15 @@
 #include <cstdarg>
 #include <memory>
 
+typedef int64_t 	s64;
+typedef int32_t 	s32;
+typedef int16_t 	s16;
+typedef int8_t		s8;
+typedef uint64_t	u64;
+typedef uint32_t 	u32;
+typedef uint16_t 	u16;
+typedef uint8_t 	u8;
+
 const float PIXELS_PER_UNIT = 4.0f;
 
 //math
@@ -52,12 +61,12 @@ float dot( Vec2 a, Vec2 b );
 Vec2 rotate( Vec2 vec, float orientation );
 
 //resources
-typedef uint32_t TextureHandle;
+typedef u32 TextureHandle;
 
 struct TextureAsset {
   const char* name;
-  const uint32_t width, height;
-  const uint32_t glId;
+  const u32 width, height;
+  const u32 glId;
 };
 
 class AssetManager {
@@ -74,34 +83,34 @@ public:
 //entity and component managers
 
 /*Entity Handle system based on http://bitsquid.blogspot.com.co/2014/08/building-data-oriented-entity-system.html and http://gamesfromwithin.com/managing-data-relationships*/
-const int HANDLE_INDEX_BITS = 21;
-const int HANDLE_GENERATION_BITS = 32 - HANDLE_INDEX_BITS;
+const u32 HANDLE_INDEX_BITS = 21;
+const u32 HANDLE_GENERATION_BITS = 32 - HANDLE_INDEX_BITS;
 //With 21 index bits 2 million entities are possible at a time.
-const int MAX_ENTITIES = 1 << HANDLE_INDEX_BITS;
+const u32 MAX_ENTITIES = 1 << HANDLE_INDEX_BITS;
 
 //index 0 is invalid so an EntityHandle can be set to 0 by default 
 struct EntityHandle {
-  uint32_t index : HANDLE_INDEX_BITS;
-  uint32_t generation : HANDLE_GENERATION_BITS;
-  operator uint32_t() const;
+  u32 index : HANDLE_INDEX_BITS;
+  u32 generation : HANDLE_GENERATION_BITS;
+  operator u32() const;
 };
 
 class EntityManager {
-  struct Generation { //can't just use uint32_t since they overflow at different values
-    uint32_t generation : HANDLE_GENERATION_BITS;
+  struct Generation { //can't just use u32 since they overflow at different values
+    u32 generation : HANDLE_GENERATION_BITS;
   };
-  const static uint32_t MIN_FREE_INDICES = 1024;
+  const static u32 MIN_FREE_INDICES = 1024;
   static std::vector< Generation > generations;
-  static std::deque< uint32_t > freeIndices;
+  static std::deque< u32 > freeIndices;
 public:
   static void initialize();
   static void shutdown();
-  static std::vector< EntityHandle > create( uint32_t amount );
+  static std::vector< EntityHandle > create( u32 amount );
   static void destroy( const std::vector< EntityHandle >& entities );
   static bool isAlive( EntityHandle entity );
 };
 
-typedef uint32_t ComponentIndex;
+typedef u32 ComponentIndex;
 
 struct LookupResult {
   ComponentIndex index;
@@ -114,7 +123,7 @@ struct SetComponentMapArg {
 };
 
 struct ComponentMap {
-  std::unordered_map< uint32_t, ComponentIndex > map;
+  std::unordered_map< u32, ComponentIndex > map;
   void set( const std::vector< SetComponentMapArg >& mappedPairs );
   std::vector< LookupResult > lookup( const std::vector< EntityHandle >& entities );
 };
@@ -175,10 +184,10 @@ struct RenderInfo {
   //shader's uniforms' locations
   //TODO use 2x2 matrix for projection transform
   //for now, left, right, bottom, top
-  int32_t projUnifLoc[ 4 ];
-  uint32_t vboIds[ 2 ]; //expect to mostly use one
-  uint32_t vaoId;
-  uint32_t shaderProgramId;
+  s32 projUnifLoc[ 4 ];
+  u32 vboIds[ 2 ]; //expect to mostly use one
+  u32 vaoId;
+  u32 shaderProgramId;
 };
 
 struct SpriteComp {
@@ -229,7 +238,7 @@ public:
   static void setOrthoProjection( float aspectRatio, float height );
 };
 
-typedef uint32_t AnimationHandle;
+typedef u32 AnimationHandle;
 //so we are able to later redefine AnimationFrame as something more robust
 //that can handle more than uv flipbook animation
 typedef Rect AnimationFrame; 
@@ -261,15 +270,15 @@ public:
 };
 
 //shader and material stuff
-int loadShaderSourceFile( const char* name, char** source );
+s32 loadShaderSourceFile( const char* name, char** source );
 
-int compileShader( const char* name, const GLenum type, GLuint* shaderId );
+s32 compileShader( const char* name, const GLenum type, GLuint* shaderId );
 
-int createShaderProgram( GLuint* shaderProgramId, const char* vertShaderId, const char* fragShaderId, const char* geomShaderId = 0 );
+s32 createShaderProgram( GLuint* shaderProgramId, const char* vertShaderId, const char* fragShaderId, const char* geomShaderId = 0 );
 
 
 //error handling and logging
-void printGlfwError( int error, const char* description );
+void printGlfwError( s32 error, const char* description );
 
 void APIENTRY
 printOpenglError( GLenum source, GLenum type, GLuint id, GLenum severity,
@@ -285,7 +294,7 @@ public:
   static void write( const char* format, va_list args );
 };
 
-void haltWithMessage( const char* failedCond, const char* file, const char* function, int line, ... );
+void haltWithMessage( const char* failedCond, const char* file, const char* function, s32 line, ... );
 
 #ifdef __GNUC__
 #define __FUNC__ __PRETTY_FUNCTION__
@@ -306,7 +315,7 @@ void haltWithMessage( const char* failedCond, const char* file, const char* func
 //misc
 GLFWwindow* createWindowAndGlContext( const char* const windowTitle );
 
-int main() {
+s32 main() {
   //initialize managers
   Logger::initialize();
   GLFWwindow* window = createWindowAndGlContext( "Space Adventure (working title)" );
@@ -320,7 +329,7 @@ int main() {
   
   //configure viewport and orthographic projection
   //TODO put projection info in a Camera component
-  int windowWidth, windowHeight;
+  s32 windowWidth, windowHeight;
   glfwGetWindowSize( window, &windowWidth, &windowHeight );
   glViewport( 0, 0, windowWidth, windowHeight );
   float aspect = windowWidth / ( float )windowHeight;
@@ -546,8 +555,8 @@ GLFWwindow* createWindowAndGlContext( const char* const windowTitle ) {
 }
 
 
-int loadShaderSourceFile( const char* name, char** source ) {
-  int error = 0;
+s32 loadShaderSourceFile( const char* name, char** source ) {
+  s32 error = 0;
   std::ifstream file( name );
   if ( file.is_open() && file.good() ) {
     std::string line;
@@ -564,9 +573,9 @@ int loadShaderSourceFile( const char* name, char** source ) {
   return error;
 }
 
-int compileShader( const char* name, const GLenum type, GLuint* shaderId ) {
+s32 compileShader( const char* name, const GLenum type, GLuint* shaderId ) {
   GLchar* source;
-  int fileError = loadShaderSourceFile( name, &source );
+  s32 fileError = loadShaderSourceFile( name, &source );
   if ( fileError ) {
     printf( "Unable to open vertex shader source file '%s': %s\n", name,
 	    strerror( fileError ) );
@@ -575,10 +584,10 @@ int compileShader( const char* name, const GLenum type, GLuint* shaderId ) {
   *shaderId = glCreateShader( type );
   glShaderSource( *shaderId, 1, ( const char** )&source, nullptr );
   glCompileShader( *shaderId );
-  int32_t compiled; 
+  s32 compiled; 
   glGetShaderiv( *shaderId, GL_COMPILE_STATUS, &compiled );
   if ( compiled == GL_FALSE ) {
-    int32_t maxLength;
+    s32 maxLength;
     glGetShaderiv( *shaderId, GL_INFO_LOG_LENGTH, &maxLength );
     GLchar* errorLog = ( GLchar* )malloc( sizeof( GLchar ) * maxLength );
     glGetShaderInfoLog( *shaderId, maxLength, &maxLength, errorLog );
@@ -593,9 +602,9 @@ int compileShader( const char* name, const GLenum type, GLuint* shaderId ) {
   return 0;
 }
 
-int createShaderProgram( GLuint* shaderProgramId, const char* vertShaderFile, const char* fragShaderFile, const char* geomShaderFile ) {
+s32 createShaderProgram( GLuint* shaderProgramId, const char* vertShaderFile, const char* fragShaderFile, const char* geomShaderFile ) {
   GLuint vertShaderId;
-  int error = compileShader( vertShaderFile, GL_VERTEX_SHADER, &vertShaderId );
+  s32 error = compileShader( vertShaderFile, GL_VERTEX_SHADER, &vertShaderId );
   if ( error ) {
     return error;
   } 
@@ -616,10 +625,10 @@ int createShaderProgram( GLuint* shaderProgramId, const char* vertShaderFile, co
   }
   glAttachShader( *shaderProgramId, fragShaderId );
   glLinkProgram( *shaderProgramId );
-  int32_t linked = 0;
-  glGetProgramiv( *shaderProgramId, GL_LINK_STATUS, ( int * )&linked );
+  s32 linked = 0;
+  glGetProgramiv( *shaderProgramId, GL_LINK_STATUS, ( s32 * )&linked );
   if( linked == GL_FALSE ) {
-    int32_t maxLength;
+    s32 maxLength;
     glGetProgramiv( *shaderProgramId, GL_INFO_LOG_LENGTH, &maxLength );
     GLchar *errorLog = ( GLchar * )malloc( sizeof( GLchar )*maxLength );
     glGetProgramInfoLog( *shaderProgramId, maxLength, &maxLength, errorLog );
@@ -645,7 +654,7 @@ int createShaderProgram( GLuint* shaderProgramId, const char* vertShaderFile, co
   return 0;
 }
 
-void printGlfwError( int error, const char* description ) {
+void printGlfwError( s32 error, const char* description ) {
   char* errorName;
   switch ( error ) {
   case 0x00010001:
@@ -789,7 +798,7 @@ void Logger::write( const char* format, va_list args ) {
   //TODO assert failure
 }
   
-void haltWithMessage( const char* failedCond, const char* file, const char* function, int line, ... ) {
+void haltWithMessage( const char* failedCond, const char* file, const char* function, s32 line, ... ) {
   Logger::write( "Assertion %s failed at %s, %s, line %d: ",
 		 failedCond, file, function, line ); 
   va_list args;
@@ -870,7 +879,7 @@ void DebugRenderer::initialize() {
   glEnableVertexAttribArray( 2 );
   glBindVertexArray( 0 );
   //create shader program
-  int error = createShaderProgram( &renderInfo.shaderProgramId,
+  s32 error = createShaderProgram( &renderInfo.shaderProgramId,
 			       "shaders/DebugShape.vert", "shaders/DebugShape.frag",
 			       "shaders/DebugShape.geom" );
   if ( error ) {
@@ -894,7 +903,7 @@ void DebugRenderer::shutdown() {
 
 void DebugRenderer::addCircles( std::vector< DebugCircle > circles ) {
 #ifndef NDEBUG
-  for ( uint32_t i = 0; i < circles.size(); ++i ) {
+  for ( u32 i = 0; i < circles.size(); ++i ) {
     float radius = circles[ i ].radius; 
     ASSERT( radius > 0.0f, "Asked to draw a circle of radius %f", radius );
   }
@@ -926,9 +935,9 @@ void DebugRenderer::setOrthoProjection( float aspectRatio, float height ) {
 }
 
 std::vector< EntityManager::Generation > EntityManager::generations;
-std::deque< uint32_t > EntityManager::freeIndices;
+std::deque< u32 > EntityManager::freeIndices;
 
-EntityHandle::operator uint32_t() const {
+EntityHandle::operator u32() const {
   return this->generation << HANDLE_INDEX_BITS | this->index;
 }
 
@@ -938,10 +947,10 @@ void EntityManager::initialize() {
 void EntityManager::shutdown() {
 }
 
-std::vector< EntityHandle > EntityManager::create( uint32_t amount ){
+std::vector< EntityHandle > EntityManager::create( u32 amount ){
   std::vector< EntityHandle > newEntities( amount );
-  for ( uint32_t entInd = 0; entInd < amount; ++entInd ) {
-    uint32_t index;
+  for ( u32 entInd = 0; entInd < amount; ++entInd ) {
+    u32 index;
     if ( freeIndices.size() < MIN_FREE_INDICES ) {
       generations.push_back( { 0 } );
       index = generations.size();    
@@ -962,7 +971,7 @@ bool EntityManager::isAlive( EntityHandle entity ) {
 }
 
 void ComponentMap::set( const std::vector< SetComponentMapArg >& mappedPairs ) {
-  for ( uint32_t pairInd = 0; pairInd < mappedPairs.size(); ++pairInd ) {
+  for ( u32 pairInd = 0; pairInd < mappedPairs.size(); ++pairInd ) {
     EntityHandle entity = mappedPairs[ pairInd ].entity;
     ComponentIndex compInd = mappedPairs[ pairInd ].compInd;
     bool inserted = map.insert( { entity, compInd } ).second;  
@@ -972,7 +981,7 @@ void ComponentMap::set( const std::vector< SetComponentMapArg >& mappedPairs ) {
 
 std::vector< LookupResult > ComponentMap::lookup( const std::vector< EntityHandle >& entities ) {
   std::vector< LookupResult > result( entities.size() );
-  for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
+  for ( u32 entityInd = 0; entityInd < entities.size(); ++entityInd ) {
     auto iterator = map.find( entities[ entityInd ] );
     if ( iterator != map.end() ) {
       result[ entityInd ] = { iterator->second, true };
@@ -994,7 +1003,7 @@ void TransformManager::shutdown() {
 
 void TransformManager::set( const std::vector< TransformComp >& transforms ) {
   std::vector< SetComponentMapArg > mappedPairs( transforms.size() );
-  for ( uint32_t trInd = 0; trInd < transforms.size(); ++trInd ) {
+  for ( u32 trInd = 0; trInd < transforms.size(); ++trInd ) {
     TransformComp transform = transforms[ trInd ];
     EntityHandle entity = transform.entity;
     ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );  
@@ -1002,11 +1011,11 @@ void TransformManager::set( const std::vector< TransformComp >& transforms ) {
     Vec2 scale = transform.scale;
     float orientation = transform.orientation;
     transformComps.push_back( { entity, position, scale, orientation } );
-    uint32_t compInd = transformComps.size() - 1;
+    u32 compInd = transformComps.size() - 1;
     mappedPairs[ trInd ] = { entity, compInd };
   }
   componentMap.set( mappedPairs );
-  for ( uint32_t pairInd = 0; pairInd < mappedPairs.size(); ++pairInd ) {
+  for ( u32 pairInd = 0; pairInd < mappedPairs.size(); ++pairInd ) {
     Logger::write( "Transform component added to entity %d\n", mappedPairs[ pairInd ].entity );
   }
 }
@@ -1027,7 +1036,7 @@ void CircleColliderManager::shutdown() {
 
 void CircleColliderManager::add( const std::vector< CircleColliderComp >& circleColliders ) {
   std::vector< SetComponentMapArg > mappedPairs( circleColliders.size() );
-  for ( uint32_t collInd = 0; collInd < circleColliders.size(); ++collInd ) {
+  for ( u32 collInd = 0; collInd < circleColliders.size(); ++collInd ) {
     CircleColliderComp circleColliderComp = circleColliders[ collInd ];
     EntityHandle entity = circleColliderComp.entity;
     ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
@@ -1035,11 +1044,11 @@ void CircleColliderManager::add( const std::vector< CircleColliderComp >& circle
     ASSERT( radius > 0.0f, "A collider of radius %f is useless", radius );
     Vec2 center = circleColliderComp.center;
     circleColliderComps.push_back( { entity, center, radius, { 0, 0 }, { 0, 0 } } );
-    uint32_t compInd = circleColliderComps.size() - 1;
+    u32 compInd = circleColliderComps.size() - 1;
     mappedPairs[ collInd ] = { entity, compInd };
   }
   componentMap.set( mappedPairs );
-  for ( uint32_t pairInd = 0; pairInd < mappedPairs.size(); ++pairInd ) {
+  for ( u32 pairInd = 0; pairInd < mappedPairs.size(); ++pairInd ) {
     Logger::write( "CircleCollider component added to entity %d\n", mappedPairs[ pairInd ].entity );
   }
 }
@@ -1052,11 +1061,11 @@ void CircleColliderManager::updateAndCollide() {
   //update local transform cache
   std::vector< EntityHandle > updatedEntities;
   updatedEntities.reserve( updatedTransforms.size() );
-  for ( uint32_t trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
+  for ( u32 trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
     updatedEntities.push_back( updatedTransforms[ trInd ].entity );
   }
   std::vector< LookupResult > updatedCircleColliders = componentMap.lookup( updatedEntities );
-  for ( uint32_t trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
+  for ( u32 trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
     if ( updatedCircleColliders[ trInd ].found ) {
       TransformComp transformComp = updatedTransforms[ trInd ];
       ComponentIndex circleColliderCompInd = updatedCircleColliders[ trInd ].index;
@@ -1067,7 +1076,7 @@ void CircleColliderManager::updateAndCollide() {
   //TODO do frustrum culling
   std::vector< DebugCircle > circles;
   circles.reserve( circleColliderComps.size() );
-  for ( uint32_t colInd = 0; colInd < circleColliderComps.size(); ++colInd ) {
+  for ( u32 colInd = 0; colInd < circleColliderComps.size(); ++colInd ) {
     __CircleColliderComp circleColliderComp = circleColliderComps[ colInd ];
     DebugCircle circle;
     float scaleX = circleColliderComp.scale.x, scaleY = circleColliderComp.scale.y;
@@ -1084,18 +1093,18 @@ void CircleColliderManager::updateAndCollide() {
 }
 
 void CircleColliderManager::fitToSpriteSize( const std::vector< EntityHandle >& entities ) {
-  for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
+  for ( u32 entityInd = 0; entityInd < entities.size(); ++entityInd ) {
     EntityHandle entity = entities[ entityInd ];
     ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
   }
   std::vector< LookupResult > colliderLookupResults = componentMap.lookup( entities );
   std::vector< SpriteComp > spriteComps = SpriteManager::get( entities );
-  for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
+  for ( u32 entityInd = 0; entityInd < entities.size(); ++entityInd ) {
     EntityHandle entity = entities[ entityInd ];
     ASSERT( colliderLookupResults[ entityInd ].found, "Entity %d has no CircleCollider component", entity );
     ASSERT( spriteComps[ entityInd ].entity > 0, "Entity %d has no Sprite component", entity );
   }
-  for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
+  for ( u32 entityInd = 0; entityInd < entities.size(); ++entityInd ) {
     SpriteComp spriteComp = spriteComps[ entityInd ];
     LookupResult lookupResult = colliderLookupResults[ entityInd ];
     Vec2 size = spriteComp.size;
@@ -1114,14 +1123,14 @@ void AssetManager::shutdown() {
  
 std::vector< TextureHandle > AssetManager::loadTextures( std::vector< const char* >& names ) {
   std::vector< TextureHandle > textureHandles( names.size() );
-  for ( uint32_t texInd = 0; texInd < names.size(); ++texInd ) {
-    uint32_t width, height;
-    int channels;
+  for ( u32 texInd = 0; texInd < names.size(); ++texInd ) {
+    u32 width, height;
+    s32 channels;
     unsigned char* texData = SOIL_load_image( names[ texInd ], reinterpret_cast< int* >( &width ), reinterpret_cast< int* >( &height ), &channels, SOIL_LOAD_RGBA );  
     ASSERT( texData != 0, "Error loading texture %s: %s", names[ texInd ], SOIL_last_result() );
     //pixelart seems to not want to be compressed to DXT
-    int newWidth = width, newHeight = height;
-    uint32_t glId = SOIL_create_OGL_texture( texData, &newWidth, &newHeight, channels, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y ); 
+    s32 newWidth = width, newHeight = height;
+    u32 glId = SOIL_create_OGL_texture( texData, &newWidth, &newHeight, channels, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y ); 
     SOIL_free_image_data( texData );
     ASSERT( glId > 0, "Error sending texture %s to OpenGL: %s", names[ texInd ], SOIL_last_result() );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ); 
@@ -1134,7 +1143,7 @@ std::vector< TextureHandle > AssetManager::loadTextures( std::vector< const char
 }
 
 void AssetManager::destroyTextures( const std::vector< TextureHandle >& textures ) {
-  for ( uint32_t texInd = 0; texInd < textures.size(); ++texInd ) {
+  for ( u32 texInd = 0; texInd < textures.size(); ++texInd ) {
     TextureHandle texture = textures[ texInd ];
     ASSERT( isTextureAlive( texture ), "Invalid texture id %d", texture );  
     glDeleteTextures( 1, &textureAssets[ texture ].glId );
@@ -1176,7 +1185,7 @@ void SpriteManager::initialize() {
   glEnableVertexAttribArray( 1 );
   glBindVertexArray( 0 );
   //create shader program
-  int error = createShaderProgram( &renderInfo.shaderProgramId,
+  s32 error = createShaderProgram( &renderInfo.shaderProgramId,
 				   "shaders/SpriteUnlit.vert", "shaders/SpriteUnlit.frag" );
   if ( error ) {
     //TODO maybe hardcode a default shader here
@@ -1196,7 +1205,7 @@ void SpriteManager::shutdown() {
 
 void SpriteManager::set( const std::vector< SetSpriteArg >& sprites ) {
   std::vector< SetComponentMapArg > mappedPairs( sprites.size() );
-  for ( uint32_t sprInd = 0; sprInd < sprites.size(); ++sprInd ) {
+  for ( u32 sprInd = 0; sprInd < sprites.size(); ++sprInd ) {
     SetSpriteArg setSpriteArg = sprites[ sprInd ];
     EntityHandle entity = setSpriteArg.entity;
     ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
@@ -1212,24 +1221,24 @@ void SpriteManager::set( const std::vector< SetSpriteArg >& sprites ) {
     float height = texture.height * ( texCoords.max.v - texCoords.min.v ) / PIXELS_PER_UNIT;
     spriteComp.size = { width, height };
     spriteComps.push_back( spriteComp );
-    uint32_t compInd = spriteComps.size() - 1;
+    u32 compInd = spriteComps.size() - 1;
     mappedPairs[ sprInd ] = { entity, compInd };
   }
   componentMap.set( mappedPairs );
-  for ( uint32_t pairInd = 0; pairInd < mappedPairs.size(); ++pairInd ) {
+  for ( u32 pairInd = 0; pairInd < mappedPairs.size(); ++pairInd ) {
     Logger::write( "Sprite component added to entity %d\n", mappedPairs[ pairInd ].entity );
   }
 }
 
 std::vector< SpriteComp > SpriteManager::get( const std::vector< EntityHandle >& entities ) {
-  for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
+  for ( u32 entityInd = 0; entityInd < entities.size(); ++entityInd ) {
     EntityHandle entity = entities[ entityInd ];
     ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
   }
   std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
   std::vector< SpriteComp > resultSpriteComps;
   resultSpriteComps.reserve( entities.size() );
-  for ( uint32_t entityInd = 0; entityInd < entities.size(); ++entityInd ) {
+  for ( u32 entityInd = 0; entityInd < entities.size(); ++entityInd ) {
     if ( lookupResults[ entityInd ].found ) {
       SpriteComp spriteComp = static_cast< SpriteComp >( spriteComps[ lookupResults[ entityInd ].index ] );
       resultSpriteComps.push_back( spriteComp );
@@ -1258,11 +1267,11 @@ void SpriteManager::updateAndRender() {
   //update local transform cache
   std::vector< EntityHandle > updatedEntities;
   updatedEntities.reserve( updatedTransforms.size() );
-  for ( uint32_t trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
+  for ( u32 trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
     updatedEntities.push_back( updatedTransforms[ trInd ].entity );
   }
   std::vector< LookupResult > updatedSprites = componentMap.lookup( updatedEntities );
-  for ( uint32_t trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
+  for ( u32 trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
     if ( updatedSprites[ trInd ].found ) {
       TransformComp transformComp = updatedTransforms[ trInd ];
       ComponentIndex spriteCompInd = updatedSprites[ trInd ].index;
@@ -1275,9 +1284,9 @@ void SpriteManager::updateAndRender() {
   glUseProgram( renderInfo.shaderProgramId );
   glBindVertexArray( renderInfo.vaoId );
   //TODO don't render every sprite every time
-  uint32_t spritesToRenderCount = spriteComps.size();
+  u32 spritesToRenderCount = spriteComps.size();
   //TODO use triangle indices to reduce vertex count
-  uint32_t vertsPerSprite = 6; 
+  u32 vertsPerSprite = 6; 
   posBufferData = new Pos[ spritesToRenderCount * vertsPerSprite ];
   texCoordsBufferData = new UV[ spritesToRenderCount * vertsPerSprite ];
   //build the positions buffer
@@ -1289,9 +1298,9 @@ void SpriteManager::updateAndRender() {
     { 0.5f,	-0.5f },
     { 0.5f,	 0.5f }
   };
-  for ( uint32_t spriteInd = 0; spriteInd < spritesToRenderCount; ++spriteInd ) {
+  for ( u32 spriteInd = 0; spriteInd < spritesToRenderCount; ++spriteInd ) {
     __SpriteComp spriteComp = spriteComps[ spriteInd ];
-    for ( uint32_t vertInd = 0; vertInd < vertsPerSprite; ++vertInd ) {
+    for ( u32 vertInd = 0; vertInd < vertsPerSprite; ++vertInd ) {
       Vec2 vert = rotate( baseGeometry[ vertInd ], spriteComp.orientation );
       vert *= spriteComp.size * spriteComp.scale;
       vert += spriteComp.position;
@@ -1303,7 +1312,7 @@ void SpriteManager::updateAndRender() {
   //TODO measure how expensive these allocations and deallocations are!
   delete[] posBufferData;
   //build the texture coordinates buffer
-  for ( uint32_t spriteInd = 0; spriteInd < spritesToRenderCount; ++spriteInd ) {
+  for ( u32 spriteInd = 0; spriteInd < spritesToRenderCount; ++spriteInd ) {
     __SpriteComp spriteComp = spriteComps[ spriteInd ];
     Vec2 texCoords[] = {
       spriteComp.texCoords.min,
@@ -1313,7 +1322,7 @@ void SpriteManager::updateAndRender() {
       { spriteComp.texCoords.max.u, spriteComp.texCoords.min.v },
       spriteComp.texCoords.max
     };
-    for ( uint32_t vertInd = 0; vertInd < vertsPerSprite; ++vertInd ) {
+    for ( u32 vertInd = 0; vertInd < vertsPerSprite; ++vertInd ) {
       texCoordsBufferData[ spriteInd * vertsPerSprite + vertInd ].uv = texCoords[ vertInd ];
     }
   }
@@ -1323,16 +1332,16 @@ void SpriteManager::updateAndRender() {
   delete[] texCoordsBufferData;
   //issue render commands
   //TODO maybe sort by texture id
-  uint32_t currentTexId = spriteComps[ 0 ].textureId;  
+  u32 currentTexId = spriteComps[ 0 ].textureId;  
   ASSERT( AssetManager::isTextureAlive( currentTexId ), "Invalid texture id %d", currentTexId );  
-  uint32_t currentTexGlId = AssetManager::getTexture( currentTexId ).glId;
+  u32 currentTexGlId = AssetManager::getTexture( currentTexId ).glId;
   glBindTexture( GL_TEXTURE_2D, currentTexGlId );
   //mark where a sub-buffer with sprites sharing a texture ends and a new one begins
-  uint32_t currentSubBufferStart = 0;
-  for ( uint32_t spriteInd = 1; spriteInd < spritesToRenderCount; ++spriteInd ) {
+  u32 currentSubBufferStart = 0;
+  for ( u32 spriteInd = 1; spriteInd < spritesToRenderCount; ++spriteInd ) {
     if ( spriteComps[ spriteInd ].textureId != currentTexId ) {
       //send current vertex sub-buffer and render it
-      uint32_t spriteCountInSubBuffer = spriteInd - currentSubBufferStart;
+      u32 spriteCountInSubBuffer = spriteInd - currentSubBufferStart;
       glDrawArrays( GL_TRIANGLES, vertsPerSprite * currentSubBufferStart, vertsPerSprite * spriteCountInSubBuffer );
       //and start a new one
       currentTexId = spriteComps[ spriteInd ].textureId;      
@@ -1343,6 +1352,6 @@ void SpriteManager::updateAndRender() {
     }
   }
   //render the last sub-buffer
-  uint32_t spriteCountInSubBuffer = spritesToRenderCount - currentSubBufferStart;
+  u32 spriteCountInSubBuffer = spritesToRenderCount - currentSubBufferStart;
   glDrawArrays( GL_TRIANGLES, vertsPerSprite * currentSubBufferStart, vertsPerSprite * spriteCountInSubBuffer );
 }
