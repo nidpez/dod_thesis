@@ -141,6 +141,7 @@ public:
   static void shutdown();
   static void set( const std::vector< TransformComp >& transforms );
   static void remove( const std::vector< EntityHandle >& entities );
+  static void rotate( const std::vector< EntityHandle >& entities, std::vector< float > angles );
   static std::vector< TransformComp > getLastUpdated();
 };
 
@@ -341,11 +342,12 @@ s32 main() {
   std::vector< TextureHandle > textureHandles = AssetManager::loadTextures( textureNames );
   
   std::vector< EntityHandle > entityHandles = EntityManager::create( 3 );
-  
+
+  std::vector< float > angles = { 0.0f, 4.0f, 0.0f }; 
   std::vector< TransformComp > transformComps = {
-    { entityHandles[ 0 ], { -30.0f, 30.0f }, { 1.0f, 1.0f }, 0.0f }, //astronaut
-    { entityHandles[ 1 ], { 0.0f, 15.0f }, { 1.5f, 1.0f }, 4.0f }, //planet 1
-    { entityHandles[ 2 ], { 30.0f, -30.0f }, { 1.0f, 1.0f }, 0.0f } //panet 2
+    { entityHandles[ 0 ], { -30.0f, 30.0f }, { 1.0f, 1.0f }, angles[ 0 ] }, //astronaut 
+    { entityHandles[ 1 ], { 0.0f, 15.0f }, { 1.5f, 1.0f }, angles[ 1 ] }, //planet 1
+    { entityHandles[ 2 ], { 30.0f, -30.0f }, { 1.0f, 1.0f }, angles[ 2 ] } //planet 2
   };  
   TransformManager::set( transformComps );
   
@@ -424,7 +426,9 @@ s32 main() {
       // 	angle = atan2( dir[ 1 ], dir[ 0 ] );
       // }
     }
-
+      
+    TransformManager::rotate( entityHandles, angles );
+    
     //detect collisions
     // float dx = tempPos[ 0 ] - pos2[ 0 ];
     // float dy = tempPos[ 1 ] - pos2[ 1 ];
@@ -1010,6 +1014,20 @@ void TransformManager::set( const std::vector< TransformComp >& transforms ) {
   for ( u32 pairInd = 0; pairInd < mappedPairs.size(); ++pairInd ) {
     Logger::write( "Transform component added to entity %d\n", mappedPairs[ pairInd ].entity );
   }
+}
+
+void TransformManager::rotate( const std::vector< EntityHandle >& entities, std::vector< float > angles ) {
+  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
+    EntityHandle entity = entities[ entInd ];
+    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
+  }
+  std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
+  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
+    LookupResult lookupResult = lookupResults[ entInd ];
+    ASSERT( lookupResult.found, "Entity %d has no Transform component", entities[ entInd ] );
+    transformComps[ lookupResult.index ].orientation += angles[ entInd ];
+  }
+  //TODO mark transform components as updated
 }
 
 std::vector< TransformComp > TransformManager::getLastUpdated() {
