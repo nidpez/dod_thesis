@@ -1,5 +1,4 @@
 
-* fix sprite rotation
 * log errors to separate file
 * handle errors in shader creation
 * use chrono lib

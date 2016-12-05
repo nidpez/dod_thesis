@@ -345,7 +345,7 @@ s32 main() {
   
   std::vector< EntityHandle > entityHandles = EntityManager::create( 3 );
 
-  std::vector< float > angles = { 0.0f, 4.0f, 0.0f }; 
+  std::vector< float > angles = { 0.005f, 0.01f, 0.1f }; 
   std::vector< TransformComp > transformComps = {
     { entityHandles[ 0 ], { -30.0f, 30.0f }, { 1.0f, 1.0f }, angles[ 0 ] }, //astronaut 
     { entityHandles[ 1 ], { 0.0f, 15.0f }, { 1.5f, 1.0f }, angles[ 1 ] }, //planet 1
@@ -1322,8 +1322,8 @@ void SpriteManager::updateAndRender() {
   for ( u32 spriteInd = 0; spriteInd < spritesToRenderCount; ++spriteInd ) {
     __SpriteComp spriteComp = spriteComps[ spriteInd ];
     for ( u32 vertInd = 0; vertInd < vertsPerSprite; ++vertInd ) {
-      Vec2 vert = rotate( baseGeometry[ vertInd ], spriteComp.orientation );
-      vert *= spriteComp.size * spriteComp.scale;
+      Vec2 vert = baseGeometry[ vertInd ] * spriteComp.size * spriteComp.scale;
+      vert = rotate( vert, spriteComp.orientation );
       vert += spriteComp.position;
       posBufferData[ spriteInd * vertsPerSprite + vertInd ].pos = vert;
     }
