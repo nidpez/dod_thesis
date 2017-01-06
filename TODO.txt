@@ -16,3 +16,4 @@
 * implement obb colliders
 * allow multiple colliders per entity
 * use cppcheck
+* implement scene graph

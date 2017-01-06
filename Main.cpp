@@ -144,12 +144,6 @@ struct RotateAroundArg {
   float rotation;
 };
 
-struct UpdateTransformArg {
-  Vec2 translation;
-  Vec2 scale;
-  float rotation;
-};
-
 class TransformManager {
   static std::vector< TransformComp > transformComps;
   static ComponentMap componentMap;
@@ -162,7 +156,8 @@ public:
   static void rotateAround( const std::vector< EntityHandle >& entities, const std::vector< RotateAroundArg >& rotations );
   static void translate( const std::vector< EntityHandle >& entities, const std::vector< Vec2 >& translations );
   static void scale( const std::vector< EntityHandle >& entities, const std::vector< Vec2 >& scales );
-  static void update( const std::vector< EntityHandle >& entities, const std::vector< UpdateTransformArg >& transforms );
+  static void update( const std::vector< TransformComp >& transforms );
+  static std::vector< TransformComp > get( const std::vector< EntityHandle >& entities );
   static std::vector< TransformComp > getLastUpdated();
 };
 
@@ -372,18 +367,23 @@ s32 main() {
   //Rect planetTexCoords = { { 0.0f, 0.0f }, {1.0f, 1.0f } };
 
   //create entities to test transform component
-  std::vector< std::vector< EntityHandle > > entityHandles( 4 );
-  entityHandles[ 0 ] = EntityManager::create( 100 );
-  entityHandles[ 1 ] = EntityManager::create( 100 );
-  entityHandles[ 2 ] = EntityManager::create( 100 );
-  entityHandles[ 3 ] = EntityManager::create( 100 );
+  std::vector< std::vector< EntityHandle > > entityHandles( 6 );
+  u8 blockWidth = 7;
+  u8 blockHeight = 10;
+  u8 blockSize = blockWidth * blockHeight;
+  entityHandles[ 0 ] = EntityManager::create( blockSize );
+  entityHandles[ 1 ] = EntityManager::create( blockSize );
+  entityHandles[ 2 ] = EntityManager::create( blockSize );
+  entityHandles[ 3 ] = EntityManager::create( blockSize );
+  entityHandles[ 4 ] = EntityManager::create( blockSize );
+  entityHandles[ 5 ] = EntityManager::create( blockSize );
 
   //same sprite
   SetSpriteArg spriteArg = { { 0, 0 }, textureHandles[ 0 ], static_cast< Rect >( runFrames[ 0 ] ) };
-  std::vector< SetSpriteArg > sprites( 400, spriteArg );
-  for ( u16 v = 0; v < 4; ++v ) {
-    for ( u16 i = 0; i < 100; ++i ) {
-      sprites[ v * 100 + i ].entity = entityHandles[ v ][ i ];
+  std::vector< SetSpriteArg > sprites( 6 * blockSize, spriteArg );
+  for ( u16 v = 0; v < 6; ++v ) {
+    for ( u16 i = 0; i < blockSize; ++i ) {
+      sprites[ v * blockSize + i ].entity = entityHandles[ v ][ i ];
     }
   }
   SpriteManager::set( sprites );
@@ -392,15 +392,14 @@ s32 main() {
   const u8 halfViewportHeight = 50; //viewport height = 100 as defined nowhere
   const u8 halfViewportWidth = halfViewportHeight * aspect;
   const float cellWidth = halfViewportWidth / 10.0f;
-  const float cellHeight = halfViewportHeight / 10.0f;  
-  u8 xform[ 4 ] = { 0, 0, 10, 10 };
+  const float cellHeight = halfViewportHeight / 10.0f;
   std::vector< TransformComp > transforms;
-  for ( u32 v = 0; v < 4; ++v ) {
-    for ( u32 i = 0; i < 10; ++i ) {
-      for ( u32 j = 0; j < 10; ++j ) {
-	float x = static_cast< float >( ( v % 2 ) * 10 + i + 0.5f ) * cellWidth - halfViewportWidth;
-	float y = static_cast< float >( xform[ v ] + j + 0.5f ) * cellHeight - halfViewportHeight;
-	transforms.push_back( { entityHandles[ v ][ i * 10 + j ], { x, y }, { 1.0f, 1.0f }, 0.0f } );
+  for ( u32 v = 0; v < 6; ++v ) {
+    for ( u32 i = 0; i < blockWidth; ++i ) {
+      for ( u32 j = 0; j < blockHeight; ++j ) {
+	float x = static_cast< float >( ( v % 3 ) * blockWidth + i + 0.5f ) * cellWidth - halfViewportWidth;
+	float y = static_cast< float >( ( ( v >= 3 ) ? blockHeight : 0 ) + j + 0.5f ) * cellHeight - halfViewportHeight;
+	transforms.push_back( { entityHandles[ v ][ i * blockHeight + j ], { x, y }, { 1.0f, 1.0f }, 0.0f } );
       }
     }
   }
@@ -409,32 +408,50 @@ s32 main() {
   std::default_random_engine generator;
   auto frand = std::uniform_real_distribution< float >( -1.0f, 1.0f );
   
-  std::vector< float > rotationSpeeds( 100 );
-  std::vector< float > rotations( 100 );
-  for ( u16 i = 0; i < 100; ++i ) {
+  std::vector< float > rotationSpeeds( blockSize );
+  std::vector< float > rotations( blockSize );
+  for ( u16 i = 0; i < blockSize; ++i ) {
     rotationSpeeds[ i ] = frand( generator );
   }
   
-  std::vector< Vec2 > translationSpeeds( 100 );
-  std::vector< Vec2 > translations( 100 );
-  for ( u16 i = 0; i < 100; ++i ) {
+  std::vector< Vec2 > translationSpeeds( blockSize );
+  std::vector< Vec2 > translations( blockSize );
+  for ( u16 i = 0; i < blockSize; ++i ) {
     translationSpeeds[ i ] = { frand( generator ), frand( generator ) };
   }
 
-  std::vector< RotateAroundArg > rotationAroundSpeeds( 100 );
-  std::vector< RotateAroundArg > rotationsAround( 100 );
-  for ( u16 i = 0; i < 100; ++i ) {
-    u32 ind = 2 * 10 * 10 + i;
+  std::vector< RotateAroundArg > rotationAroundSpeeds( blockSize );
+  std::vector< RotateAroundArg > rotationsAround( blockSize );
+  for ( u16 i = 0; i < blockSize; ++i ) {
+    u32 ind = 2 * blockWidth * blockHeight + i;
     Vec2 offset = { frand( generator ), frand( generator ) };
     rotationsAround[ i ] = { transforms[ ind ].position + offset * 5.0f, 0.0f };
   }
 
-  std::vector< Vec2 > scaleSpeeds( 100 );
-  std::vector< Vec2 > scales( 100, { 1.0f, 1.0f } );
-  for ( u16 i = 0; i < 100; ++i ) {
+  std::vector< Vec2 > scaleSpeeds( blockSize );
+  std::vector< Vec2 > scales( blockSize, { 1.0f, 1.0f } );
+  for ( u16 i = 0; i < blockSize; ++i ) {
     scaleSpeeds[ i ] = { frand( generator ), frand( generator ) };
   }
 
+  std::vector< Vec2 > initialPositions1( blockSize );
+  std::vector< Vec2 > initialPositions2( blockSize );
+  std::vector< Vec2 > positions1( blockSize );
+  std::vector< Vec2 > positions2( blockSize );
+  std::vector< Vec2 > translationSpeeds2( blockSize );
+  std::vector< float > rotationSpeeds2( blockSize );
+  std::vector< Vec2 > scaleSpeeds2( blockSize );
+  std::vector< Vec2 > scales2( blockSize, { 1.0f, 1.0f } );
+  for ( u16 i = 0; i < blockSize; ++i ) {
+    initialPositions1[ i ] = transforms[ 4 * blockWidth * blockHeight + i ].position;
+    initialPositions2[ i ] = transforms[ 5 * blockWidth * blockHeight + i ].position;
+    positions1[ i ] = initialPositions1[ i ];
+    positions2[ i ] = initialPositions2[ i ];
+    translationSpeeds2[ i ] = { frand( generator ), frand( generator ) };
+    scaleSpeeds2[ i ] = { frand( generator ), frand( generator ) };
+    rotationSpeeds2[ i ] = frand( generator );
+  }
+  
   double lastChangedParams = glfwGetTime();
   double now;
   
@@ -494,7 +511,7 @@ s32 main() {
       // }
     }
     
-    for ( u16 i = 0; i < 100; ++i ) {
+    for ( u16 i = 0; i < blockSize; ++i ) {
       rotations[ i ] = rotationSpeeds[ i ] * deltaT * 10.0f;
     }
     now = glfwGetTime();
@@ -503,25 +520,49 @@ s32 main() {
       timeToChangeParams = true;
       lastChangedParams = now;
     }
-    for ( u16 i = 0; i < 100; ++i ) {
+    for ( u16 i = 0; i < blockSize; ++i ) {
       if ( timeToChangeParams ) {
 	translationSpeeds[ i ] = -translationSpeeds[ i ];
       }
       translations[ i ] = translationSpeeds[ i ] * deltaT * 10.0f;
     }
-    for ( u16 i = 0; i < 100; ++i ) {
+    for ( u16 i = 0; i < blockSize; ++i ) {
       rotationsAround[ i ].rotation = rotationSpeeds[ i ] * deltaT * 10.0f;
     }
-    for ( u16 i = 0; i < 100; ++i ) {
+    for ( u16 i = 0; i < blockSize; ++i ) {
       if ( timeToChangeParams ) {
 	scaleSpeeds[ i ] = -scaleSpeeds[ i ];
       }
       scales[ i ] += scaleSpeeds[ i ] * deltaT;
     }
+    std::vector< TransformComp > transforms1 = TransformManager::get( entityHandles[ 4 ] );
+    for ( u16 i = 0; i < blockSize; ++i ) {
+      positions1[ i ] += translationSpeeds2[ i ] * deltaT * 5.0f;
+      Vec2 pos = positions1[ i ];
+      pos.x = std::sin( pos.x );
+      pos.y = std::sin( pos.y );
+      transforms1[ i ].position = initialPositions1[ i ] + pos * 5.0f;
+      transforms1[ i ].orientation += rotationSpeeds[ i ] * deltaT * 10.0f;
+    }
+    std::vector< TransformComp > transforms2 = TransformManager::get( entityHandles[ 5 ] );
+    for ( u16 i = 0; i < blockSize; ++i ) {
+      positions2[ i ] += translationSpeeds2[ i ] * deltaT * 5.0f;
+      Vec2 pos = positions1[ i ];
+      pos.x = std::sin( pos.x );
+      pos.y = std::sin( pos.y );
+      transforms2[ i ].position = initialPositions2[ i ] + pos * 5.0f;
+      scales2[ i ] += scaleSpeeds2[ i ] * deltaT * 3.0f;
+      Vec2 scale = scales2[ i ];
+      scale.x = std::sin( scales2[ i ].x );
+      scale.y = std::sin( scales2[ i ].y );
+      transforms2[ i ].scale = scale * 1.5f;
+    } 
     TransformManager::rotate( entityHandles[ 0 ], rotations );
     TransformManager::translate( entityHandles[ 1 ], translations );
     TransformManager::rotateAround( entityHandles[ 2 ], rotationsAround );
     TransformManager::scale( entityHandles[ 3 ], scales );
+    TransformManager::update( transforms1 );
+    TransformManager::update( transforms2 );
     
     //detect collisions
     // float dx = tempPos[ 0 ] - pos2[ 0 ];
@@ -734,12 +775,12 @@ s32 createShaderProgram( GLuint* shaderProgramId, const char* vertShaderFile, co
   }  
   glUseProgram( *shaderProgramId );
   glDetachShader( *shaderProgramId, vertShaderId );
+  glDeleteShader( vertShaderId );
   if ( geomShaderFile != 0 ) {
     glDetachShader( *shaderProgramId, geomShaderId );
+    glDeleteShader( geomShaderId );
   }
   glDetachShader( *shaderProgramId, fragShaderId );
-  glDeleteShader( vertShaderId );
-  glDeleteShader( geomShaderId );
   glDeleteShader( fragShaderId );
   return 0;
 }
@@ -1174,7 +1215,11 @@ void TransformManager::scale( const std::vector< EntityHandle >& entities, const
   //TODO mark transform components as updated
 }
 
-void TransformManager::update( const std::vector< EntityHandle >& entities, const std::vector< UpdateTransformArg >& transforms ) {
+void TransformManager::update( const std::vector< TransformComp >& transforms ) {
+  std::vector< EntityHandle > entities( transforms.size() );
+  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
+    entities[ entInd ] = transforms[ entInd ].entity;
+  }
   for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
     EntityHandle entity = entities[ entInd ];
     ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
@@ -1183,14 +1228,31 @@ void TransformManager::update( const std::vector< EntityHandle >& entities, cons
   for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
     LookupResult lookupResult = lookupResults[ entInd ];
     ASSERT( lookupResult.found, "Entity %d has no Transform component", entities[ entInd ] );
-    UpdateTransformArg transformArg = transforms[ entInd ];
+    TransformComp transformArg = transforms[ entInd ];
     TransformComp transformComp = transformComps[ lookupResult.index ];
-    transformComp.position += transformArg.translation;
+    transformComp.position = transformArg.position;
     transformComp.scale = transformArg.scale;
-    transformComp.orientation += transformArg.rotation;
+    transformComp.orientation = transformArg.orientation;
     transformComps[ lookupResult.index ] = transformComp;
   }
   //TODO mark transform components as updated
+}
+
+std::vector< TransformComp > TransformManager::get( const std::vector< EntityHandle >& entities ) {
+  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
+    EntityHandle entity = entities[ entInd ];
+    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
+  }
+  std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
+  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
+    LookupResult lookupResult = lookupResults[ entInd ];
+    ASSERT( lookupResult.found, "Entity %d has no Transform component", entities[ entInd ] );
+  }
+  std::vector< TransformComp > result( entities.size() );
+  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
+    result[ entInd ] = transformComps[ lookupResults[ entInd ].index ];
+  }
+  return result;
 }
 
 std::vector< TransformComp > TransformManager::getLastUpdated() {
