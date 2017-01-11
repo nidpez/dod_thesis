@@ -132,6 +132,26 @@ struct ComponentMap {
   std::vector< LookupResult > lookup( const std::vector< EntityHandle >& entities );
 };
 
+#ifdef NDEBUG
+#define VALIDATE_ENTITIES( entities ) ( ( void )0 )
+#define VALIDATE_HAVE_COMPONENT( entities, lookupResults, compName ) ( ( void )0 )
+#define VALIDATE_ENTITY( entity ) ( ( void )0 )
+#else
+#define VALIDATE_ENTITIES( entities ) {					\
+    for ( u32 entInd = 0; entInd < ( entities ).size(); ++entInd ) {	\
+      EntityHandle entity = ( entities )[ entInd ];			\
+      ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity ); \
+    }									\
+  }
+#define VALIDATE_HAVE_COMPONENT( entities, lookupResults, compName ) {		\
+    for ( u32 entInd = 0; entInd < ( lookupResults ).size(); ++entInd ) { \
+      LookupResult lookupResult = ( lookupResults )[ entInd ];		\
+      ASSERT( lookupResult.found, "Entity %d has no %s component", ( entities )[ entInd ], ( compName ) ); \
+    }									\
+  }
+#define VALIDATE_ENTITY( entity ) ASSERT( EntityManager::isAlive( ( entity ) ), "Invalid entity id %d", ( entity ) )
+#endif
+
 struct TransformComp {
   EntityHandle entity;
   Vec2 position;
@@ -1118,6 +1138,7 @@ void ComponentMap::set( const std::vector< SetComponentMapArg >& mappedPairs ) {
 }
 
 std::vector< LookupResult > ComponentMap::lookup( const std::vector< EntityHandle >& entities ) {
+  VALIDATE_ENTITIES( entities );
   std::vector< LookupResult > result( entities.size() );
   for ( u32 entityInd = 0; entityInd < entities.size(); ++entityInd ) {
     auto iterator = map.find( entities[ entityInd ] );
@@ -1144,7 +1165,7 @@ void TransformManager::set( const std::vector< TransformComp >& transforms ) {
   for ( u32 trInd = 0; trInd < transforms.size(); ++trInd ) {
     TransformComp transform = transforms[ trInd ];
     EntityHandle entity = transform.entity;
-    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );  
+    VALIDATE_ENTITY( entity );  
     Vec2 position = transform.position;
     Vec2 scale = transform.scale;
     float orientation = transform.orientation;
@@ -1156,28 +1177,19 @@ void TransformManager::set( const std::vector< TransformComp >& transforms ) {
 }
 
 void TransformManager::rotate( const std::vector< EntityHandle >& entities, const std::vector< float >& rotations ) {
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    EntityHandle entity = entities[ entInd ];
-    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
-  }
   std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
+  VALIDATE_HAVE_COMPONENT( entities, lookupResults, "Transform" );
   for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    LookupResult lookupResult = lookupResults[ entInd ];
-    ASSERT( lookupResult.found, "Entity %d has no Transform component", entities[ entInd ] );
-    transformComps[ lookupResult.index ].orientation += rotations[ entInd ];
+    transformComps[ lookupResults[ entInd ].index ].orientation += rotations[ entInd ];
   }
   //TODO mark transform components as updated
 }
 
 void TransformManager::rotateAround( const std::vector< EntityHandle >& entities, const std::vector< RotateAroundArg >& rotations ) {
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    EntityHandle entity = entities[ entInd ];
-    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
-  }
   std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
+  VALIDATE_HAVE_COMPONENT( entities, lookupResults, "Transform" );
   for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
     LookupResult lookupResult = lookupResults[ entInd ];
-    ASSERT( lookupResult.found, "Entity %d has no Transform component", entities[ entInd ] );
     RotateAroundArg rotateArg = rotations[ entInd ];
     TransformComp transformComp = transformComps[ lookupResult.index ];
     transformComp.orientation += rotateArg.rotation;
@@ -1188,29 +1200,19 @@ void TransformManager::rotateAround( const std::vector< EntityHandle >& entities
 }
 
 void TransformManager::translate( const std::vector< EntityHandle >& entities, const std::vector< Vec2 >& translations ) {
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    EntityHandle entity = entities[ entInd ];
-    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
-  }
   std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
+  VALIDATE_HAVE_COMPONENT( entities, lookupResults, "Transform" );
   for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    LookupResult lookupResult = lookupResults[ entInd ];
-    ASSERT( lookupResult.found, "Entity %d has no Transform component", entities[ entInd ] );
-    transformComps[ lookupResult.index ].position += translations[ entInd ];
+    transformComps[ lookupResults[ entInd ].index ].position += translations[ entInd ];
   }
   //TODO mark transform components as updated
 }
 
 void TransformManager::scale( const std::vector< EntityHandle >& entities, const std::vector< Vec2 >& scales ) {
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    EntityHandle entity = entities[ entInd ];
-    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
-  }
   std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
+  VALIDATE_HAVE_COMPONENT( entities, lookupResults, "Transform" );
   for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    LookupResult lookupResult = lookupResults[ entInd ];
-    ASSERT( lookupResult.found, "Entity %d has no Transform component", entities[ entInd ] );
-    transformComps[ lookupResult.index ].scale = scales[ entInd ];
+    transformComps[ lookupResults[ entInd ].index ].scale = scales[ entInd ];
   }
   //TODO mark transform components as updated
 }
@@ -1220,14 +1222,10 @@ void TransformManager::update( const std::vector< TransformComp >& transforms ) 
   for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
     entities[ entInd ] = transforms[ entInd ].entity;
   }
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    EntityHandle entity = entities[ entInd ];
-    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
-  }
   std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
+  VALIDATE_HAVE_COMPONENT( entities, lookupResults, "Transform" );
   for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
     LookupResult lookupResult = lookupResults[ entInd ];
-    ASSERT( lookupResult.found, "Entity %d has no Transform component", entities[ entInd ] );
     TransformComp transformArg = transforms[ entInd ];
     TransformComp transformComp = transformComps[ lookupResult.index ];
     transformComp.position = transformArg.position;
@@ -1239,15 +1237,8 @@ void TransformManager::update( const std::vector< TransformComp >& transforms ) 
 }
 
 std::vector< TransformComp > TransformManager::get( const std::vector< EntityHandle >& entities ) {
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    EntityHandle entity = entities[ entInd ];
-    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
-  }
   std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    LookupResult lookupResult = lookupResults[ entInd ];
-    ASSERT( lookupResult.found, "Entity %d has no Transform component", entities[ entInd ] );
-  }
+  VALIDATE_HAVE_COMPONENT( entities, lookupResults, "Transform" );
   std::vector< TransformComp > result( entities.size() );
   for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
     result[ entInd ] = transformComps[ lookupResults[ entInd ].index ];
@@ -1274,7 +1265,7 @@ void CircleColliderManager::add( const std::vector< CircleColliderComp >& circle
   for ( u32 collInd = 0; collInd < circleColliders.size(); ++collInd ) {
     CircleColliderComp circleColliderComp = circleColliders[ collInd ];
     EntityHandle entity = circleColliderComp.entity;
-    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
+    VALIDATE_ENTITY( entity );
     float radius = circleColliderComp.radius;
     ASSERT( radius > 0.0f, "A collider of radius %f is useless", radius );
     Vec2 center = circleColliderComp.center;
@@ -1334,17 +1325,9 @@ void CircleColliderManager::updateAndCollide() {
 }
 
 void CircleColliderManager::fitToSpriteSize( const std::vector< EntityHandle >& entities ) {
-  for ( u32 entityInd = 0; entityInd < entities.size(); ++entityInd ) {
-    EntityHandle entity = entities[ entityInd ];
-    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
-  }
   std::vector< LookupResult > colliderLookupResults = componentMap.lookup( entities );
+  VALIDATE_HAVE_COMPONENT( entities, colliderLookupResults, "CircleCollider" );
   std::vector< SpriteComp > spriteComps = SpriteManager::get( entities );
-  for ( u32 entityInd = 0; entityInd < entities.size(); ++entityInd ) {
-    EntityHandle entity = entities[ entityInd ];
-    ASSERT( colliderLookupResults[ entityInd ].found, "Entity %d has no CircleCollider component", entity );
-    ASSERT( spriteComps[ entityInd ].entity > 0, "Entity %d has no Sprite component", entity );
-  }
   for ( u32 entityInd = 0; entityInd < entities.size(); ++entityInd ) {
     SpriteComp spriteComp = spriteComps[ entityInd ];
     LookupResult lookupResult = colliderLookupResults[ entityInd ];
@@ -1449,7 +1432,7 @@ void SpriteManager::set( const std::vector< SetSpriteArg >& sprites ) {
   for ( u32 sprInd = 0; sprInd < sprites.size(); ++sprInd ) {
     SetSpriteArg setSpriteArg = sprites[ sprInd ];
     EntityHandle entity = setSpriteArg.entity;
-    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
+    VALIDATE_ENTITY( entity );
     TextureHandle textureId = setSpriteArg.textureId;
     Rect texCoords = setSpriteArg.texCoords; 
     ASSERT( AssetManager::isTextureAlive( textureId ), "Invalid texture id %d", textureId ); 
@@ -1469,21 +1452,13 @@ void SpriteManager::set( const std::vector< SetSpriteArg >& sprites ) {
 }
 
 std::vector< SpriteComp > SpriteManager::get( const std::vector< EntityHandle >& entities ) {
-  for ( u32 entityInd = 0; entityInd < entities.size(); ++entityInd ) {
-    EntityHandle entity = entities[ entityInd ];
-    ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity );
-  }
   std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
+  VALIDATE_HAVE_COMPONENT( entities, lookupResults, "Sprite" );
   std::vector< SpriteComp > resultSpriteComps;
   resultSpriteComps.reserve( entities.size() );
   for ( u32 entityInd = 0; entityInd < entities.size(); ++entityInd ) {
-    if ( lookupResults[ entityInd ].found ) {
-      SpriteComp spriteComp = static_cast< SpriteComp >( spriteComps[ lookupResults[ entityInd ].index ] );
-      resultSpriteComps.push_back( spriteComp );
-    } else {
-      //push a zero initialized SpriteComp, making it's entity 0 which is invalid 
-      resultSpriteComps.push_back( {} ); 
-    }
+    SpriteComp spriteComp = static_cast< SpriteComp >( spriteComps[ lookupResults[ entityInd ].index ] );
+    resultSpriteComps.push_back( spriteComp );
   }
   return resultSpriteComps;
 }
