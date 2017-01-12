@@ -132,26 +132,6 @@ struct ComponentMap {
   std::vector< LookupResult > lookup( const std::vector< EntityHandle >& entities );
 };
 
-#ifdef NDEBUG
-#define VALIDATE_ENTITIES( entities ) ( ( void )0 )
-#define VALIDATE_HAVE_COMPONENT( entities, lookupResults, compName ) ( ( void )0 )
-#define VALIDATE_ENTITY( entity ) ( ( void )0 )
-#else
-#define VALIDATE_ENTITIES( entities ) {					\
-    for ( u32 entInd = 0; entInd < ( entities ).size(); ++entInd ) {	\
-      EntityHandle entity = ( entities )[ entInd ];			\
-      ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity ); \
-    }									\
-  }
-#define VALIDATE_HAVE_COMPONENT( entities, lookupResults, compName ) {		\
-    for ( u32 entInd = 0; entInd < ( lookupResults ).size(); ++entInd ) { \
-      LookupResult lookupResult = ( lookupResults )[ entInd ];		\
-      ASSERT( lookupResult.found, "Entity %d has no %s component", ( entities )[ entInd ], ( compName ) ); \
-    }									\
-  }
-#define VALIDATE_ENTITY( entity ) ASSERT( EntityManager::isAlive( ( entity ) ), "Invalid entity id %d", ( entity ) )
-#endif
-
 struct TransformComp {
   EntityHandle entity;
   Vec2 position;
@@ -339,13 +319,39 @@ void haltWithMessage( const char* failedCond, const char* file, const char* func
 #endif
   
 #ifdef NDEBUG
+
 #define ASSERT( condition, ... ) ( ( void )0 )
+
+#define VALIDATE_ENTITIES( entities ) ( ( void )0 )
+
+#define VALIDATE_HAVE_COMPONENT( entities, lookupResults, compName ) ( ( void )0 )
+
+#define VALIDATE_ENTITY( entity ) ( ( void )0 )
+
 #else
+
 #define ASSERT( condition, ... ) {					\
     if ( !( condition ) ) {						\
       haltWithMessage( #condition, __FILE__, __FUNC__,  __LINE__, __VA_ARGS__ ); \
     }									\
   }
+
+#define VALIDATE_ENTITIES( entities ) {					\
+    for ( u32 entInd = 0; entInd < ( entities ).size(); ++entInd ) {	\
+      EntityHandle entity = ( entities )[ entInd ];			\
+      ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity ); \
+    }									\
+  }
+
+#define VALIDATE_HAVE_COMPONENT( entities, lookupResults, compName ) {		\
+    for ( u32 entInd = 0; entInd < ( lookupResults ).size(); ++entInd ) { \
+      LookupResult lookupResult = ( lookupResults )[ entInd ];		\
+      ASSERT( lookupResult.found, "Entity %d has no %s component", ( entities )[ entInd ], ( compName ) ); \
+    }									\
+  }
+
+#define VALIDATE_ENTITY( entity ) ASSERT( EntityManager::isAlive( ( entity ) ), "Invalid entity id %d", ( entity ) )
+
 #endif
 
 //misc
