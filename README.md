@@ -13,6 +13,7 @@ It is still extremely early in development, but so far I have the following:
 + An Entity Handle system based on http://bitsquid.blogspot.com.co/2014/08/building-data-oriented-entity-system.html and http://gamesfromwithin.com/managing-data-relationships.
 + Transform component manager.
 + Sprite component manager.
++ Beginnings of debug shape renderer.
 + Logging system.
 + Custom assertions that can log a message on failure.
 
