@@ -15,7 +15,7 @@ It is still extremely early in development, but so far I have the following:
 + Sprite component manager.
 + Beginnings of debug shape renderer.
 + Logging system.
-+ Custom assertions that can log a message on failure.
++ Custom assertions, and validation macros.
 
 At this point this is all it can do:
 
