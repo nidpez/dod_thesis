@@ -4,7 +4,7 @@ This repository is for a 2D game I'm currently developing as a hobby.
 
 I'm using GLFW for the platform layer, OpenGL to render the sprites, GLEW to load OpenGL functions, and SOIL2 to load textures.
 
-With this project I'm trying to learn about game engine architecture and development, and more specifically about the Data Oriented Design programming philosophy.
+With this project I'm trying to learn about game engine architecture and development, and more specifically about the [Data Oriented Design](https://github.com/taylor001/data-oriented-design) programming philosophy.
 
 It is still extremely early in development, but so far I have the following:
 
