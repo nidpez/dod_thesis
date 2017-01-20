@@ -336,10 +336,12 @@ void haltWithMessage( const char* failedCond, const char* file, const char* func
     }									\
   }
 
+#define VALIDATE_ENTITY( entity )					\
+  ASSERT( EntityManager::isAlive( ( entity ) ), "Invalid entity id %d", ( entity ) )
+
 #define VALIDATE_ENTITIES( entities ) {					\
     for ( u32 entInd = 0; entInd < ( entities ).size(); ++entInd ) {	\
-      EntityHandle entity = ( entities )[ entInd ];			\
-      ASSERT( EntityManager::isAlive( entity ), "Invalid entity id %d", entity ); \
+      VALIDATE_ENTITY( ( entities )[ entInd ] );			\
     }									\
   }
 
@@ -349,8 +351,6 @@ void haltWithMessage( const char* failedCond, const char* file, const char* func
       ASSERT( lookupResult.found, "Entity %d has no %s component", ( entities )[ entInd ], ( compName ) ); \
     }									\
   }
-
-#define VALIDATE_ENTITY( entity ) ASSERT( EntityManager::isAlive( ( entity ) ), "Invalid entity id %d", ( entity ) )
 
 #endif
 
