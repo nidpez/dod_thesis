@@ -19,3 +19,4 @@
 * implement scene graph
 * implement transform component's methods dealing with one entity at a time
 * profile both implementations
+* make method names more descriptive
