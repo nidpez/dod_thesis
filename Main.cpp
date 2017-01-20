@@ -304,6 +304,8 @@ public:
   static void shutdown();
   static void write( const char* format, ... );
   static void write( const char* format, va_list args );
+  static void writeError( const char* format, ... );
+  static void writeError( const char* format, va_list args );
 };
 
 void haltWithMessage( const char* failedCond, const char* file, const char* function, s32 line, ... );
@@ -920,12 +922,10 @@ FILE* Logger::log;
 void Logger::initialize() {
   log = fopen( LOG_FILE_NAME, "a" );
   write( "Logging system initialized.\n" );
-  //TODO assert failure??? (where to write message?)
 }
 
 void Logger::shutdown() {
   fclose( log );
-  //TODO assert failure
 }
 
 void Logger::write( const char* format, ... ) {
@@ -936,25 +936,38 @@ void Logger::write( const char* format, ... ) {
 }
 
 void Logger::write( const char* format, va_list args ) {
-  //TODO should we open and close the log file here?
-  //TODO measure performance
+  va_list args2;
+  va_copy( args2, args );
+  vprintf( format, args );
+  va_end( args2 );
+}
+
+void Logger::writeError( const char* format, ... ) {
+  va_list args;
+  va_start( args, format );
+  writeError( format, args );
+  va_end( args );
+}
+
+void Logger::writeError( const char* format, va_list args ) {
   va_list args2;
   va_copy( args2, args );
   vprintf( format, args );
   vfprintf( log, format, args2 );
   va_end( args2 );
-  //TODO assert failure
 }
   
-void haltWithMessage( const char* failedCond, const char* file, const char* function, s32 line, ... ) {
-  Logger::write( "Assertion %s failed at %s, %s, line %d: ",
-		 failedCond, file, function, line ); 
+void haltWithMessage( const char* failedCond, const char* file, const char* function, s32 line, ... ) {  
+  std::time_t now = std::time( nullptr );
+  char* date = std::ctime( &now );
+  Logger::writeError( "%s\tAssertion '%s' failed at %s, %s, line %d:\n\t",
+		      date, failedCond, file, function, line ); 
   va_list args;
   va_start( args, line );
   char* msgFormat = va_arg( args, char* );
-  Logger::write( msgFormat, args );
+  Logger::writeError( msgFormat, args );
   va_end( args );
-  Logger::write( "\n" );
+  Logger::writeError( "\n" );
   Logger::shutdown();
   std::abort();
 }
