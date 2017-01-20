@@ -311,24 +311,28 @@ public:
 };
 
 void haltWithMessage( const char* failedCond, const char* file, const char* function, s32 line, ... );
-
-#ifdef __GNUC__
-#define __FUNC__ __PRETTY_FUNCTION__
-#else
-#define __FUNC__ __func__
-#endif
   
 #ifdef NDEBUG
 
 #define ASSERT( condition, ... ) ( ( void )0 )
 
+#define VALIDATE_ENTITY( entity ) ( ( void )0 )
+
 #define VALIDATE_ENTITIES( entities ) ( ( void )0 )
 
 #define VALIDATE_HAVE_COMPONENT( entities, lookupResults, compName ) ( ( void )0 )
 
-#define VALIDATE_ENTITY( entity ) ( ( void )0 )
+#else
+
+#ifdef __GNUC__
+
+#define __FUNC__ __PRETTY_FUNCTION__
 
 #else
+
+#define __FUNC__ __func__
+
+#endif
 
 #define ASSERT( condition, ... ) {					\
     if ( !( condition ) ) {						\
