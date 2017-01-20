@@ -116,11 +116,6 @@ public:
 
 typedef u32 ComponentIndex;
 
-struct LookupResult {
-  ComponentIndex index;
-  bool found;
-};
-
 struct SetComponentMapArg {
   EntityHandle entity;
   ComponentIndex compInd;
@@ -129,7 +124,8 @@ struct SetComponentMapArg {
 struct ComponentMap {
   std::unordered_map< u32, ComponentIndex > map;
   void set( const std::vector< SetComponentMapArg >& mappedPairs );
-  std::vector< LookupResult > lookup( const std::vector< EntityHandle >& entities );
+  std::vector< EntityHandle > have( const std::vector< EntityHandle >& entities );
+  std::vector< ComponentIndex > lookup( const std::vector< EntityHandle >& entities );
 };
 
 struct TransformComp {
@@ -320,8 +316,6 @@ void haltWithMessage( const char* failedCond, const char* file, const char* func
 
 #define VALIDATE_ENTITIES( entities ) ( ( void )0 )
 
-#define VALIDATE_HAVE_COMPONENT( entities, lookupResults, compName ) ( ( void )0 )
-
 #else
 
 #ifdef __GNUC__
@@ -346,13 +340,6 @@ void haltWithMessage( const char* failedCond, const char* file, const char* func
 #define VALIDATE_ENTITIES( entities ) {					\
     for ( u32 entInd = 0; entInd < ( entities ).size(); ++entInd ) {	\
       VALIDATE_ENTITY( ( entities )[ entInd ] );			\
-    }									\
-  }
-
-#define VALIDATE_HAVE_COMPONENT( entities, lookupResults, compName ) {		\
-    for ( u32 entInd = 0; entInd < ( lookupResults ).size(); ++entInd ) { \
-      LookupResult lookupResult = ( lookupResults )[ entInd ];		\
-      ASSERT( lookupResult.found, "Entity %d has no %s component", ( entities )[ entInd ], ( compName ) ); \
     }									\
   }
 
@@ -1147,16 +1134,24 @@ void ComponentMap::set( const std::vector< SetComponentMapArg >& mappedPairs ) {
   }
 }
 
-std::vector< LookupResult > ComponentMap::lookup( const std::vector< EntityHandle >& entities ) {
-  VALIDATE_ENTITIES( entities );
-  std::vector< LookupResult > result( entities.size() );
-  for ( u32 entityInd = 0; entityInd < entities.size(); ++entityInd ) {
-    auto iterator = map.find( entities[ entityInd ] );
-    if ( iterator != map.end() ) {
-      result[ entityInd ] = { iterator->second, true };
-    } else {
-      result[ entityInd ].found = false;
+std::vector< EntityHandle > ComponentMap::have( const std::vector< EntityHandle >& entities ) {
+  VALIDATE_ENTITIES( entities );  
+  std::vector< EntityHandle > result;
+  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
+    if ( map.count( entities[ entInd ] ) ) {
+      result.push_back( entities[ entInd ] );
     }
+  }
+  return result;
+}
+
+std::vector< ComponentIndex > ComponentMap::lookup( const std::vector< EntityHandle >& entities ) {
+  VALIDATE_ENTITIES( entities );
+  std::vector< ComponentIndex > result( entities.size() );
+  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
+    auto iterator = map.find( entities[ entInd ] );
+    ASSERT( iterator != map.end(), "Entity %d has no given component", entities[ entInd ] );
+    result[ entInd ] = iterator->second;
   }
   return result;
 }
@@ -1187,42 +1182,38 @@ void TransformManager::set( const std::vector< TransformComp >& transforms ) {
 }
 
 void TransformManager::rotate( const std::vector< EntityHandle >& entities, const std::vector< float >& rotations ) {
-  std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
-  VALIDATE_HAVE_COMPONENT( entities, lookupResults, "Transform" );
+  std::vector< ComponentIndex > componentInds = componentMap.lookup( entities );
   for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    transformComps[ lookupResults[ entInd ].index ].orientation += rotations[ entInd ];
+    transformComps[ componentInds[ entInd ] ].orientation += rotations[ entInd ];
   }
   //TODO mark transform components as updated
 }
 
 void TransformManager::rotateAround( const std::vector< EntityHandle >& entities, const std::vector< RotateAroundArg >& rotations ) {
-  std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
-  VALIDATE_HAVE_COMPONENT( entities, lookupResults, "Transform" );
+  std::vector< ComponentIndex > componentInds = componentMap.lookup( entities );
   for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    LookupResult lookupResult = lookupResults[ entInd ];
+    ComponentIndex componentInd = componentInds[ entInd ];
     RotateAroundArg rotateArg = rotations[ entInd ];
-    TransformComp transformComp = transformComps[ lookupResult.index ];
+    TransformComp transformComp = transformComps[ componentInd ];
     transformComp.orientation += rotateArg.rotation;
     transformComp.position = rotateVec2( transformComp.position - rotateArg.point, rotateArg.rotation ) + rotateArg.point;
-    transformComps[ lookupResult.index ] = transformComp;
+    transformComps[ componentInd ] = transformComp;
   }
   //TODO mark transform components as updated
 }
 
 void TransformManager::translate( const std::vector< EntityHandle >& entities, const std::vector< Vec2 >& translations ) {
-  std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
-  VALIDATE_HAVE_COMPONENT( entities, lookupResults, "Transform" );
+  std::vector< ComponentIndex > componentInds = componentMap.lookup( entities );
   for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    transformComps[ lookupResults[ entInd ].index ].position += translations[ entInd ];
+    transformComps[ componentInds[ entInd ] ].position += translations[ entInd ];
   }
   //TODO mark transform components as updated
 }
 
 void TransformManager::scale( const std::vector< EntityHandle >& entities, const std::vector< Vec2 >& scales ) {
-  std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
-  VALIDATE_HAVE_COMPONENT( entities, lookupResults, "Transform" );
+  std::vector< ComponentIndex > componentInds = componentMap.lookup( entities );
   for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    transformComps[ lookupResults[ entInd ].index ].scale = scales[ entInd ];
+    transformComps[ componentInds[ entInd ] ].scale = scales[ entInd ];
   }
   //TODO mark transform components as updated
 }
@@ -1232,26 +1223,24 @@ void TransformManager::update( const std::vector< TransformComp >& transforms ) 
   for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
     entities[ entInd ] = transforms[ entInd ].entity;
   }
-  std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
-  VALIDATE_HAVE_COMPONENT( entities, lookupResults, "Transform" );
+  std::vector< ComponentIndex > componentInds = componentMap.lookup( entities );
   for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    LookupResult lookupResult = lookupResults[ entInd ];
+    ComponentIndex componentInd = componentInds[ entInd ];
     TransformComp transformArg = transforms[ entInd ];
-    TransformComp transformComp = transformComps[ lookupResult.index ];
+    TransformComp transformComp = transformComps[ componentInd ];
     transformComp.position = transformArg.position;
     transformComp.scale = transformArg.scale;
     transformComp.orientation = transformArg.orientation;
-    transformComps[ lookupResult.index ] = transformComp;
+    transformComps[ componentInd ] = transformComp;
   }
   //TODO mark transform components as updated
 }
 
 std::vector< TransformComp > TransformManager::get( const std::vector< EntityHandle >& entities ) {
-  std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
-  VALIDATE_HAVE_COMPONENT( entities, lookupResults, "Transform" );
+  std::vector< ComponentIndex > componentInds = componentMap.lookup( entities );
   std::vector< TransformComp > result( entities.size() );
   for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    result[ entInd ] = transformComps[ lookupResults[ entInd ].index ];
+    result[ entInd ] = transformComps[ componentInds[ entInd ] ];
   }
   return result;
 }
@@ -1306,14 +1295,13 @@ void CircleColliderManager::updateAndCollide() {
   for ( u32 trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
     updatedEntities.push_back( updatedTransforms[ trInd ].entity );
   }
-  std::vector< LookupResult > updatedCircleColliders = componentMap.lookup( updatedEntities );
+  updatedEntities = componentMap.have( updatedEntities );
+  std::vector< ComponentIndex > updatedCircleColliders = componentMap.lookup( updatedEntities );
   for ( u32 trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
-    if ( updatedCircleColliders[ trInd ].found ) {
-      TransformComp transformComp = updatedTransforms[ trInd ];
-      ComponentIndex circleColliderCompInd = updatedCircleColliders[ trInd ].index;
-      circleColliderComps[ circleColliderCompInd ].position = transformComp.position;
-      circleColliderComps[ circleColliderCompInd ].scale = transformComp.scale;
-    }
+    TransformComp transformComp = updatedTransforms[ trInd ];
+    ComponentIndex circleColliderCompInd = updatedCircleColliders[ trInd ];
+    circleColliderComps[ circleColliderCompInd ].position = transformComp.position;
+    circleColliderComps[ circleColliderCompInd ].scale = transformComp.scale;
   }
   //TODO do frustrum culling
   std::vector< DebugCircle > circles;
@@ -1335,15 +1323,14 @@ void CircleColliderManager::updateAndCollide() {
 }
 
 void CircleColliderManager::fitToSpriteSize( const std::vector< EntityHandle >& entities ) {
-  std::vector< LookupResult > colliderLookupResults = componentMap.lookup( entities );
-  VALIDATE_HAVE_COMPONENT( entities, colliderLookupResults, "CircleCollider" );
+  std::vector< ComponentIndex > componentInds = componentMap.lookup( entities );
   std::vector< SpriteComp > spriteComps = SpriteManager::get( entities );
-  for ( u32 entityInd = 0; entityInd < entities.size(); ++entityInd ) {
-    SpriteComp spriteComp = spriteComps[ entityInd ];
-    LookupResult lookupResult = colliderLookupResults[ entityInd ];
+  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
+    SpriteComp spriteComp = spriteComps[ entInd ];
+    ComponentIndex componentInd = componentInds[ entInd ];
     Vec2 size = spriteComp.size;
     float maxSize = ( size.x > size.y ) ? size.x : size.y;
-    circleColliderComps[ lookupResult.index ].radius = maxSize / 2.0f;
+    circleColliderComps[ componentInd ].radius = maxSize / 2.0f;
   }
 }
 
@@ -1462,12 +1449,11 @@ void SpriteManager::set( const std::vector< SetSpriteArg >& sprites ) {
 }
 
 std::vector< SpriteComp > SpriteManager::get( const std::vector< EntityHandle >& entities ) {
-  std::vector< LookupResult > lookupResults = componentMap.lookup( entities );
-  VALIDATE_HAVE_COMPONENT( entities, lookupResults, "Sprite" );
+  std::vector< ComponentIndex > componentInds = componentMap.lookup( entities );
   std::vector< SpriteComp > resultSpriteComps;
   resultSpriteComps.reserve( entities.size() );
-  for ( u32 entityInd = 0; entityInd < entities.size(); ++entityInd ) {
-    SpriteComp spriteComp = static_cast< SpriteComp >( spriteComps[ lookupResults[ entityInd ].index ] );
+  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
+    SpriteComp spriteComp = static_cast< SpriteComp >( spriteComps[ componentInds[ entInd ] ] );
     resultSpriteComps.push_back( spriteComp );
   }
   return resultSpriteComps;
@@ -1493,15 +1479,14 @@ void SpriteManager::updateAndRender() {
   for ( u32 trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
     updatedEntities.push_back( updatedTransforms[ trInd ].entity );
   }
-  std::vector< LookupResult > updatedSprites = componentMap.lookup( updatedEntities );
+  updatedEntities = componentMap.have( updatedEntities );
+  std::vector< ComponentIndex > updatedSprites = componentMap.lookup( updatedEntities );
   for ( u32 trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
-    if ( updatedSprites[ trInd ].found ) {
-      TransformComp transformComp = updatedTransforms[ trInd ];
-      ComponentIndex spriteCompInd = updatedSprites[ trInd ].index;
-      spriteComps[ spriteCompInd ].position = transformComp.position;
-      spriteComps[ spriteCompInd ].scale = transformComp.scale;
-      spriteComps[ spriteCompInd ].orientation = transformComp.orientation;
-    }
+    TransformComp transformComp = updatedTransforms[ trInd ];
+    ComponentIndex spriteCompInd = updatedSprites[ trInd ];
+    spriteComps[ spriteCompInd ].position = transformComp.position;
+    spriteComps[ spriteCompInd ].scale = transformComp.scale;
+    spriteComps[ spriteCompInd ].orientation = transformComp.orientation;
   }
   //build vertex buffer and render for sprites with same texture
   glUseProgram( renderInfo.shaderProgramId );
