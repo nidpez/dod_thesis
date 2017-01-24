@@ -19,3 +19,4 @@
 * implement transform component's methods dealing with one entity at a time
 * profile both implementations
 * make method names more descriptive
+* mix Logger and DebugRenderer into Degug class
