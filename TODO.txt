@@ -20,3 +20,4 @@
 * profile both implementations
 * make method names more descriptive
 * mix Logger and DebugRenderer into Degug class
+* put shader loading functions inside AssetManager
