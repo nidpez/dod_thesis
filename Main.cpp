@@ -10,7 +10,6 @@
 #include <string>
 #include <sstream>
 #include <cerrno>
-#include <cmath>
 #include <deque>
 #include <vector>
 #include <unordered_map>
@@ -26,43 +25,9 @@ typedef uint32_t 	u32;
 typedef uint16_t 	u16;
 typedef uint8_t 	u8;
 
+#include "Math.hpp"
+
 const float PIXELS_PER_UNIT = 4.0f;
-
-//math
-struct Vec2 {
-  union {
-    float x, u;
-  };
-  union {
-    float y, v;
-  };
-  static const Vec2 zero; 
-  static const Vec2 one;
-};
-
-Vec2 operator+( Vec2 a, Vec2 b );
-
-Vec2& operator+=( Vec2& a, Vec2 b );
-
-Vec2 operator-( Vec2 a, Vec2 b );
-
-Vec2& operator-=( Vec2& a, Vec2 b );
-
-Vec2& operator-( Vec2& vec );
-
-Vec2 operator*( Vec2 a, Vec2 b );
-
-Vec2& operator*=( Vec2& a, Vec2 b );
-
-Vec2 operator*( Vec2 vec, float scale );
-
-Vec2 operator*( float scale, Vec2 vec );
-
-Vec2& operator*=( Vec2& vec, float scale );
-
-float dot( Vec2 a, Vec2 b );
-
-Vec2 rotateVec2( Vec2 vec, float orientation );
 
 //resources
 typedef u32 TextureHandle;
@@ -976,64 +941,6 @@ void haltWithMessage( const char* failedCond, const char* file, const char* func
   std::abort();
 }
 
-const Vec2 Vec2::zero = {};
-const Vec2 Vec2::one = { 1.0f, 1.0f };
-
-Vec2 operator+( Vec2 a, Vec2 b ) {
-  return { a.x + b.x, a.y + b.y };
-}
-
-Vec2& operator+=( Vec2& a, Vec2 b ) {
-  a = a + b;
-  return a;
-}
-
-Vec2 operator-( Vec2 a, Vec2 b ) {
-  return { a.x - b.x, a.y - b.y };
-}
-
-Vec2& operator-=( Vec2& a, Vec2 b ) {
-  a = a - b;
-  return a;
-}
-
-Vec2& operator-( Vec2& vec ) {
-  vec = Vec2::zero - vec;
-  return vec;
-}
-
-Vec2 operator*( Vec2 a, Vec2 b ){
-  return { a.x * b.x, a.y * b.y };
-}
-
-Vec2& operator*=( Vec2& a, Vec2 b ) {
-  a = a * b;
-  return a;
-}
-
-Vec2 operator*( Vec2 vec, float scale ) {
-  return { vec.x * scale, vec.y * scale };
-}
-
-Vec2 operator*( float scale, Vec2 vec ) {
-  return { vec.x * scale, vec.y * scale };
-}
-
-Vec2& operator*=( Vec2& vec, float scale ) {
-  vec = vec * scale;
-  return vec;
-}
-
-float dot( Vec2 a, Vec2 b ) {
-  return a.x * b.x + a.y * b.y;
-}
-
-Vec2 rotateVec2( Vec2 vec, float orientation ){
-  float _cos = cos( orientation );
-  float _sin = sin( orientation );
-  return { vec.x * _cos - vec.y * _sin, vec.y * _cos + vec.x * _sin };
-}
-
 RenderInfo DebugRenderer::renderInfo;
 std::vector< DebugCircle > DebugRenderer::circleBufferData;
 
@@ -1188,7 +1095,7 @@ void TransformManager::set( const std::vector< EntityHandle >& entities, const s
   for ( u32 trInd = 0; trInd < transforms.size(); ++trInd ) {
     Transform transform = transforms[ trInd ];
     EntityHandle entity = entities[ trInd ];
-    transformComps.push_back( { entity, transform, transform, 0, 0, 0 } );
+    transformComps.push_back( { entity, transform, transform, 0, 0, 0, 0 } );
     u32 compInd = transformComps.size() - 1;
     mappedPairs[ trInd ] = { entity, compInd };
   }
