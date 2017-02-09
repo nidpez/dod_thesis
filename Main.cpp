@@ -2,14 +2,11 @@
 #include <GLFW/glfw3.h>
 #include <SOIL2.h>
 
-#include <cstdio>
 #include <ctime>
 #include <iostream>
 #include <fstream>
 #include <cstring>
-#include <string>
 #include <sstream>
-#include <cerrno>
 #include <deque>
 #include <vector>
 #include <unordered_map>
