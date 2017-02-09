@@ -147,6 +147,7 @@ class TransformManager {
     ComponentIndex parent;
     ComponentIndex firstChild;
     ComponentIndex nextSibling;
+    ComponentIndex prevSibling;
   };
   static std::vector< TransformComp > transformComps;
   static ComponentMap componentMap;
