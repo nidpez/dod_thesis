@@ -64,7 +64,12 @@ inline Vec2& operator*=( Vec2& vec, float scale ) {
 inline float dot( Vec2 a, Vec2 b ) {
   return a.x * b.x + a.y * b.y;
 }
-
+// FIXME I wanted this function to be just rotate()
+// but a name collision with TransformManager::rotate()
+// compelled me to rename it like this.
+// I also don't want to wrap everything here in a namespace
+// or make the functions into class methods.
+// So either I do wrap these in a namespace or leave this function like this.
 inline Vec2 rotateVec2( Vec2 vec, float orientation ) {
   float _cos = cos( orientation );
   float _sin = sin( orientation );
