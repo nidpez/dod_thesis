@@ -64,6 +64,7 @@ inline Vec2& operator*=( Vec2& vec, float scale ) {
 inline float dot( Vec2 a, Vec2 b ) {
   return a.x * b.x + a.y * b.y;
 }
+
 // FIXME I wanted this function to be just rotate()
 // but a name collision with TransformManager::rotate()
 // compelled me to rename it like this.
