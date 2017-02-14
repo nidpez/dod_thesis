@@ -9,12 +9,10 @@ struct Vec2 {
   union {
     float y, v;
   };
-  static const Vec2 zero; 
-  static const Vec2 one;
 };
 
-const Vec2 Vec2::zero = {};
-const Vec2 Vec2::one = { 1.0f, 1.0f };
+const Vec2 VEC2_ZERO = {};
+const Vec2 VEC2_ONE  = { 1.0f, 1.0f };
 
 inline Vec2  operator+( Vec2 a, Vec2 b ) {
   return { a.x + b.x, a.y + b.y };
@@ -35,7 +33,7 @@ inline Vec2& operator-=( Vec2& a, Vec2 b ) {
 }
 
 inline Vec2& operator-( Vec2& vec ) {
-  vec = Vec2::zero - vec;
+  vec = VEC2_ZERO - vec;
   return vec;
 }
 
