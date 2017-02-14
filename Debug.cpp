@@ -1,5 +1,10 @@
 #include "Debug.hpp"
 
+#include <ctime>
+#include <cstdarg>
+
+#include "Asset.hpp"
+
 /////////////////////// Error handling and logging //////////////////////
 
 void printGlfwError( s32 error, const char* description ) {
@@ -101,10 +106,10 @@ printOpenglError( GLenum source, GLenum type, GLuint id, GLenum severity,
   default :
     severityStr = ( char* )"Undefined";
   }
-  if ( length <= 0 ) { //just to use the length param
+  if ( length <= 0 ) { // just to use the length param
     message = "Error reporting the error!";
   }
-  if ( userParam != nullptr ) { //just to use userParam 
+  if ( userParam != nullptr ) { // just to use userParam 
     userParamStr = ( char* )userParam;
   } else {
     userParamStr = ( char* )"";
@@ -177,7 +182,7 @@ std::vector< DebugCircle > DebugRenderer::circleBufferData;
 
 void DebugRenderer::initialize() {
 #ifndef NDEBUG
-  //configure buffers
+  // configure buffers
   glGenVertexArrays( 1, &renderInfo.vaoId );
   glBindVertexArray( renderInfo.vaoId );
   glGenBuffers( 1, &renderInfo.vboIds[ 0 ] );
@@ -189,14 +194,14 @@ void DebugRenderer::initialize() {
   glVertexAttribPointer( 2, 4, GL_FLOAT, GL_FALSE, 7 * sizeof( GLfloat ), ( void* )( 3 * sizeof( GLfloat ) ) );
   glEnableVertexAttribArray( 2 );
   glBindVertexArray( 0 );
-  //create shader program
+  // create shader program
   s32 error = createShaderProgram( &renderInfo.shaderProgramId,
 			       "shaders/DebugShape.vert", "shaders/DebugShape.frag",
 			       "shaders/DebugShape.geom" );
   if ( error ) {
-    //TODO maybe hardcode a default shader here
+    // TODO maybe hardcode a default shader here
   }
-  //get shader's constants' locations
+  // get shader's constants' locations
   renderInfo.projUnifLoc[ 0 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.left" );
   renderInfo.projUnifLoc[ 1 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.right" );
   renderInfo.projUnifLoc[ 2 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.bottom" );
@@ -224,7 +229,7 @@ void DebugRenderer::addCircles( std::vector< DebugCircle > circles ) {
 
 void DebugRenderer::renderAndClear() {
 #ifndef NDEBUG
-  //configure buffers
+  // configure buffers
   glUseProgram( renderInfo.shaderProgramId );
   glBindVertexArray( renderInfo.vaoId );
   glBindBuffer( GL_ARRAY_BUFFER, renderInfo.vboIds[ 0 ] );

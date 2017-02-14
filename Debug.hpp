@@ -2,6 +2,9 @@
 
 #include <fstream>
 
+#include "EngineCommon.hpp"
+#include "Math.hpp"
+
 // TODO mix Logger and DebugRenderer into Degug class
 
 /////////////////////// Error handling and logging //////////////////////
