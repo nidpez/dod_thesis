@@ -7,6 +7,8 @@
 #include "Asset.hpp"
 #include "CompManagers.hpp"
 
+#include "TransformTest.hpp"
+
 // misc
 GLFWwindow* createWindowAndGlContext( const char* const windowTitle );
 
@@ -31,106 +33,8 @@ s32 main() {
 
   SpriteManager::setOrthoProjection( aspect, 100 );
   DebugRenderer::setOrthoProjection( aspect, 100 );
-  
-  // load textures
-  std::vector< const char* > textureNames = { "astronaut.png", "planetSurface.png" };
-  std::vector< TextureHandle > textureHandles = AssetManager::loadTextures( textureNames );
-  
-  AnimationFrame runFrames[] = {
-    { { 0.0f, 0.0f },		{ 1.0f / 5.0f, 1.0f } },
-    { { 1.0f / 5.0f, 0.0f },	{ 2.0f / 5.0f, 1.0f } },
-    { { 2.0f / 5.0f, 0.0f },	{ 3.0f / 5.0f, 1.0f } },
-    { { 3.0f / 5.0f, 0.0f },	{ 4.0f / 5.0f, 1.0f } }
-  };
-  
-  // Rect planetTexCoords = { { 0.0f, 0.0f }, {1.0f, 1.0f } };
 
-  // create entities to test transform component
-  std::vector< std::vector< EntityHandle > > entityHandles( 6 );
-  u8 blockWidth = 7;
-  u8 blockHeight = 10;
-  u8 blockSize = blockWidth * blockHeight;
-  entityHandles[ 0 ] = EntityManager::create( blockSize );
-  entityHandles[ 1 ] = EntityManager::create( blockSize );
-  entityHandles[ 2 ] = EntityManager::create( blockSize );
-  entityHandles[ 3 ] = EntityManager::create( blockSize );
-  entityHandles[ 4 ] = EntityManager::create( blockSize );
-  entityHandles[ 5 ] = EntityManager::create( blockSize );
-
-  // same sprite
-  SetSpriteArg spriteArg = { { 0, 0 }, textureHandles[ 0 ], static_cast< Rect >( runFrames[ 0 ] ) };
-  std::vector< SetSpriteArg > sprites( 6 * blockSize, spriteArg );
-  for ( u16 v = 0; v < 6; ++v ) {
-    for ( u16 i = 0; i < blockSize; ++i ) {
-      sprites[ v * blockSize + i ].entity = entityHandles[ v ][ i ];
-    }
-  }
-  SpriteManager::set( sprites );
-
-  // all positions
-  const u8 halfViewportHeight = 50; // viewport height = 100 as defined nowhere
-  const u8 halfViewportWidth = halfViewportHeight * aspect;
-  const float cellWidth = halfViewportWidth / 10.0f;
-  const float cellHeight = halfViewportHeight / 10.0f;
-  std::vector< std::vector< Transform > > transforms( 6 );
-  for ( u32 v = 0; v < 6; ++v ) {
-    for ( u32 i = 0; i < blockWidth; ++i ) {
-      for ( u32 j = 0; j < blockHeight; ++j ) {
-	float x = static_cast< float >( ( v % 3 ) * blockWidth + i + 0.5f ) * cellWidth - halfViewportWidth;
-	float y = static_cast< float >( ( ( v >= 3 ) ? blockHeight : 0 ) + j + 0.5f ) * cellHeight - halfViewportHeight;
-	transforms[ v ].push_back( { { x, y }, { 1.0f, 1.0f }, 0.0f } );
-      }
-    }
-    TransformManager::set( entityHandles[ v ], transforms[ v ] );
-  }
-
-  std::default_random_engine generator;
-  auto frand = std::uniform_real_distribution< float >( -1.0f, 1.0f );
-  
-  std::vector< float > rotationSpeeds( blockSize );
-  std::vector< float > rotations( blockSize );
-  for ( u16 i = 0; i < blockSize; ++i ) {
-    rotationSpeeds[ i ] = frand( generator );
-  }
-  
-  std::vector< Vec2 > translationSpeeds( blockSize );
-  std::vector< Vec2 > translations( blockSize );
-  for ( u16 i = 0; i < blockSize; ++i ) {
-    translationSpeeds[ i ] = { frand( generator ), frand( generator ) };
-  }
-
-  std::vector< RotateAroundArg > rotationsAround( blockSize );
-  for ( u16 i = 0; i < blockSize; ++i ) {
-    Vec2 offset = { frand( generator ), frand( generator ) };
-    rotationsAround[ i ] = { transforms[ 2 ][ i ].position + offset * 5.0f, 0.0f };
-  }
-
-  std::vector< Vec2 > scaleSpeeds( blockSize );
-  std::vector< Vec2 > scales( blockSize, { 1.0f, 1.0f } );
-  for ( u16 i = 0; i < blockSize; ++i ) {
-    scaleSpeeds[ i ] = { frand( generator ), frand( generator ) };
-  }
-
-  std::vector< Vec2 > initialPositions1( blockSize );
-  std::vector< Vec2 > initialPositions2( blockSize );
-  std::vector< Vec2 > positions1( blockSize );
-  std::vector< Vec2 > positions2( blockSize );
-  std::vector< Vec2 > translationSpeeds2( blockSize );
-  std::vector< float > rotationSpeeds2( blockSize );
-  std::vector< Vec2 > scaleSpeeds2( blockSize );
-  std::vector< Vec2 > scales2( blockSize, { 1.0f, 1.0f } );
-  for ( u16 i = 0; i < blockSize; ++i ) {
-    initialPositions1[ i ] = transforms[ 4 ][ i ].position;
-    initialPositions2[ i ] = transforms[ 5 ][ i ].position;
-    positions1[ i ] = initialPositions1[ i ];
-    positions2[ i ] = initialPositions2[ i ];
-    translationSpeeds2[ i ] = { frand( generator ), frand( generator ) };
-    scaleSpeeds2[ i ] = { frand( generator ), frand( generator ) };
-    rotationSpeeds2[ i ] = frand( generator );
-  }
-  
-  double lastChangedParams = glfwGetTime();
-  double now;
+  TransformTest::initialize( aspect );
   
   // main loop      
   double t1 = glfwGetTime();
@@ -147,19 +51,19 @@ s32 main() {
     // angle = 0.0f;
     float dir[] = { 0.0f, 0.0f };
     if ( glfwGetKey( window, GLFW_KEY_A ) == GLFW_PRESS ||
-	 glfwGetKey( window, GLFW_KEY_LEFT ) == GLFW_PRESS ) {
+         glfwGetKey( window, GLFW_KEY_LEFT ) == GLFW_PRESS ) {
       dir[ 0 ] -= 1.0f;
     }
     if ( glfwGetKey( window, GLFW_KEY_D ) == GLFW_PRESS ||
-	 glfwGetKey( window, GLFW_KEY_RIGHT ) == GLFW_PRESS ) {
+         glfwGetKey( window, GLFW_KEY_RIGHT ) == GLFW_PRESS ) {
       dir[ 0 ] += 1.0f;
     }
     if ( glfwGetKey( window, GLFW_KEY_W ) == GLFW_PRESS ||
-	 glfwGetKey( window, GLFW_KEY_UP ) == GLFW_PRESS ) {
+         glfwGetKey( window, GLFW_KEY_UP ) == GLFW_PRESS ) {
       dir[ 1 ] += 1.0f;
     }
     if ( glfwGetKey( window, GLFW_KEY_S ) == GLFW_PRESS ||
-	 glfwGetKey( window, GLFW_KEY_DOWN ) == GLFW_PRESS ) {
+         glfwGetKey( window, GLFW_KEY_DOWN ) == GLFW_PRESS ) {
       dir[ 1 ] -= 1.0f;
     }
     float mag = sqrt( dir[ 0 ] * dir[ 0 ] + dir[ 1 ] * dir[ 1 ] );
@@ -188,57 +92,6 @@ s32 main() {
       // }
     }
     
-    for ( u16 i = 0; i < blockSize; ++i ) {
-      rotations[ i ] = rotationSpeeds[ i ] * deltaT * 10.0f;
-    }
-    now = glfwGetTime();
-    bool timeToChangeParams = false;
-    if ( now - lastChangedParams >= 1.0f ) {
-      timeToChangeParams = true;
-      lastChangedParams = now;
-    }
-    for ( u16 i = 0; i < blockSize; ++i ) {
-      if ( timeToChangeParams ) {
-	translationSpeeds[ i ] = -translationSpeeds[ i ];
-      }
-      translations[ i ] = translationSpeeds[ i ] * deltaT * 10.0f;
-    }
-    for ( u16 i = 0; i < blockSize; ++i ) {
-      rotationsAround[ i ].rotation = rotationSpeeds[ i ] * deltaT * 10.0f;
-    }
-    for ( u16 i = 0; i < blockSize; ++i ) {
-      if ( timeToChangeParams ) {
-	scaleSpeeds[ i ] = -scaleSpeeds[ i ];
-      }
-      scales[ i ] += scaleSpeeds[ i ] * deltaT;
-    }
-    for ( u16 i = 0; i < blockSize; ++i ) {
-      positions1[ i ] += translationSpeeds2[ i ] * deltaT * 5.0f;
-      Vec2 pos = positions1[ i ];
-      pos.x = std::sin( pos.x );
-      pos.y = std::sin( pos.y );
-      transforms[ 4 ][ i ].position = initialPositions1[ i ] + pos * 5.0f;
-      transforms[ 4 ][ i ].orientation += rotationSpeeds[ i ] * deltaT * 10.0f;
-    }
-    for ( u16 i = 0; i < blockSize; ++i ) {
-      positions2[ i ] += translationSpeeds2[ i ] * deltaT * 5.0f;
-      Vec2 pos = positions1[ i ];
-      pos.x = std::sin( pos.x );
-      pos.y = std::sin( pos.y );
-      transforms[ 5 ][ i ].position = initialPositions2[ i ] + pos * 5.0f;
-      scales2[ i ] += scaleSpeeds2[ i ] * deltaT * 3.0f;
-      Vec2 scale = scales2[ i ];
-      scale.x = std::sin( scales2[ i ].x );
-      scale.y = std::sin( scales2[ i ].y );
-      transforms[ 5 ][ i ].scale = scale * 1.5f;
-    } 
-    TransformManager::rotate( entityHandles[ 0 ], rotations );
-    TransformManager::translate( entityHandles[ 1 ], translations );
-    TransformManager::rotateAround( entityHandles[ 2 ], rotationsAround );
-    TransformManager::scale( entityHandles[ 3 ], scales );
-    TransformManager::update( entityHandles[ 4 ], transforms[ 4 ] );
-    TransformManager::update( entityHandles[ 5 ], transforms[ 5 ] );
-    
     //detect collisions
     // float dx = tempPos[ 0 ] - pos2[ 0 ];
     // float dy = tempPos[ 1 ] - pos2[ 1 ];
@@ -252,6 +105,8 @@ s32 main() {
     //   tempPos[ 1 ] = pos1.y;
     // }
     CircleColliderManager::updateAndCollide();
+
+    TransformTest::update( deltaT );
     
     // render scene
     glClear( GL_COLOR_BUFFER_BIT );
@@ -280,12 +135,13 @@ s32 main() {
   
   // free OpenGL resources
   glUseProgram( 0 );
-  AssetManager::destroyTextures( textureHandles );
   Logger::write( "Resources freed.\n" );
 
   glfwDestroyWindow( window );
   glfwTerminate();
 
+  TransformTest::shutdown();
+  
   // shut down managers
   AssetManager::shutdown();
   SpriteManager::shutdown();
