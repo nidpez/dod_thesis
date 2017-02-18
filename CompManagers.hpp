@@ -13,11 +13,6 @@ struct Transform {
   float orientation;
 };
 
-struct RotateAroundArg {
-  Vec2 point;
-  float rotation;
-};
-
 class TransformManager {
   struct TransformComp {
     EntityHandle entity;
@@ -33,14 +28,14 @@ class TransformManager {
 public:
   static void initialize();
   static void shutdown();
-  static void set( const std::vector< EntityHandle >& entities, const std::vector< Transform >& transforms );
-  static void remove( const std::vector< EntityHandle >& entities );
-  static void rotate( const std::vector< EntityHandle >& entities, const std::vector< float >& rotations );
-  static void rotateAround( const std::vector< EntityHandle >& entities, const std::vector< RotateAroundArg >& rotations );
-  static void translate( const std::vector< EntityHandle >& entities, const std::vector< Vec2 >& translations );
-  static void scale( const std::vector< EntityHandle >& entities, const std::vector< Vec2 >& scales );
-  static void update( const std::vector< EntityHandle >& entities, const std::vector< Transform >& transforms );
-  static std::vector< Transform > get( const std::vector< EntityHandle >& entities );
+  static void set( EntityHandle entity, Transform transform );
+  static void remove( EntityHandle entity );
+  static void rotate( EntityHandle entity, float rotation );
+  static void rotateAround( EntityHandle entity, Vec2 point, float rotation );
+  static void translate( EntityHandle entity, Vec2 translation );
+  static void scale( EntityHandle entity, Vec2 scale );
+  static void update( EntityHandle entity, Transform transform );
+  static Transform get( EntityHandle entity );
   static std::vector< EntityHandle > getLastUpdated();
 };
 
@@ -65,10 +60,10 @@ class CircleColliderManager {
 public:
   static void initialize();
   static void shutdown();
-  static void add( const std::vector< CircleColliderComp >& circleColliders );
-  static void addAndFitToSpriteSize( const std::vector< EntityHandle >& entities );
-  static void remove( const std::vector< EntityHandle >& entities );
-  static void fitToSpriteSize( const std::vector< EntityHandle >& entities );
+  static void add( CircleColliderComp circleCollider );
+  static void addAndFitToSpriteSize( EntityHandle entity );
+  static void remove( EntityHandle entity );
+  static void fitToSpriteSize( EntityHandle entity );
   static void updateAndCollide();
 };
 
@@ -83,12 +78,6 @@ struct SpriteComp {
   TextureHandle textureId;
   Rect texCoords;
   Vec2 size;
-};
-
-struct SetSpriteArg {
-  EntityHandle entity;
-  TextureHandle textureId;
-  Rect texCoords;
 };
     
 class SpriteManager {
@@ -119,9 +108,9 @@ class SpriteManager {
 public:
   static void initialize();
   static void shutdown();
-  static void set( const std::vector< SetSpriteArg >& sprites );
-  static void remove( const std::vector< EntityHandle >& entities );
-  static std::vector< SpriteComp > get( const std::vector< EntityHandle >& entities );
+  static void set( EntityHandle entity, TextureHandle textureId, Rect texCoords );
+  static void remove( EntityHandle entity );
+  static SpriteComp get( EntityHandle entity );
   static void updateAndRender();
   static void setOrthoProjection( float aspectRatio, float height );
 };

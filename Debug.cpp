@@ -178,7 +178,7 @@ void haltWithMessage( const char* failedCond, const char* file, const char* func
 ////////////////////////// Drawing debug shapes ///////////////////////////
 
 RenderInfo DebugRenderer::renderInfo;
-std::vector< DebugCircle > DebugRenderer::circleBufferData;
+std::vector< DebugRenderer::DebugCircle > DebugRenderer::circleBufferData;
 
 void DebugRenderer::initialize() {
 #ifndef NDEBUG
@@ -217,13 +217,10 @@ void DebugRenderer::shutdown() {
 #endif
 }
 
-void DebugRenderer::addCircles( std::vector< DebugCircle > circles ) {
+void DebugRenderer::addCircle( Vec2 position, float radius, Color color ) {
 #ifndef NDEBUG
-  for ( u32 i = 0; i < circles.size(); ++i ) {
-    float radius = circles[ i ].radius; 
-    ASSERT( radius > 0.0f, "Asked to draw a circle of radius %f", radius );
-  }
-  circleBufferData.insert( circleBufferData.end(), circles.begin(), circles.end() );
+  ASSERT( radius > 0.0f, "Asked to draw a circle of radius %f", radius );
+  circleBufferData.push_back( { color, position, radius } );
 #endif
 }
 

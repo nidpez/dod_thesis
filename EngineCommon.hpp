@@ -42,8 +42,8 @@ class EntityManager {
 public:
   static void initialize();
   static void shutdown();
-  static std::vector< EntityHandle > create( u32 amount );
-  static void destroy( const std::vector< EntityHandle >& entities );
+  static EntityHandle create();
+  static void destroy( EntityHandle entity );
   static bool isAlive( EntityHandle entity );
 };
 
@@ -51,19 +51,18 @@ public:
 
 typedef u32 ComponentIndex;
 
-struct SetComponentMapArg {
-  EntityHandle entity;
-  ComponentIndex compInd;
-};
-
 struct ComponentMap {
   std::unordered_map< u32, ComponentIndex > map;
-  void set( const std::vector< SetComponentMapArg >& mappedPairs );
+  void set( EntityHandle entity, ComponentIndex compInd );
   std::vector< EntityHandle > have( const std::vector< EntityHandle >& entities );
-  std::vector< ComponentIndex > lookup( const std::vector< EntityHandle >& entities );
+  ComponentIndex lookup( EntityHandle entity );
 };
 
 //////////////////////////// Renderer common ////////////////////////////
+
+struct Color {
+  float r, g, b, a;
+};
 
 // assumes a single possible shader per system
 struct RenderInfo {

@@ -17,22 +17,17 @@ void EntityManager::initialize() {
 void EntityManager::shutdown() {
 }
 
-std::vector< EntityHandle > EntityManager::create( u32 amount ){
-  std::vector< EntityHandle > newEntities( amount );
-  for ( u32 entInd = 0; entInd < amount; ++entInd ) {
-    u32 index;
-    if ( freeIndices.size() < MIN_FREE_INDICES ) {
-      generations.push_back( { 0 } );
-      index = generations.size();    
-      ASSERT( index < MAX_ENTITIES, "Tried to create more than %d entities", MAX_ENTITIES ); 
-    } else {
-      index = freeIndices.front();
-      freeIndices.pop_front();
-    }
-    EntityHandle newEntity = { index, generations[ index - 1 ].generation };
-    newEntities[ entInd ] = newEntity;
+EntityHandle EntityManager::create(){
+  u32 index;
+  if ( freeIndices.size() < MIN_FREE_INDICES ) {
+    generations.push_back( { 0 } );
+    index = generations.size();    
+    ASSERT( index < MAX_ENTITIES, "Tried to create more than %d entities", MAX_ENTITIES ); 
+  } else {
+    index = freeIndices.front();
+    freeIndices.pop_front();
   }
-  return newEntities;
+  return { index, generations[ index - 1 ].generation };
 }
 
 bool EntityManager::isAlive( EntityHandle entity ) {
@@ -41,13 +36,9 @@ bool EntityManager::isAlive( EntityHandle entity ) {
 
 //////////////////////////// Component Manager common ////////////////////////////
 
-void ComponentMap::set( const std::vector< SetComponentMapArg >& mappedPairs ) {
-  for ( u32 pairInd = 0; pairInd < mappedPairs.size(); ++pairInd ) {
-    EntityHandle entity = mappedPairs[ pairInd ].entity;
-    ComponentIndex compInd = mappedPairs[ pairInd ].compInd;
-    bool inserted = map.insert( { entity, compInd } ).second;  
-    ASSERT( inserted, "Could not map entity %d to component index %d", entity, compInd );
-  }
+void ComponentMap::set( EntityHandle entity, ComponentIndex compInd ) {
+  bool inserted = map.insert( { entity, compInd } ).second;  
+  ASSERT( inserted, "Could not map entity %d to component index %d", entity, compInd );
 }
 
 std::vector< EntityHandle > ComponentMap::have( const std::vector< EntityHandle >& entities ) {
@@ -61,13 +52,9 @@ std::vector< EntityHandle > ComponentMap::have( const std::vector< EntityHandle 
   return result;
 }
 
-std::vector< ComponentIndex > ComponentMap::lookup( const std::vector< EntityHandle >& entities ) {
-  VALIDATE_ENTITIES( entities );
-  std::vector< ComponentIndex > result( entities.size() );
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    auto iterator = map.find( entities[ entInd ] );
-    ASSERT( iterator != map.end(), "Entity %d has no given component", entities[ entInd ] );
-    result[ entInd ] = iterator->second;
-  }
-  return result;
+ComponentIndex ComponentMap::lookup( EntityHandle entity ) {
+  VALIDATE_ENTITY( entity );
+  auto iterator = map.find( entity );
+  ASSERT( iterator != map.end(), "Entity %d has no given component", entity );
+  return iterator->second;
 }

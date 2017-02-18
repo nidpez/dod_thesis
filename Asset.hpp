@@ -15,8 +15,8 @@ class AssetManager {
 public:
   static void initialize();
   static void shutdown();
-  static std::vector< TextureHandle > loadTextures( std::vector< const char* >& names );
-  static void destroyTextures( const std::vector< TextureHandle >& textures );
+  static TextureHandle loadTexture( const char* name );
+  static void destroyTexture( TextureHandle texture );
   static bool isTextureAlive( TextureHandle texture );
   static TextureAsset getTexture( TextureHandle texture );
 };

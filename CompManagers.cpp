@@ -9,77 +9,53 @@ void TransformManager::initialize() {
 void TransformManager::shutdown() {
 }
 
-void TransformManager::set( const std::vector< EntityHandle >& entities, const std::vector< Transform >& transforms ) {
-  VALIDATE_ENTITIES( entities );
-  std::vector< SetComponentMapArg > mappedPairs( transforms.size() );
-  for ( u32 trInd = 0; trInd < transforms.size(); ++trInd ) {
-    Transform transform = transforms[ trInd ];
-    EntityHandle entity = entities[ trInd ];
-    transformComps.push_back( { entity, transform, transform, 0, 0, 0, 0 } );
-    u32 compInd = transformComps.size() - 1;
-    mappedPairs[ trInd ] = { entity, compInd };
-  }
-  componentMap.set( mappedPairs );
+void TransformManager::set( EntityHandle entity, Transform transform ) {
+  VALIDATE_ENTITY( entity );
+  transformComps.push_back( { entity, transform, transform, 0, 0, 0, 0 } );
+  u32 compInd = transformComps.size() - 1;
+  componentMap.set( entity, compInd );
 }
 
-void TransformManager::rotate( const std::vector< EntityHandle >& entities, const std::vector< float >& rotations ) {
-  std::vector< ComponentIndex > componentInds = componentMap.lookup( entities );
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    transformComps[ componentInds[ entInd ] ].local.orientation += rotations[ entInd ];
-  }
-  // TODO mark transform components as updated
+void TransformManager::rotate( EntityHandle entity, float rotation ) {
+  ComponentIndex componentInd = componentMap.lookup( entity );
+  transformComps[ componentInd ].local.orientation += rotation;
+  // TODO mark transform component as updated
 }
 
-void TransformManager::rotateAround( const std::vector< EntityHandle >& entities, const std::vector< RotateAroundArg >& rotations ) {
-  std::vector< ComponentIndex > componentInds = componentMap.lookup( entities );
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    ComponentIndex componentInd = componentInds[ entInd ];
-    RotateAroundArg rotateArg = rotations[ entInd ];
-    Transform transform = transformComps[ componentInd ].local;
-    transform.orientation += rotateArg.rotation;
-    transform.position = rotateVec2( transform.position - rotateArg.point, rotateArg.rotation ) + rotateArg.point;
-    transformComps[ componentInd ].local = transform;
-  }
-  // TODO mark transform components as updated
+void TransformManager::rotateAround( EntityHandle entity, Vec2 point, float rotation ) {
+  ComponentIndex componentInd = componentMap.lookup( entity );
+  Transform transform = transformComps[ componentInd ].local;
+  transform.orientation += rotation;
+  transform.position = rotateVec2( transform.position - point, rotation ) + point;
+  transformComps[ componentInd ].local = transform;
+  // TODO mark transform component as updated
 }
 
-void TransformManager::translate( const std::vector< EntityHandle >& entities, const std::vector< Vec2 >& translations ) {
-  std::vector< ComponentIndex > componentInds = componentMap.lookup( entities );
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    transformComps[ componentInds[ entInd ] ].local.position += translations[ entInd ];
-  }
-  // TODO mark transform components as updated
+void TransformManager::translate( EntityHandle entity, Vec2 translation ) {
+  ComponentIndex componentInd = componentMap.lookup( entity );
+  transformComps[ componentInd ].local.position += translation;
+  // TODO mark transform component as updated
 }
 
-void TransformManager::scale( const std::vector< EntityHandle >& entities, const std::vector< Vec2 >& scales ) {
-  std::vector< ComponentIndex > componentInds = componentMap.lookup( entities );
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    transformComps[ componentInds[ entInd ] ].local.scale = scales[ entInd ];
-  }
-  // TODO mark transform components as updated
+void TransformManager::scale( EntityHandle entity, Vec2 scale ) {
+  ComponentIndex componentInd = componentMap.lookup( entity );
+  transformComps[ componentInd ].local.scale = scale;
+  // TODO mark transform component as updated
 }
 
-void TransformManager::update( const std::vector< EntityHandle >& entities, const std::vector< Transform >& transforms ) {
-  std::vector< ComponentIndex > componentInds = componentMap.lookup( entities );
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    ComponentIndex componentInd = componentInds[ entInd ];
-    Transform transformArg = transforms[ entInd ];
-    Transform transform = transformComps[ componentInd ].local;
-    transform.position = transformArg.position;
-    transform.scale = transformArg.scale;
-    transform.orientation = transformArg.orientation;
-    transformComps[ componentInd ].local = transform;
-  }
-  // TODO mark transform components as updated
+void TransformManager::update( EntityHandle entity, Transform transform ) {
+  ComponentIndex componentInd = componentMap.lookup( entity );
+  Transform local = transformComps[ componentInd ].local;
+  local.position = transform.position;
+  local.scale = transform.scale;
+  local.orientation = transform.orientation;
+  transformComps[ componentInd ].local = local;
+  // TODO mark transform component as updated
 }
 
-std::vector< Transform > TransformManager::get( const std::vector< EntityHandle >& entities ) {
-  std::vector< ComponentIndex > componentInds = componentMap.lookup( entities );
-  std::vector< Transform > result( entities.size() );
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    result[ entInd ] = transformComps[ componentInds[ entInd ] ].local;
-  }
-  return result;
+Transform TransformManager::get( EntityHandle entity ) {
+  ComponentIndex componentInd = componentMap.lookup( entity );
+  return transformComps[ componentInd ].local;
 }
 
 std::vector< EntityHandle > TransformManager::getLastUpdated() {
@@ -100,29 +76,21 @@ void CircleColliderManager::initialize() {
 void CircleColliderManager::shutdown() {
 }
 
-void CircleColliderManager::add( const std::vector< CircleColliderComp >& circleColliders ) {
-  std::vector< SetComponentMapArg > mappedPairs( circleColliders.size() );
-  for ( u32 collInd = 0; collInd < circleColliders.size(); ++collInd ) {
-    CircleColliderComp circleColliderComp = circleColliders[ collInd ];
-    EntityHandle entity = circleColliderComp.entity;
-    VALIDATE_ENTITY( entity );
-    float radius = circleColliderComp.radius;
-    ASSERT( radius > 0.0f, "A collider of radius %f is useless", radius );
-    Vec2 center = circleColliderComp.center;
-    circleColliderComps.push_back( { entity, center, radius, { 0, 0 }, { 0, 0 } } );
-    u32 compInd = circleColliderComps.size() - 1;
-    mappedPairs[ collInd ] = { entity, compInd };
-  }
-  componentMap.set( mappedPairs );
+void CircleColliderManager::add( CircleColliderComp circleCollider ) {
+  EntityHandle entity = circleCollider.entity;
+  VALIDATE_ENTITY( entity );
+  float radius = circleCollider.radius;
+  ASSERT( radius > 0.0f, "A collider of radius %f is useless", radius );
+  Vec2 center = circleCollider.center;
+  circleColliderComps.push_back( { entity, center, radius, { 0, 0 }, { 0, 0 } } );
+  u32 compInd = circleColliderComps.size() - 1;
+  componentMap.set( entity, compInd );
 }
 
-void CircleColliderManager::addAndFitToSpriteSize( const std::vector< EntityHandle >& entities ) {
-  std::vector< CircleColliderComp > circleColliders( entities.size() );
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    circleColliders[ entInd ] = { entities[ entInd ], {}, 1.0f };
-  }
-  add( circleColliders );
-  fitToSpriteSize( entities );
+void CircleColliderManager::addAndFitToSpriteSize( EntityHandle entity ) {
+  CircleColliderComp circleCollider = { entity, {}, 1.0f };
+  add( circleCollider );
+  fitToSpriteSize( entity );
 }
   
 void CircleColliderManager::updateAndCollide() {
@@ -131,45 +99,31 @@ void CircleColliderManager::updateAndCollide() {
   }
   // update local transform cache
   std::vector< EntityHandle > updatedEntities = TransformManager::getLastUpdated();
-  // TODO get world transforms here
-  std::vector< Transform > updatedTransforms = TransformManager::get( updatedEntities );
   updatedEntities = componentMap.have( updatedEntities );
-  std::vector< ComponentIndex > updatedCircleColliders = componentMap.lookup( updatedEntities );
-  for ( u32 trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
-    Transform transform = updatedTransforms[ trInd ];
-    ComponentIndex circleColliderCompInd = updatedCircleColliders[ trInd ];
+  for ( u32 trInd = 0; trInd < updatedEntities.size(); ++trInd ) {
+    // FIXME get world transforms here
+    Transform transform = TransformManager::get( updatedEntities[ trInd ] );
+    ComponentIndex circleColliderCompInd = componentMap.lookup( updatedEntities[ trInd ] );
     circleColliderComps[ circleColliderCompInd ].position = transform.position;
     circleColliderComps[ circleColliderCompInd ].scale = transform.scale;
   }
   // TODO do frustrum culling
-  std::vector< DebugCircle > circles;
-  circles.reserve( circleColliderComps.size() );
   for ( u32 colInd = 0; colInd < circleColliderComps.size(); ++colInd ) {
     __CircleColliderComp circleColliderComp = circleColliderComps[ colInd ];
-    DebugCircle circle;
     float scaleX = circleColliderComp.scale.x, scaleY = circleColliderComp.scale.y;
     float maxScale = ( scaleX > scaleY ) ? scaleX : scaleY;
-    circle.position = circleColliderComp.position + circleColliderComp.center * maxScale;
-    circle.radius = circleColliderComp.radius * maxScale;
-    circle.color[ 0 ] =  0.0f;
-    circle.color[ 1 ] =  1.0f;
-    circle.color[ 2 ] =  0.0f;
-    circle.color[ 3 ] =  1.0f;
-    circles.push_back( circle );
+    Vec2 position = circleColliderComp.position + circleColliderComp.center * maxScale;
+    float radius = circleColliderComp.radius * maxScale;
+    Color color = { 0.0f, 1.0f, 0.0f, 1.0f };
+    DebugRenderer::addCircle( position, radius, color );
   }
-  DebugRenderer::addCircles( circles );
 }
 
-void CircleColliderManager::fitToSpriteSize( const std::vector< EntityHandle >& entities ) {
-  std::vector< ComponentIndex > componentInds = componentMap.lookup( entities );
-  std::vector< SpriteComp > spriteComps = SpriteManager::get( entities );
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    SpriteComp spriteComp = spriteComps[ entInd ];
-    ComponentIndex componentInd = componentInds[ entInd ];
-    Vec2 size = spriteComp.size;
-    float maxSize = ( size.x > size.y ) ? size.x : size.y;
-    circleColliderComps[ componentInd ].radius = maxSize / 2.0f;
-  }
+void CircleColliderManager::fitToSpriteSize( EntityHandle entity ) {
+  ComponentIndex componentInd = componentMap.lookup( entity );
+  Vec2 size = SpriteManager::get( entity ).size;
+  float maxSize = ( size.x > size.y ) ? size.x : size.y;
+  circleColliderComps[ componentInd ].radius = maxSize / 2.0f;
 }
 
 std::vector< SpriteManager::__SpriteComp > SpriteManager::spriteComps;
@@ -198,7 +152,7 @@ void SpriteManager::initialize() {
   glBindVertexArray( 0 );
   // create shader program
   s32 error = createShaderProgram( &renderInfo.shaderProgramId,
-				   "shaders/SpriteUnlit.vert", "shaders/SpriteUnlit.frag" );
+                                   "shaders/SpriteUnlit.vert", "shaders/SpriteUnlit.frag" );
   if ( error ) {
     // TODO maybe hardcode a default shader here
   }  
@@ -215,39 +169,25 @@ void SpriteManager::shutdown() {
   glDeleteBuffers( 2, renderInfo.vboIds );
 }
 
-void SpriteManager::set( const std::vector< SetSpriteArg >& sprites ) {
-  std::vector< SetComponentMapArg > mappedPairs( sprites.size() );
-  for ( u32 sprInd = 0; sprInd < sprites.size(); ++sprInd ) {
-    SetSpriteArg setSpriteArg = sprites[ sprInd ];
-    EntityHandle entity = setSpriteArg.entity;
-    VALIDATE_ENTITY( entity );
-    TextureHandle textureId = setSpriteArg.textureId;
-    Rect texCoords = setSpriteArg.texCoords; 
-    ASSERT( AssetManager::isTextureAlive( textureId ), "Invalid texture id %d", textureId ); 
-    __SpriteComp spriteComp = {};
-    spriteComp.entity = entity;
-    spriteComp.textureId = textureId;
-    spriteComp.texCoords = texCoords;
-    TextureAsset texture = AssetManager::getTexture( textureId );
-    float width = texture.width * ( texCoords.max.u - texCoords.min.u ) / PIXELS_PER_UNIT;
-    float height = texture.height * ( texCoords.max.v - texCoords.min.v ) / PIXELS_PER_UNIT;
-    spriteComp.size = { width, height };
-    spriteComps.push_back( spriteComp );
-    u32 compInd = spriteComps.size() - 1;
-    mappedPairs[ sprInd ] = { entity, compInd };
-  }
-  componentMap.set( mappedPairs );
+void SpriteManager::set( EntityHandle entity, TextureHandle textureId, Rect texCoords ) {
+  VALIDATE_ENTITY( entity );
+  ASSERT( AssetManager::isTextureAlive( textureId ), "Invalid texture id %d", textureId ); 
+  __SpriteComp spriteComp = {};
+  spriteComp.entity = entity;
+  spriteComp.textureId = textureId;
+  spriteComp.texCoords = texCoords;
+  TextureAsset texture = AssetManager::getTexture( textureId );
+  float width = texture.width * ( texCoords.max.u - texCoords.min.u ) / PIXELS_PER_UNIT;
+  float height = texture.height * ( texCoords.max.v - texCoords.min.v ) / PIXELS_PER_UNIT;
+  spriteComp.size = { width, height };
+  spriteComps.push_back( spriteComp );
+  u32 compInd = spriteComps.size() - 1;
+  componentMap.set( entity, compInd );
 }
 
-std::vector< SpriteComp > SpriteManager::get( const std::vector< EntityHandle >& entities ) {
-  std::vector< ComponentIndex > componentInds = componentMap.lookup( entities );
-  std::vector< SpriteComp > resultSpriteComps;
-  resultSpriteComps.reserve( entities.size() );
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    SpriteComp spriteComp = static_cast< SpriteComp >( spriteComps[ componentInds[ entInd ] ] );
-    resultSpriteComps.push_back( spriteComp );
-  }
-  return resultSpriteComps;
+SpriteComp SpriteManager::get( EntityHandle entity ) {
+  ComponentIndex componentInd = componentMap.lookup( entity );
+  return static_cast< SpriteComp >( spriteComps[ componentInd ] );
 }
     
 void SpriteManager::setOrthoProjection( float aspectRatio, float height ) {
@@ -265,13 +205,11 @@ void SpriteManager::updateAndRender() {
   }
   // update local transform cache
   std::vector< EntityHandle > updatedEntities = TransformManager::getLastUpdated();
-  // TODO get world transforms here
-  std::vector< Transform > updatedTransforms = TransformManager::get( updatedEntities );
   updatedEntities = componentMap.have( updatedEntities );
-  std::vector< ComponentIndex > updatedSprites = componentMap.lookup( updatedEntities );
-  for ( u32 trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
-    Transform transform = updatedTransforms[ trInd ];
-    ComponentIndex spriteCompInd = updatedSprites[ trInd ];
+  for ( u32 trInd = 0; trInd < updatedEntities.size(); ++trInd ) {
+    // TODO get world transforms here
+    Transform transform = TransformManager::get( updatedEntities[ trInd ] );
+    ComponentIndex spriteCompInd = componentMap.lookup( updatedEntities[ trInd ] );
     spriteComps[ spriteCompInd ].position = transform.position;
     spriteComps[ spriteCompInd ].scale = transform.scale;
     spriteComps[ spriteCompInd ].orientation = transform.orientation;

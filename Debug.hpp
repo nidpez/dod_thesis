@@ -68,19 +68,18 @@ void haltWithMessage( const char* failedCond, const char* file, const char* func
 
 ////////////////////////// Drawing debug shapes ///////////////////////////
 
-struct DebugCircle {
-  Vec2 position;
-  float radius;
-  float color[ 4 ];
-};
-
 class DebugRenderer {
+  struct DebugCircle {
+    Color color;
+    Vec2 position;
+    float radius;
+  };
   static RenderInfo renderInfo;
   static std::vector< DebugCircle > circleBufferData;
 public:
   static void initialize();
   static void shutdown();
-  static void addCircles( std::vector< DebugCircle > circles );
+  static void addCircle( Vec2 position, float radius, Color color );
   static void renderAndClear();
   static void setOrthoProjection( float aspectRatio, float height );
 };
