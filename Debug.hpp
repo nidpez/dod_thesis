@@ -79,7 +79,7 @@ class DebugRenderer {
 public:
   static void initialize();
   static void shutdown();
-  static void addCircle( Circle circle, Color color );
+  static void drawCircle( Circle circle, Color color );
   static void renderAndClear();
   static void setOrthoProjection( float aspectRatio, float height );
 };

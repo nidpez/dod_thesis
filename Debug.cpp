@@ -217,7 +217,7 @@ void DebugRenderer::shutdown() {
 #endif
 }
 
-void DebugRenderer::addCircle( Circle circle, Color color ) {
+void DebugRenderer::drawCircle( Circle circle, Color color ) {
 #ifndef NDEBUG
   ASSERT( circle.radius > 0.0f, "Asked to draw a circle of radius %f", circle.radius );
   circleBufferData.push_back( { color, circle.center, circle.radius } );

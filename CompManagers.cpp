@@ -115,7 +115,7 @@ void CircleColliderManager::updateAndCollide() {
     float radius = circleColliderComp.circle.radius * maxScale;
     Circle circle = { position, radius };
     Color color = { 0.0f, 1.0f, 0.0f, 1.0f };
-    DebugRenderer::addCircle( circle, color );
+    DebugRenderer::drawCircle( circle, color );
   }
 }
 
