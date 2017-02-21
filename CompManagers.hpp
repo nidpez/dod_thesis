@@ -48,9 +48,7 @@ struct CircleCollider {
 // TODO allow multiple colliders per entity (with linked list?)
 class CircleColliderManager {
   struct CircleColliderComp {
-    EntityHandle entity;
-    Vec2 center;
-    float radius;
+    CircleCollider circle;
     // transform cache
     Vec2 position;
     Vec2 scale;
@@ -82,14 +80,9 @@ struct Sprite {
     
 class SpriteManager {
   struct SpriteComp {
-    EntityHandle entity;
-    TextureHandle textureId;
-    Rect texCoords;
-    Vec2 size;
+    Sprite sprite;
     // transform cache
-    Vec2 position;
-    Vec2 scale;
-    float orientation;
+    Transform transform;
     explicit operator Sprite() const;
   };
   static std::vector< SpriteComp > spriteComps;

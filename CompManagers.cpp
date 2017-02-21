@@ -112,8 +112,8 @@ void CircleColliderManager::updateAndCollide() {
     CircleColliderComp circleColliderComp = circleColliderComps[ colInd ];
     float scaleX = circleColliderComp.scale.x, scaleY = circleColliderComp.scale.y;
     float maxScale = ( scaleX > scaleY ) ? scaleX : scaleY;
-    Vec2 position = circleColliderComp.position + circleColliderComp.center * maxScale;
-    float radius = circleColliderComp.radius * maxScale;
+    Vec2 position = circleColliderComp.position + circleColliderComp.circle.center * maxScale;
+    float radius = circleColliderComp.circle.radius * maxScale;
     Color color = { 0.0f, 1.0f, 0.0f, 1.0f };
     DebugRenderer::addCircle( position, radius, color );
   }
@@ -123,7 +123,7 @@ void CircleColliderManager::fitToSpriteSize( EntityHandle entity ) {
   ComponentIndex componentInd = componentMap.lookup( entity );
   Vec2 size = SpriteManager::get( entity ).size;
   float maxSize = ( size.x > size.y ) ? size.x : size.y;
-  circleColliderComps[ componentInd ].radius = maxSize / 2.0f;
+  circleColliderComps[ componentInd ].circle.radius = maxSize / 2.0f;
 }
 
 std::vector< SpriteManager::SpriteComp > SpriteManager::spriteComps;
@@ -133,7 +133,7 @@ SpriteManager::Pos* SpriteManager::posBufferData;
 SpriteManager::UV* SpriteManager::texCoordsBufferData;
 
 SpriteManager::SpriteComp::operator Sprite() const {
-  return { this->entity, this->textureId, this->texCoords, this->size };
+  return { this->sprite.entity, this->sprite.textureId, this->sprite.texCoords, this->sprite.size };
 }
 
 void SpriteManager::initialize() {
@@ -173,13 +173,13 @@ void SpriteManager::set( EntityHandle entity, TextureHandle textureId, Rect texC
   VALIDATE_ENTITY( entity );
   ASSERT( AssetManager::isTextureAlive( textureId ), "Invalid texture id %d", textureId ); 
   SpriteComp spriteComp = {};
-  spriteComp.entity = entity;
-  spriteComp.textureId = textureId;
-  spriteComp.texCoords = texCoords;
+  spriteComp.sprite.entity = entity;
+  spriteComp.sprite.textureId = textureId;
+  spriteComp.sprite.texCoords = texCoords;
   TextureAsset texture = AssetManager::getTexture( textureId );
   float width = texture.width * ( texCoords.max.u - texCoords.min.u ) / PIXELS_PER_UNIT;
   float height = texture.height * ( texCoords.max.v - texCoords.min.v ) / PIXELS_PER_UNIT;
-  spriteComp.size = { width, height };
+  spriteComp.sprite.size = { width, height };
   spriteComps.push_back( spriteComp );
   u32 compInd = spriteComps.size() - 1;
   componentMap.set( entity, compInd );
@@ -210,9 +210,9 @@ void SpriteManager::updateAndRender() {
     // TODO get world transforms here
     Transform transform = TransformManager::get( updatedEntities[ trInd ] );
     ComponentIndex spriteCompInd = componentMap.lookup( updatedEntities[ trInd ] );
-    spriteComps[ spriteCompInd ].position = transform.position;
-    spriteComps[ spriteCompInd ].scale = transform.scale;
-    spriteComps[ spriteCompInd ].orientation = transform.orientation;
+    spriteComps[ spriteCompInd ].transform.position = transform.position;
+    spriteComps[ spriteCompInd ].transform.scale = transform.scale;
+    spriteComps[ spriteCompInd ].transform.orientation = transform.orientation;
   }
   // build vertex buffer and render for sprites with same texture
   glUseProgram( renderInfo.shaderProgramId );
@@ -235,9 +235,9 @@ void SpriteManager::updateAndRender() {
   for ( u32 spriteInd = 0; spriteInd < spritesToRenderCount; ++spriteInd ) {
     SpriteComp spriteComp = spriteComps[ spriteInd ];
     for ( u32 vertInd = 0; vertInd < vertsPerSprite; ++vertInd ) {
-      Vec2 vert = baseGeometry[ vertInd ] * spriteComp.size * spriteComp.scale;
-      vert = rotateVec2( vert, spriteComp.orientation );
-      vert += spriteComp.position;
+      Vec2 vert = baseGeometry[ vertInd ] * spriteComp.sprite.size * spriteComp.transform.scale;
+      vert = rotateVec2( vert, spriteComp.transform.orientation );
+      vert += spriteComp.transform.position;
       posBufferData[ spriteInd * vertsPerSprite + vertInd ].pos = vert;
     }
   } 
@@ -248,13 +248,11 @@ void SpriteManager::updateAndRender() {
   // build the texture coordinates buffer
   for ( u32 spriteInd = 0; spriteInd < spritesToRenderCount; ++spriteInd ) {
     SpriteComp spriteComp = spriteComps[ spriteInd ];
+    Vec2 max = spriteComp.sprite.texCoords.max;
+    Vec2 min = spriteComp.sprite.texCoords.min;
     Vec2 texCoords[] = {
-      spriteComp.texCoords.min,
-      spriteComp.texCoords.max,
-      { spriteComp.texCoords.min.u, spriteComp.texCoords.max.v },
-      spriteComp.texCoords.min,
-      { spriteComp.texCoords.max.u, spriteComp.texCoords.min.v },
-      spriteComp.texCoords.max
+      min, max, { min.u, max.v },
+      min, { max.u, min.v }, max
     };
     for ( u32 vertInd = 0; vertInd < vertsPerSprite; ++vertInd ) {
       texCoordsBufferData[ spriteInd * vertsPerSprite + vertInd ].uv = texCoords[ vertInd ];
@@ -266,19 +264,19 @@ void SpriteManager::updateAndRender() {
   delete[] texCoordsBufferData;
   // issue render commands
   // TODO keep sorted by texture id
-  u32 currentTexId = spriteComps[ 0 ].textureId;  
+  u32 currentTexId = spriteComps[ 0 ].sprite.textureId;  
   ASSERT( AssetManager::isTextureAlive( currentTexId ), "Invalid texture id %d", currentTexId );  
   u32 currentTexGlId = AssetManager::getTexture( currentTexId ).glId;
   glBindTexture( GL_TEXTURE_2D, currentTexGlId );
   // mark where a sub-buffer with sprites sharing a texture ends and a new one begins
   u32 currentSubBufferStart = 0;
   for ( u32 spriteInd = 1; spriteInd < spritesToRenderCount; ++spriteInd ) {
-    if ( spriteComps[ spriteInd ].textureId != currentTexId ) {
+    if ( spriteComps[ spriteInd ].sprite.textureId != currentTexId ) {
       // send current vertex sub-buffer and render it
       u32 spriteCountInSubBuffer = spriteInd - currentSubBufferStart;
       glDrawArrays( GL_TRIANGLES, vertsPerSprite * currentSubBufferStart, vertsPerSprite * spriteCountInSubBuffer );
       // and start a new one
-      currentTexId = spriteComps[ spriteInd ].textureId;      
+      currentTexId = spriteComps[ spriteInd ].sprite.textureId;      
       ASSERT( AssetManager::isTextureAlive( currentTexId ), "Invalid texture id %d", currentTexId );
       currentTexGlId = AssetManager::getTexture( currentTexId ).glId;
       glBindTexture( GL_TEXTURE_2D, currentTexGlId );
