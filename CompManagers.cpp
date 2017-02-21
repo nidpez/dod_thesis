@@ -67,7 +67,7 @@ std::vector< EntityHandle > TransformManager::getLastUpdated() {
   return result;
 }
 
-std::vector< CircleColliderManager::__CircleColliderComp > CircleColliderManager::circleColliderComps;
+std::vector< CircleColliderManager::CircleColliderComp > CircleColliderManager::circleColliderComps;
 ComponentMap CircleColliderManager::componentMap;
 
 void CircleColliderManager::initialize() {
@@ -76,7 +76,7 @@ void CircleColliderManager::initialize() {
 void CircleColliderManager::shutdown() {
 }
 
-void CircleColliderManager::add( CircleColliderComp circleCollider ) {
+void CircleColliderManager::add( CircleCollider circleCollider ) {
   EntityHandle entity = circleCollider.entity;
   VALIDATE_ENTITY( entity );
   float radius = circleCollider.radius;
@@ -88,7 +88,7 @@ void CircleColliderManager::add( CircleColliderComp circleCollider ) {
 }
 
 void CircleColliderManager::addAndFitToSpriteSize( EntityHandle entity ) {
-  CircleColliderComp circleCollider = { entity, {}, 1.0f };
+  CircleCollider circleCollider = { entity, {}, 1.0f };
   add( circleCollider );
   fitToSpriteSize( entity );
 }
@@ -109,7 +109,7 @@ void CircleColliderManager::updateAndCollide() {
   }
   // TODO do frustrum culling
   for ( u32 colInd = 0; colInd < circleColliderComps.size(); ++colInd ) {
-    __CircleColliderComp circleColliderComp = circleColliderComps[ colInd ];
+    CircleColliderComp circleColliderComp = circleColliderComps[ colInd ];
     float scaleX = circleColliderComp.scale.x, scaleY = circleColliderComp.scale.y;
     float maxScale = ( scaleX > scaleY ) ? scaleX : scaleY;
     Vec2 position = circleColliderComp.position + circleColliderComp.center * maxScale;
@@ -126,13 +126,13 @@ void CircleColliderManager::fitToSpriteSize( EntityHandle entity ) {
   circleColliderComps[ componentInd ].radius = maxSize / 2.0f;
 }
 
-std::vector< SpriteManager::__SpriteComp > SpriteManager::spriteComps;
+std::vector< SpriteManager::SpriteComp > SpriteManager::spriteComps;
 ComponentMap SpriteManager::componentMap;
 RenderInfo SpriteManager::renderInfo;
 SpriteManager::Pos* SpriteManager::posBufferData;
 SpriteManager::UV* SpriteManager::texCoordsBufferData;
 
-SpriteManager::__SpriteComp::operator SpriteComp() const {
+SpriteManager::SpriteComp::operator Sprite() const {
   return { this->entity, this->textureId, this->texCoords, this->size };
 }
 
@@ -172,7 +172,7 @@ void SpriteManager::shutdown() {
 void SpriteManager::set( EntityHandle entity, TextureHandle textureId, Rect texCoords ) {
   VALIDATE_ENTITY( entity );
   ASSERT( AssetManager::isTextureAlive( textureId ), "Invalid texture id %d", textureId ); 
-  __SpriteComp spriteComp = {};
+  SpriteComp spriteComp = {};
   spriteComp.entity = entity;
   spriteComp.textureId = textureId;
   spriteComp.texCoords = texCoords;
@@ -185,9 +185,9 @@ void SpriteManager::set( EntityHandle entity, TextureHandle textureId, Rect texC
   componentMap.set( entity, compInd );
 }
 
-SpriteComp SpriteManager::get( EntityHandle entity ) {
+Sprite SpriteManager::get( EntityHandle entity ) {
   ComponentIndex componentInd = componentMap.lookup( entity );
-  return static_cast< SpriteComp >( spriteComps[ componentInd ] );
+  return static_cast< Sprite >( spriteComps[ componentInd ] );
 }
     
 void SpriteManager::setOrthoProjection( float aspectRatio, float height ) {
@@ -233,7 +233,7 @@ void SpriteManager::updateAndRender() {
     { 0.5f,	 0.5f }
   };
   for ( u32 spriteInd = 0; spriteInd < spritesToRenderCount; ++spriteInd ) {
-    __SpriteComp spriteComp = spriteComps[ spriteInd ];
+    SpriteComp spriteComp = spriteComps[ spriteInd ];
     for ( u32 vertInd = 0; vertInd < vertsPerSprite; ++vertInd ) {
       Vec2 vert = baseGeometry[ vertInd ] * spriteComp.size * spriteComp.scale;
       vert = rotateVec2( vert, spriteComp.orientation );
@@ -247,7 +247,7 @@ void SpriteManager::updateAndRender() {
   delete[] posBufferData;
   // build the texture coordinates buffer
   for ( u32 spriteInd = 0; spriteInd < spritesToRenderCount; ++spriteInd ) {
-    __SpriteComp spriteComp = spriteComps[ spriteInd ];
+    SpriteComp spriteComp = spriteComps[ spriteInd ];
     Vec2 texCoords[] = {
       spriteComp.texCoords.min,
       spriteComp.texCoords.max,

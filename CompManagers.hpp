@@ -39,7 +39,7 @@ public:
   static std::vector< EntityHandle > getLastUpdated();
 };
 
-struct CircleColliderComp {
+struct CircleCollider {
   EntityHandle entity;
   Vec2 center;
   float radius;
@@ -47,7 +47,7 @@ struct CircleColliderComp {
 
 // TODO allow multiple colliders per entity (with linked list?)
 class CircleColliderManager {
-  struct __CircleColliderComp {
+  struct CircleColliderComp {
     EntityHandle entity;
     Vec2 center;
     float radius;
@@ -55,12 +55,12 @@ class CircleColliderManager {
     Vec2 position;
     Vec2 scale;
   };
-  static std::vector< __CircleColliderComp > circleColliderComps;
+  static std::vector< CircleColliderComp > circleColliderComps;
   static ComponentMap componentMap;
 public:
   static void initialize();
   static void shutdown();
-  static void add( CircleColliderComp circleCollider );
+  static void add( CircleCollider circleCollider );
   static void addAndFitToSpriteSize( EntityHandle entity );
   static void remove( EntityHandle entity );
   static void fitToSpriteSize( EntityHandle entity );
@@ -73,7 +73,7 @@ struct Rect {
   Vec2 max;
 };
 
-struct SpriteComp {
+struct Sprite {
   EntityHandle entity;
   TextureHandle textureId;
   Rect texCoords;
@@ -81,7 +81,7 @@ struct SpriteComp {
 };
     
 class SpriteManager {
-  struct __SpriteComp {
+  struct SpriteComp {
     EntityHandle entity;
     TextureHandle textureId;
     Rect texCoords;
@@ -90,9 +90,9 @@ class SpriteManager {
     Vec2 position;
     Vec2 scale;
     float orientation;
-    explicit operator SpriteComp() const;
+    explicit operator Sprite() const;
   };
-  static std::vector< __SpriteComp > spriteComps;
+  static std::vector< SpriteComp > spriteComps;
   static ComponentMap componentMap;
   // rendering data
   struct Pos {
@@ -110,7 +110,7 @@ public:
   static void shutdown();
   static void set( EntityHandle entity, TextureHandle textureId, Rect texCoords );
   static void remove( EntityHandle entity );
-  static SpriteComp get( EntityHandle entity );
+  static Sprite get( EntityHandle entity );
   static void updateAndRender();
   static void setOrthoProjection( float aspectRatio, float height );
 };
