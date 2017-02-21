@@ -27,7 +27,7 @@ TextureHandle AssetManager::loadTexture( const char* name ) {
   glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ); 
   glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
   textureAssets.push_back( { name, width, height, glId } );
-  Logger::write( "Texture '%s' successfully loaded (glId = %d)\n", name, glId );
+  Debug::write( "Texture '%s' successfully loaded (glId = %d)\n", name, glId );
   return textureAssets.size() - 1;
 }
 
@@ -82,9 +82,9 @@ s32 compileShader( const char* name, const GLenum type, GLuint* shaderId ) {
     glGetShaderiv( *shaderId, GL_INFO_LOG_LENGTH, &maxLength );
     GLchar* errorLog = ( GLchar* )malloc( sizeof( GLchar ) * maxLength );
     glGetShaderInfoLog( *shaderId, maxLength, &maxLength, errorLog );
-    Logger::write( "Shader error:\n\t%s\n", errorLog );
+    Debug::write( "Shader error:\n\t%s\n", errorLog );
     free( errorLog );
-    Logger::write( "Shader source:\n\"%s\"\n", source );
+    Debug::write( "Shader source:\n\"%s\"\n", source );
     glDeleteShader( *shaderId );
     return 1;
     // TODO on shader error replace with default ugly shader instead of quitting

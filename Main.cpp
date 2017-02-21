@@ -10,19 +10,24 @@
 #include "TransformTest.hpp"
 
 // misc
+
+static void printGlfwError( s32 error, const char* description );
+
+static void APIENTRY printOpenglError( GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam );
+
 GLFWwindow* createWindowAndGlContext( const char* const windowTitle );
 
 s32 main() {
   // initialize managers
-  Logger::initialize();
+  Debug::initializeLogger();
   GLFWwindow* window = createWindowAndGlContext( "Space Adventure (working title)" );
   EntityManager::initialize();
   TransformManager::initialize();
   CircleColliderManager::initialize();
   SpriteManager::initialize();
+  Debug::initializeRenderer();
   // AnimationManager animationManager;
   AssetManager::initialize();
-  DebugRenderer::initialize();
   
   // configure viewport and orthographic projection
   // TODO put projection info in a Camera component
@@ -32,7 +37,7 @@ s32 main() {
   float aspect = windowWidth / ( float )windowHeight;
 
   SpriteManager::setOrthoProjection( aspect, 100 );
-  DebugRenderer::setOrthoProjection( aspect, 100 );
+  Debug::setOrthoProjection( aspect, 100 );
 
   TransformTest::initialize( aspect );
   
@@ -40,7 +45,7 @@ s32 main() {
   double t1 = glfwGetTime();
   double t2;
   double deltaT = 0.0;
-  Logger::write( "About to enter main loop.\n" );
+  Debug::write( "About to enter main loop.\n" );
   while ( !glfwWindowShouldClose( window ) ) {
     // process input
     glfwPollEvents();
@@ -113,7 +118,7 @@ s32 main() {
     SpriteManager::updateAndRender();
   
     // // render debug shapes
-    DebugRenderer::renderAndClear();
+    Debug::renderAndClear();
     
     glfwSwapBuffers( window );
 
@@ -131,11 +136,11 @@ s32 main() {
     }
     t1 = t2;
   }
-  Logger::write( "Main loop exited.\n" );
+  Debug::write( "Main loop exited.\n" );
   
   // free OpenGL resources
   glUseProgram( 0 );
-  Logger::write( "Resources freed.\n" );
+  Debug::write( "Resources freed.\n" );
 
   glfwDestroyWindow( window );
   glfwTerminate();
@@ -148,9 +153,121 @@ s32 main() {
   CircleColliderManager::shutdown();
   TransformManager::shutdown();
   EntityManager::shutdown();
-  Logger::shutdown();
+  Debug::shutdown();
   
   return 0;
+}
+
+void printGlfwError( s32 error, const char* description ) {
+  char* errorName;
+  switch ( error ) {
+  case 0x00010001:
+    errorName = ( char* )"GLFW_NOT_INITIALIZED";
+    break;
+  case 0x00010002:
+    errorName = ( char* )"GLFW_NO_CURRENT_CONTEXT";
+    break;
+  case 0x00010003:
+    errorName = ( char* )"GLFW_INVALID_ENUM";
+    break;
+  case 0x00010004:
+    errorName = ( char* )"GLFW_INVALID_VALUE";
+    break;
+  case 0x00010005:
+    errorName = ( char* )"GLFW_OUT_OF_MEMORY";
+    break;
+  case 0x00010006:
+    errorName = ( char* )"GLFW_API_UNAVAILABLE";
+    break;
+  case 0x00010007:
+    errorName = ( char* )"GLFW_VERSION_UNAVAILABLE";
+    break;
+  case 0x00010008:
+    errorName = ( char* )"GLFW_PLATFORM_ERROR";
+    break;
+  case 0x00010009:
+    errorName = ( char* )"GLFW_FORMAT_UNAVAILABLE";
+    break;
+  }
+  Debug::write( "GLFW error %s ocurred:\n\t%s\n", errorName, description );
+}
+
+void APIENTRY printOpenglError( GLenum source, GLenum type, GLuint id, GLenum severity,
+                                GLsizei length, const GLchar* message, const void* userParam ) {
+  char* sourceStr;
+  char* typeStr;
+  char* severityStr;
+  char* userParamStr;
+  switch( source ) {
+  case GL_DEBUG_SOURCE_API :
+    sourceStr = ( char* )"API";
+    break;
+  case GL_DEBUG_SOURCE_APPLICATION :
+    sourceStr = ( char* )"Application";
+    break;
+  case GL_DEBUG_SOURCE_WINDOW_SYSTEM :
+    sourceStr = ( char* )"Window System";
+    break;
+  case GL_DEBUG_SOURCE_SHADER_COMPILER :
+    sourceStr = ( char* )"Shader Compiler";
+    break;
+  case GL_DEBUG_SOURCE_THIRD_PARTY :
+    sourceStr = ( char* )"Third Party";
+    break;
+  case GL_DEBUG_SOURCE_OTHER :
+    sourceStr = ( char* )"Other";
+    break;
+  default :
+    sourceStr = ( char* )"Undefined";
+  }
+  switch( type ) {
+  case GL_DEBUG_TYPE_ERROR :
+    typeStr = ( char* )"Error";
+    break;
+  case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR :
+    typeStr = ( char* )"Deprecated Behavior";
+    break;
+  case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR :
+    typeStr = ( char* )"Undefined Behavior";
+    break;
+  case GL_DEBUG_TYPE_PERFORMANCE :
+    typeStr = ( char* )"Performance";
+    break;
+  case GL_DEBUG_TYPE_OTHER :
+    typeStr = ( char* )"Other";
+    break;
+  default :
+    typeStr = ( char* )"Undefined";
+  }
+  switch( severity ) {
+  case GL_DEBUG_SEVERITY_HIGH :
+    severityStr = ( char* )"High";
+    break;    
+  case GL_DEBUG_SEVERITY_MEDIUM :
+    severityStr = ( char* )"Medium";
+    break;
+  case GL_DEBUG_SEVERITY_LOW :
+    severityStr = ( char* )"Low";
+    break;
+  case GL_DEBUG_SEVERITY_NOTIFICATION :
+    return;
+    // severityStr = ( char* )"Notification";
+    // break;
+  default :
+    severityStr = ( char* )"Undefined";
+  }
+  if ( length <= 0 ) { // just to use the length param
+    message = "Error reporting the error!";
+  }
+  if ( userParam != nullptr ) { // just to use userParam 
+    userParamStr = ( char* )userParam;
+  } else {
+    userParamStr = ( char* )"";
+  }
+  Debug::write( "OpenGL debug message "
+	  "(Src: %s, Type: %s, Severity: %s, ID: %d, Extra: %s):"
+	  "\n\t%s\n",
+	  sourceStr, typeStr, severityStr, id, userParamStr, message );
 }
 
 GLFWwindow* createWindowAndGlContext( const char* const windowTitle ) {  
@@ -189,23 +306,23 @@ GLFWwindow* createWindowAndGlContext( const char* const windowTitle ) {
   glfwSwapInterval( 0 );
   // configure keyboard input
   glfwSetInputMode( window, GLFW_STICKY_KEYS, 1 );
-  Logger::write( "Window created.\nOpenGL version %d.%d used.\n", glfwGetWindowAttrib( window, GLFW_CONTEXT_VERSION_MAJOR ), glfwGetWindowAttrib( window, GLFW_CONTEXT_VERSION_MINOR ) );  
+  Debug::write( "Window created.\nOpenGL version %d.%d used.\n", glfwGetWindowAttrib( window, GLFW_CONTEXT_VERSION_MAJOR ), glfwGetWindowAttrib( window, GLFW_CONTEXT_VERSION_MINOR ) );  
   // initialize advanced opengl functionality
   glewExperimental = GL_TRUE;
   GLenum glewError = glewInit();  
   ASSERT( glewError == GLEW_OK, "GLEW failed to initialize: %s", glewGetErrorString( glewError ) );  
   // is this even possible when glfw already gave us a 3.3 context?
   ASSERT( GLEW_VERSION_3_3, "Required OpenGL version 3.3 unavailable, says GLEW" );    
-  Logger::write( "OpenGL functionality successfully loaded.\n" );
+  Debug::write( "OpenGL functionality successfully loaded.\n" );
 
   // setup opengl debugging
 #ifndef NDEBUG
   if ( GLEW_KHR_debug ) {
-    Logger::write( "Core KHR Debug extension found.\n" );
+    Debug::write( "Core KHR Debug extension found.\n" );
     glDebugMessageCallback( printOpenglError, nullptr );
     glEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
   } else {
-    Logger::write( "Core KHR Debug extension unavailable!\n" );
+    Debug::write( "Core KHR Debug extension unavailable!\n" );
   }
 #endif
   // basic gl configurations

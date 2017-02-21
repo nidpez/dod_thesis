@@ -5,29 +5,34 @@
 #include "EngineCommon.hpp"
 #include "Math.hpp"
 
-// TODO mix Logger and DebugRenderer into Degug class
+/////////////////////// Error handling and logging ////////////////////
+/////////////////////// and Drawing debug shapes //////////////////////
 
-/////////////////////// Error handling and logging //////////////////////
-
-class Logger {
+class Debug {
   static constexpr const char* LOG_FILE_NAME = "log.txt";
   static FILE* log;
+  struct DebugCircle {
+    Color color;
+    Vec2 position;
+    float radius;
+  };
+  static RenderInfo renderInfo;
+  static std::vector< DebugCircle > circleBufferData;
 public:
-  static void initialize();
+  // write messages
+  static void initializeLogger();
   static void shutdown();
   static void write( const char* format, ... );
   static void write( const char* format, va_list args );
   static void writeError( const char* format, ... );
   static void writeError( const char* format, va_list args );
+  static void haltWithMessage( const char* failedCond, const char* file, const char* function, s32 line, ... );
+  // draw basic shapes
+  static void initializeRenderer();
+  static void drawCircle( Circle circle, Color color );
+  static void renderAndClear();
+  static void setOrthoProjection( float aspectRatio, float height );
 };
-
-void printGlfwError( s32 error, const char* description );
-
-void APIENTRY
-printOpenglError( GLenum source, GLenum type, GLuint id, GLenum severity,
-		  GLsizei length, const GLchar* message, const void* userParam );
-
-void haltWithMessage( const char* failedCond, const char* file, const char* function, s32 line, ... );
   
 #ifdef NDEBUG
 
@@ -51,7 +56,7 @@ void haltWithMessage( const char* failedCond, const char* file, const char* func
 
 #define ASSERT( condition, ... ) {                                      \
     if ( !( condition ) ) {                                             \
-      haltWithMessage( #condition, __FILE__, __FUNC__,  __LINE__, __VA_ARGS__ ); \
+      Debug::haltWithMessage( #condition, __FILE__, __FUNC__,  __LINE__, __VA_ARGS__ ); \
     }                                                                   \
   }
 
@@ -65,21 +70,3 @@ void haltWithMessage( const char* failedCond, const char* file, const char* func
   }
 
 #endif
-
-////////////////////////// Drawing debug shapes ///////////////////////////
-
-class DebugRenderer {
-  struct DebugCircle {
-    Color color;
-    Vec2 position;
-    float radius;
-  };
-  static RenderInfo renderInfo;
-  static std::vector< DebugCircle > circleBufferData;
-public:
-  static void initialize();
-  static void shutdown();
-  static void drawCircle( Circle circle, Color color );
-  static void renderAndClear();
-  static void setOrthoProjection( float aspectRatio, float height );
-};

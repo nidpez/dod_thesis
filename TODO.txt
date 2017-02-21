@@ -17,5 +17,4 @@
 * use cppcheck
 * implement scene graph
 * make method names more descriptive
-* mix Logger and DebugRenderer into Degug class
 * put shader loading functions inside AssetManager
