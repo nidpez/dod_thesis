@@ -76,8 +76,7 @@ void CircleColliderManager::initialize() {
 void CircleColliderManager::shutdown() {
 }
 
-void CircleColliderManager::add( CircleCollider circleCollider ) {
-  EntityHandle entity = circleCollider.entity;
+void CircleColliderManager::add( EntityHandle entity, CircleCollider circleCollider ) {
   VALIDATE_ENTITY( entity );
   float radius = circleCollider.radius;
   ASSERT( radius > 0.0f, "A collider of radius %f is useless", radius );
@@ -88,8 +87,8 @@ void CircleColliderManager::add( CircleCollider circleCollider ) {
 }
 
 void CircleColliderManager::addAndFitToSpriteSize( EntityHandle entity ) {
-  CircleCollider circleCollider = { entity, {}, 1.0f };
-  add( circleCollider );
+  CircleCollider circleCollider = { {}, 1.0f };
+  add( entity, circleCollider );
   fitToSpriteSize( entity );
 }
   
@@ -133,7 +132,7 @@ SpriteManager::Pos* SpriteManager::posBufferData;
 SpriteManager::UV* SpriteManager::texCoordsBufferData;
 
 SpriteManager::SpriteComp::operator Sprite() const {
-  return { this->sprite.entity, this->sprite.textureId, this->sprite.texCoords, this->sprite.size };
+  return { this->sprite.textureId, this->sprite.texCoords, this->sprite.size };
 }
 
 void SpriteManager::initialize() {
@@ -173,7 +172,7 @@ void SpriteManager::set( EntityHandle entity, TextureHandle textureId, Rect texC
   VALIDATE_ENTITY( entity );
   ASSERT( AssetManager::isTextureAlive( textureId ), "Invalid texture id %d", textureId ); 
   SpriteComp spriteComp = {};
-  spriteComp.sprite.entity = entity;
+  spriteComp.entity = entity;
   spriteComp.sprite.textureId = textureId;
   spriteComp.sprite.texCoords = texCoords;
   TextureAsset texture = AssetManager::getTexture( textureId );

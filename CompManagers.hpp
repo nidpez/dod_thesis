@@ -40,7 +40,6 @@ public:
 };
 
 struct CircleCollider {
-  EntityHandle entity;
   Vec2 center;
   float radius;
 };
@@ -48,6 +47,7 @@ struct CircleCollider {
 // TODO allow multiple colliders per entity (with linked list?)
 class CircleColliderManager {
   struct CircleColliderComp {
+    EntityHandle entity;
     CircleCollider circle;
     // transform cache
     Vec2 position;
@@ -58,7 +58,7 @@ class CircleColliderManager {
 public:
   static void initialize();
   static void shutdown();
-  static void add( CircleCollider circleCollider );
+  static void add( EntityHandle entity, CircleCollider circleCollider );
   static void addAndFitToSpriteSize( EntityHandle entity );
   static void remove( EntityHandle entity );
   static void fitToSpriteSize( EntityHandle entity );
@@ -72,7 +72,6 @@ struct Rect {
 };
 
 struct Sprite {
-  EntityHandle entity;
   TextureHandle textureId;
   Rect texCoords;
   Vec2 size;
@@ -80,6 +79,7 @@ struct Sprite {
     
 class SpriteManager {
   struct SpriteComp {
+    EntityHandle entity;
     Sprite sprite;
     // transform cache
     Transform transform;
