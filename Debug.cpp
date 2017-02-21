@@ -217,10 +217,10 @@ void DebugRenderer::shutdown() {
 #endif
 }
 
-void DebugRenderer::addCircle( Vec2 position, float radius, Color color ) {
+void DebugRenderer::addCircle( Circle circle, Color color ) {
 #ifndef NDEBUG
-  ASSERT( radius > 0.0f, "Asked to draw a circle of radius %f", radius );
-  circleBufferData.push_back( { color, position, radius } );
+  ASSERT( circle.radius > 0.0f, "Asked to draw a circle of radius %f", circle.radius );
+  circleBufferData.push_back( { color, circle.center, circle.radius } );
 #endif
 }
 

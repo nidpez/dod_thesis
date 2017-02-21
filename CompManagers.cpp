@@ -76,7 +76,7 @@ void CircleColliderManager::initialize() {
 void CircleColliderManager::shutdown() {
 }
 
-void CircleColliderManager::add( EntityHandle entity, CircleCollider circleCollider ) {
+void CircleColliderManager::add( EntityHandle entity, Circle circleCollider ) {
   VALIDATE_ENTITY( entity );
   float radius = circleCollider.radius;
   ASSERT( radius > 0.0f, "A collider of radius %f is useless", radius );
@@ -87,7 +87,7 @@ void CircleColliderManager::add( EntityHandle entity, CircleCollider circleColli
 }
 
 void CircleColliderManager::addAndFitToSpriteSize( EntityHandle entity ) {
-  CircleCollider circleCollider = { {}, 1.0f };
+  Circle circleCollider = { {}, 1.0f };
   add( entity, circleCollider );
   fitToSpriteSize( entity );
 }
@@ -113,8 +113,9 @@ void CircleColliderManager::updateAndCollide() {
     float maxScale = ( scaleX > scaleY ) ? scaleX : scaleY;
     Vec2 position = circleColliderComp.position + circleColliderComp.circle.center * maxScale;
     float radius = circleColliderComp.circle.radius * maxScale;
+    Circle circle = { position, radius };
     Color color = { 0.0f, 1.0f, 0.0f, 1.0f };
-    DebugRenderer::addCircle( position, radius, color );
+    DebugRenderer::addCircle( circle, color );
   }
 }
 

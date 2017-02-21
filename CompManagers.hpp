@@ -39,16 +39,11 @@ public:
   static std::vector< EntityHandle > getLastUpdated();
 };
 
-struct CircleCollider {
-  Vec2 center;
-  float radius;
-};
-
 // TODO allow multiple colliders per entity (with linked list?)
 class CircleColliderManager {
   struct CircleColliderComp {
     EntityHandle entity;
-    CircleCollider circle;
+    Circle circle;
     // transform cache
     Vec2 position;
     Vec2 scale;
@@ -58,7 +53,7 @@ class CircleColliderManager {
 public:
   static void initialize();
   static void shutdown();
-  static void add( EntityHandle entity, CircleCollider circleCollider );
+  static void add( EntityHandle entity, Circle circleCollider );
   static void addAndFitToSpriteSize( EntityHandle entity );
   static void remove( EntityHandle entity );
   static void fitToSpriteSize( EntityHandle entity );

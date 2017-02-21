@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Math.hpp"
+
 typedef int64_t 	s64;
 typedef int32_t 	s32;
 typedef int16_t 	s16;
@@ -59,6 +61,11 @@ struct ComponentMap {
 };
 
 //////////////////////////// Renderer common ////////////////////////////
+
+struct Circle {
+  Vec2 center;
+  float radius;
+};
 
 struct Color {
   float r, g, b, a;
