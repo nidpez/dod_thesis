@@ -1,5 +1,4 @@
 
-* handle errors in shader creation
 * use chrono lib
 * update api to include expected errors
 * create animation component using a rect per frame
