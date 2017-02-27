@@ -1,5 +1,3 @@
-#version 330 core
-
 #ifdef VERTEX
 
 struct Ortho {
