@@ -49,14 +49,15 @@ TextureAsset AssetManager::getTexture( AssetIndex texture ) {
 u32 AssetManager::compileShaderStage( const char* source, const GLenum stage ) {
   u32 shaderId = glCreateShader( stage );
   // add a #define statement to enable the required stage code
+  char const* glslVersion = "#version 330 core \n";
   char const* defVert = "#define VERTEX \n";
   char const* defGeom = "#define GEOMETRY \n";
   char const* defFrag = "#define FRAGMENT \n";
   char const* stageDefine = ( stage == GL_VERTEX_SHADER ) ? defVert :
     ( ( stage == GL_GEOMETRY_SHADER ) ? defGeom : defFrag );
   // compile using the #define before the source
-  const char* shaderStrings[] = { stageDefine, source };
-  glShaderSource( shaderId, 1, shaderStrings, nullptr );
+  const char* shaderStrings[] = { glslVersion, stageDefine, source };
+  glShaderSource( shaderId, 3, shaderStrings, nullptr );
   glCompileShader( shaderId );
   // FIXME getting the compilation error log is pointless with assertions disabled
   s32 compiled; 
@@ -143,5 +144,6 @@ AssetIndex AssetManager::loadShader( const char* name ) {
   glDetachShader( shaderProgramId, fragShaderId );
   glDeleteShader( fragShaderId );
 
+  Debug::write( "Shader '%s' successfully loaded (glId = %d)\n", name, shaderProgramId );
   return shaderProgramId;
 }
