@@ -1,5 +1,3 @@
-#version 330 core
-
 #ifdef VERTEX
 
 layout ( location = 0 ) in vec2 position;
@@ -86,4 +84,4 @@ void main() {
   outColor = fColor;
 }
 
-#ifdef
+#endif
