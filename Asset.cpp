@@ -108,6 +108,7 @@ AssetIndex AssetManager::loadShader( const char* name ) {
     geomShaderId = compileShaderStage( source, GL_GEOMETRY_SHADER );
   }
   u32 fragShaderId = compileShaderStage( source, GL_FRAGMENT_SHADER );
+  delete[] source;
   // link the shader program
   u32 shaderProgramId  = glCreateProgram();
   glAttachShader( shaderProgramId, vertShaderId );
