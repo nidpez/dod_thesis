@@ -34,12 +34,7 @@ void Debug::initializeRenderer() {
   glEnableVertexAttribArray( 2 );
   glBindVertexArray( 0 );
   // create shader program
-  s32 error = createShaderProgram( &renderInfo.shaderProgramId,
-			       "shaders/DebugShape.vert", "shaders/DebugShape.frag",
-			       "shaders/DebugShape.geom" );
-  if ( error ) {
-    // TODO maybe hardcode a default shader here
-  }
+  renderInfo.shaderProgramId = AssetManager::loadShader( "shaders/DebugShape.glsl" );
   // get shader's constants' locations
   renderInfo.projUnifLoc[ 0 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.left" );
   renderInfo.projUnifLoc[ 1 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.right" );

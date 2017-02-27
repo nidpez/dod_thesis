@@ -14,7 +14,7 @@ void AssetManager::initialize() {
 void AssetManager::shutdown() {
 }
  
-TextureHandle AssetManager::loadTexture( const char* name ) {
+AssetIndex AssetManager::loadTexture( const char* name ) {
   u32 width, height;
   s32 channels;
   unsigned char* texData = SOIL_load_image( name, reinterpret_cast< int* >( &width ), reinterpret_cast< int* >( &height ), &channels, SOIL_LOAD_RGBA );  
@@ -26,121 +26,122 @@ TextureHandle AssetManager::loadTexture( const char* name ) {
   ASSERT( glId > 0, "Error sending texture %s to OpenGL: %s", name, SOIL_last_result() );
   glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ); 
   glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-  textureAssets.push_back( { name, width, height, glId } );
+  textureAssets.push_back( { width, height, glId } );
   Debug::write( "Texture '%s' successfully loaded (glId = %d)\n", name, glId );
   return textureAssets.size() - 1;
 }
 
-void AssetManager::destroyTexture( TextureHandle texture ) {
+void AssetManager::destroyTexture( AssetIndex texture ) {
   ASSERT( isTextureAlive( texture ), "Invalid texture id %d", texture );  
   glDeleteTextures( 1, &textureAssets[ texture ].glId );
   std::memset(  &textureAssets[ texture ], 0, sizeof( TextureAsset ) );
 }
 
-bool AssetManager::isTextureAlive( TextureHandle texture ) {
+bool AssetManager::isTextureAlive( AssetIndex texture ) {
   return texture < textureAssets.size() && textureAssets[ texture ].glId > 0;
 }
 
-TextureAsset AssetManager::getTexture( TextureHandle texture ) {
+TextureAsset AssetManager::getTexture( AssetIndex texture ) {
   ASSERT( isTextureAlive( texture ), "Invalid texture id %d", texture );  
   return textureAssets[ texture ];
 }
 
-s32 loadShaderSourceFile( const char* name, char** source ) {
-  s32 error = 0;
-  std::ifstream file( name );
-  if ( file.is_open() && file.good() ) {
-    std::string line;
-    std::stringstream strStream; 
-    while ( getline( file, line ) ) {
-      strStream << line << std::endl;
-    }
-    file.close();
-    std::string sourceStr = strStream.str();
-    char* sourceContent = new char[ sourceStr.length() + 1 ];
-    std::strcpy( sourceContent, sourceStr.c_str() );
-    *source = sourceContent;
-  }
-  return error;
-}
-
-s32 compileShader( const char* name, const GLenum type, GLuint* shaderId ) {
-  GLchar* source;
-  s32 fileError = loadShaderSourceFile( name, &source );
-  if ( fileError ) {
-    printf( "Unable to open vertex shader source file '%s': %s\n", name,
-	    strerror( fileError ) );
-    return 1;
-  } 
-  *shaderId = glCreateShader( type );
-  glShaderSource( *shaderId, 1, ( const char** )&source, nullptr );
-  glCompileShader( *shaderId );
+u32 AssetManager::compileShaderStage( const char* source, const GLenum stage ) {
+  u32 shaderId = glCreateShader( stage );
+  // add a #define statement to enable the required stage code
+  char const* defVert = "#define VERTEX \n";
+  char const* defGeom = "#define GEOMETRY \n";
+  char const* defFrag = "#define FRAGMENT \n";
+  char const* stageDefine = ( stage == GL_VERTEX_SHADER ) ? defVert :
+    ( ( stage == GL_GEOMETRY_SHADER ) ? defGeom : defFrag );
+  // compile using the #define before the source
+  const char* shaderStrings[] = { stageDefine, source };
+  glShaderSource( shaderId, 1, shaderStrings, nullptr );
+  glCompileShader( shaderId );
+  // FIXME getting the compilation error log is pointless with assertions disabled
   s32 compiled; 
-  glGetShaderiv( *shaderId, GL_COMPILE_STATUS, &compiled );
+  glGetShaderiv( shaderId, GL_COMPILE_STATUS, &compiled );
   if ( compiled == GL_FALSE ) {
     s32 maxLength;
-    glGetShaderiv( *shaderId, GL_INFO_LOG_LENGTH, &maxLength );
+    glGetShaderiv( shaderId, GL_INFO_LOG_LENGTH, &maxLength );
     GLchar* errorLog = ( GLchar* )malloc( sizeof( GLchar ) * maxLength );
-    glGetShaderInfoLog( *shaderId, maxLength, &maxLength, errorLog );
-    Debug::write( "Shader error:\n\t%s\n", errorLog );
-    free( errorLog );
-    Debug::write( "Shader source:\n\"%s\"\n", source );
-    glDeleteShader( *shaderId );
-    return 1;
-    // TODO on shader error replace with default ugly shader instead of quitting
+    glGetShaderInfoLog( shaderId, maxLength, &maxLength, errorLog );
+    glDeleteShader( shaderId );
+    ASSERT( compiled, "Shader error:\n\t%s\nShader source:\n\"%s\"\n", errorLog, source );
+    free( errorLog ); // don't leak when assertions are disabled 
   }
-  delete[] source;
-  return 0;
+  return shaderId;
 }
 
-s32 createShaderProgram( GLuint* shaderProgramId, const char* vertShaderFile, const char* fragShaderFile, const char* geomShaderFile ) {
-  GLuint vertShaderId;
-  s32 error = compileShader( vertShaderFile, GL_VERTEX_SHADER, &vertShaderId );
-  if ( error ) {
-    return error;
-  } 
-  GLuint geomShaderId;
-  if ( geomShaderFile != 0 ) {
-    error = compileShader( geomShaderFile, GL_GEOMETRY_SHADER,
-			   &geomShaderId );
+AssetIndex AssetManager::loadShader( const char* name ) {
+  // using #ifdef technique described in https://software.intel.com/en-us/blogs/2012/03/26/using-ifdef-in-opengl-es-20-shaders
+  bool hasGeomStage = false;
+  char* source;
+  // load the source code from the text file
+  {
+    using namespace std;
+    ifstream file( name );
+    ASSERT( file.is_open() && file.good(), "Problem loading shader file %s", name );
+    string line;
+    stringstream strStream; 
+    while ( getline( file, line ) ) {
+      strStream << line << endl;
+      // find out if GEOMETRY stage is incluided
+      u64 ifdefPos = line.find( "#ifdef" );
+      if ( ifdefPos != string::npos ) {
+        u64 macroPos = line.find( "GEOMETRY", ifdefPos );
+        if ( macroPos != string::npos ) {
+          hasGeomStage = true;
+        }
+      }
+    }
+    file.close();
+    string sourceStr = strStream.str();
+    source = new char[ sourceStr.length() + 1 ];
+    strcpy( source, sourceStr.c_str() );
   }
-  GLuint fragShaderId;  
-  error = compileShader( fragShaderFile, GL_FRAGMENT_SHADER, &fragShaderId );
-  if ( error ) {
-    return error;
+  // compile the shader stages
+  u32 vertShaderId = compileShaderStage( source, GL_VERTEX_SHADER );
+  u32 geomShaderId;
+  if ( hasGeomStage ) {
+    geomShaderId = compileShaderStage( source, GL_GEOMETRY_SHADER );
   }
-  *shaderProgramId  = glCreateProgram();
-  glAttachShader( *shaderProgramId, vertShaderId );
-  if ( geomShaderFile != 0 ) {
-    glAttachShader( *shaderProgramId, geomShaderId );
+  u32 fragShaderId = compileShaderStage( source, GL_FRAGMENT_SHADER );
+  // link the shader program
+  u32 shaderProgramId  = glCreateProgram();
+  glAttachShader( shaderProgramId, vertShaderId );
+  if ( hasGeomStage ) {
+    glAttachShader( shaderProgramId, geomShaderId );
   }
-  glAttachShader( *shaderProgramId, fragShaderId );
-  glLinkProgram( *shaderProgramId );
+  glAttachShader( shaderProgramId, fragShaderId );
+  glLinkProgram( shaderProgramId );
+  // report error if assertions are enabled
+  // FIXME getting the linking error log is pointless with assertions disabled
   s32 linked = 0;
-  glGetProgramiv( *shaderProgramId, GL_LINK_STATUS, ( s32 * )&linked );
+  glGetProgramiv( shaderProgramId, GL_LINK_STATUS, ( s32 * )&linked );
   if( linked == GL_FALSE ) {
     s32 maxLength;
-    glGetProgramiv( *shaderProgramId, GL_INFO_LOG_LENGTH, &maxLength );
+    glGetProgramiv( shaderProgramId, GL_INFO_LOG_LENGTH, &maxLength );
     GLchar *errorLog = ( GLchar * )malloc( sizeof( GLchar )*maxLength );
-    glGetProgramInfoLog( *shaderProgramId, maxLength, &maxLength, errorLog );
-    printf( "Shader Program error:\n\t%s\n", errorLog );
-    free( errorLog );
-    glDeleteProgram( *shaderProgramId );
+    glGetProgramInfoLog( shaderProgramId, maxLength, &maxLength, errorLog );
+    glDeleteProgram( shaderProgramId );
     glDeleteShader( vertShaderId );
-    if ( geomShaderFile != 0 ) {
+    if ( hasGeomStage ) {
       glDeleteShader( geomShaderId );
     }
     glDeleteShader( fragShaderId );
-    return 1;
+    ASSERT( linked, "Shader Program error:\n\t%s\n", errorLog );
+    free( errorLog ); // don't leak when assertions are disabled
   }  
-  glUseProgram( *shaderProgramId );
-  glDetachShader( *shaderProgramId, vertShaderId );
+  glUseProgram( shaderProgramId );
+  glDetachShader( shaderProgramId, vertShaderId );
   glDeleteShader( vertShaderId );
-  if ( geomShaderFile != 0 ) {
-    glDetachShader( *shaderProgramId, geomShaderId );
+  if ( hasGeomStage ) {
+    glDetachShader( shaderProgramId, geomShaderId );
     glDeleteShader( geomShaderId );
   }
-  glDetachShader( *shaderProgramId, fragShaderId );
+  glDetachShader( shaderProgramId, fragShaderId );
   glDeleteShader( fragShaderId );
-  return 0;
+
+  return shaderProgramId;
 }

@@ -151,11 +151,7 @@ void SpriteManager::initialize() {
   glEnableVertexAttribArray( 1 );
   glBindVertexArray( 0 );
   // create shader program
-  s32 error = createShaderProgram( &renderInfo.shaderProgramId,
-                                   "shaders/SpriteUnlit.vert", "shaders/SpriteUnlit.frag" );
-  if ( error ) {
-    // TODO maybe hardcode a default shader here
-  }  
+  renderInfo.shaderProgramId = AssetManager::loadShader( "shaders/SpriteUnlit.glsl" );
   // get shader's constants' locations
   renderInfo.projUnifLoc[ 0 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.left" );
   renderInfo.projUnifLoc[ 1 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.right" );
@@ -169,7 +165,7 @@ void SpriteManager::shutdown() {
   glDeleteBuffers( 2, renderInfo.vboIds );
 }
 
-void SpriteManager::set( EntityHandle entity, TextureHandle textureId, Rect texCoords ) {
+void SpriteManager::set( EntityHandle entity, AssetIndex textureId, Rect texCoords ) {
   VALIDATE_ENTITY( entity );
   ASSERT( AssetManager::isTextureAlive( textureId ), "Invalid texture id %d", textureId ); 
   SpriteComp spriteComp = {};

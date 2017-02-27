@@ -6,7 +6,7 @@ class TransformTest {
   static double lastChangedParams;
   static double now;
   static u8 blockSize;
-  static TextureHandle textureHandle;
+  static AssetIndex textureHandle;
   static std::vector< std::vector< EntityHandle > > entityHandles;
   static std::vector< std::vector< Transform > > transforms;
   static std::vector< float > rotationSpeeds;
@@ -33,7 +33,7 @@ public:
 double TransformTest::lastChangedParams;
 double TransformTest::now;
 u8 TransformTest::blockSize;
-TextureHandle TransformTest::textureHandle;
+AssetIndex TransformTest::textureHandle;
 std::vector< std::vector< EntityHandle > > TransformTest::entityHandles;
 std::vector< std::vector< Transform > > TransformTest::transforms;
 std::vector< float > TransformTest::rotationSpeeds;

@@ -2,29 +2,26 @@
 
 #include "EngineCommon.hpp"
 
-typedef u32 TextureHandle;
+typedef u32 AssetIndex;
 
 struct TextureAsset {
-  const char* name;
   const u32 width, height;
+  const u32 glId;
+};
+
+struct ShaderAsset {  
   const u32 glId;
 };
 
 class AssetManager {
   static std::vector< TextureAsset > textureAssets;
+  static u32 compileShaderStage( const char* source, const GLenum stage );
 public:
   static void initialize();
   static void shutdown();
-  static TextureHandle loadTexture( const char* name );
-  static void destroyTexture( TextureHandle texture );
-  static bool isTextureAlive( TextureHandle texture );
-  static TextureAsset getTexture( TextureHandle texture );
+  static AssetIndex loadTexture( const char* name );
+  static u32 loadShader( const char* name );
+  static void destroyTexture( AssetIndex texture );
+  static bool isTextureAlive( AssetIndex texture );
+  static TextureAsset getTexture( AssetIndex texture );
 };
-
-// TODO put this shader and material stuff inside AssetManager
-
-s32 loadShaderSourceFile( const char* name, char** source );
-
-s32 compileShader( const char* name, const GLenum type, GLuint* shaderId );
-
-s32 createShaderProgram( GLuint* shaderProgramId, const char* vertShaderId, const char* fragShaderId, const char* geomShaderId = 0 );

@@ -67,7 +67,7 @@ struct Rect {
 };
 
 struct Sprite {
-  TextureHandle textureId;
+  AssetIndex textureId;
   Rect texCoords;
   Vec2 size;
 };
@@ -96,7 +96,7 @@ class SpriteManager {
 public:
   static void initialize();
   static void shutdown();
-  static void set( EntityHandle entity, TextureHandle textureId, Rect texCoords );
+  static void set( EntityHandle entity, AssetIndex textureId, Rect texCoords );
   static void remove( EntityHandle entity );
   static Sprite get( EntityHandle entity );
   static void updateAndRender();

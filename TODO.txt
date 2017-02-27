@@ -17,4 +17,3 @@
 * use cppcheck
 * implement scene graph
 * make method names more descriptive
-* put shader loading functions inside AssetManager
