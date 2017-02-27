@@ -9,10 +9,6 @@ struct TextureAsset {
   const u32 glId;
 };
 
-struct ShaderAsset {  
-  const u32 glId;
-};
-
 class AssetManager {
   static std::vector< TextureAsset > textureAssets;
   static u32 compileShaderStage( const char* source, const GLenum stage );
