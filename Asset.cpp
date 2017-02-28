@@ -70,7 +70,6 @@ u32 AssetManager::compileShaderStage( const char* source, const GLenum stage ) {
     glGetShaderInfoLog( shaderId, maxLength, &maxLength, errorLog );
     glDeleteShader( shaderId );
     ASSERT( compiled, "Shader error:\n\t%s\nShader source:\n\"%s\"\n", errorLog, source );
-    free( errorLog ); // don't leak when assertions are disabled
 #endif
     // this will cause OpenGL to silently fail on release mode
     return 0;
@@ -137,7 +136,6 @@ AssetIndex AssetManager::loadShader( const char* name ) {
     }
     glDeleteShader( fragShaderId );
     ASSERT( linked, "Shader Program error:\n\t%s\n", errorLog );
-    free( errorLog ); // don't leak when assertions are disabled
 #endif
     // this will cause OpenGL to silently fail on release mode
     return 0; 
