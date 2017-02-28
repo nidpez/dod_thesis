@@ -59,17 +59,21 @@ u32 AssetManager::compileShaderStage( const char* source, const GLenum stage ) {
   const char* shaderStrings[] = { glslVersion, stageDefine, source };
   glShaderSource( shaderId, 3, shaderStrings, nullptr );
   glCompileShader( shaderId );
-  // FIXME getting the compilation error log is pointless with assertions disabled
   s32 compiled; 
   glGetShaderiv( shaderId, GL_COMPILE_STATUS, &compiled );
   if ( compiled == GL_FALSE ) {
+#ifndef NDEBUG
+    // report error if assertions are enabled
     s32 maxLength;
     glGetShaderiv( shaderId, GL_INFO_LOG_LENGTH, &maxLength );
     GLchar* errorLog = ( GLchar* )malloc( sizeof( GLchar ) * maxLength );
     glGetShaderInfoLog( shaderId, maxLength, &maxLength, errorLog );
     glDeleteShader( shaderId );
     ASSERT( compiled, "Shader error:\n\t%s\nShader source:\n\"%s\"\n", errorLog, source );
-    free( errorLog ); // don't leak when assertions are disabled 
+    free( errorLog ); // don't leak when assertions are disabled
+#endif
+    // this will cause OpenGL to silently fail on release mode
+    return 0;
   }
   return shaderId;
 }
@@ -117,11 +121,11 @@ AssetIndex AssetManager::loadShader( const char* name ) {
   }
   glAttachShader( shaderProgramId, fragShaderId );
   glLinkProgram( shaderProgramId );
-  // report error if assertions are enabled
-  // FIXME getting the linking error log is pointless with assertions disabled
   s32 linked = 0;
   glGetProgramiv( shaderProgramId, GL_LINK_STATUS, ( s32 * )&linked );
   if( linked == GL_FALSE ) {
+#ifndef NDEBUG
+    // report error if assertions are enabled
     s32 maxLength;
     glGetProgramiv( shaderProgramId, GL_INFO_LOG_LENGTH, &maxLength );
     GLchar *errorLog = ( GLchar * )malloc( sizeof( GLchar )*maxLength );
@@ -134,6 +138,9 @@ AssetIndex AssetManager::loadShader( const char* name ) {
     glDeleteShader( fragShaderId );
     ASSERT( linked, "Shader Program error:\n\t%s\n", errorLog );
     free( errorLog ); // don't leak when assertions are disabled
+#endif
+    // this will cause OpenGL to silently fail on release mode
+    return 0; 
   }  
   glUseProgram( shaderProgramId );
   glDetachShader( shaderProgramId, vertShaderId );
