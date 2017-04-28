@@ -23,8 +23,7 @@ class TransformManager {
     ComponentIndex nextSibling;
     ComponentIndex prevSibling;
   };
-  static std::vector< TransformComp > transformComps;
-  static ComponentMap componentMap;
+  static ComponentMap< TransformComp > componentMap;
 public:
   static void initialize();
   static void shutdown();
@@ -48,8 +47,7 @@ class CircleColliderManager {
     Vec2 position;
     Vec2 scale;
   };
-  static std::vector< CircleColliderComp > circleColliderComps;
-  static ComponentMap componentMap;
+  static ComponentMap< CircleColliderComp > componentMap;
 public:
   static void initialize();
   static void shutdown();
@@ -80,8 +78,7 @@ class SpriteManager {
     Transform transform;
     explicit operator Sprite() const;
   };
-  static std::vector< SpriteComp > spriteComps;
-  static ComponentMap componentMap;
+  static ComponentMap< SpriteComp > componentMap;
   // rendering data
   struct Pos {
     Vec2 pos;

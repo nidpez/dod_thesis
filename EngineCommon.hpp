@@ -32,7 +32,9 @@ struct EntityHandle {
   u32 index : HANDLE_INDEX_BITS;
   u32 generation : HANDLE_GENERATION_BITS;
   operator u32() const;
-};
+}; 
+
+typedef void ( *removeComponentCallback )( EntityHandle entity );
 
 class EntityManager {
   struct Generation { // can't just use u32 since they overflow at different values
@@ -41,6 +43,11 @@ class EntityManager {
   const static u32 MIN_FREE_INDICES = 1024;
   static std::vector< Generation > generations;
   static std::deque< u32 > freeIndices;
+  // ComponentMap is responsible, with it's set() method, to provide EntityManager
+  // with functions to call in order to delete all the components from an entity when
+  // it is to be deleted itself.
+  template< typename T > friend struct ComponentMap;
+  static std::unordered_multimap< u32, removeComponentCallback > removeComponentCallbacks;
 public:
   static void initialize();
   static void shutdown();
@@ -53,9 +60,13 @@ public:
 
 typedef u32 ComponentIndex;
 
+template< typename T >
 struct ComponentMap {
+  std::vector< T > components;
   std::unordered_map< u32, ComponentIndex > map;
-  void set( EntityHandle entity, ComponentIndex compInd );
+  
+  void set( EntityHandle entity, T component );
+  void remove( EntityHandle entity );
   std::vector< EntityHandle > have( const std::vector< EntityHandle >& entities );
   ComponentIndex lookup( EntityHandle entity );
 };
