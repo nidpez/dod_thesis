@@ -53,36 +53,10 @@ struct RenderInfo {
 //////////////////////////// Entity Handle system ////////////////////////////
 //////////////////////////// & Component Manager  ////////////////////////////
 
-const u32 HANDLE_INDEX_BITS = 21;
-const u32 HANDLE_GENERATION_BITS = 32 - HANDLE_INDEX_BITS;
-// With 21 index bits 2 million entities are possible at a time.
-const u32 MAX_ENTITIES = 1 << HANDLE_INDEX_BITS;
-
 // index 0 is invalid so an EntityHandle can be set to 0 by default 
-struct EntityHandle {
-  u32 index : HANDLE_INDEX_BITS;
-  u32 generation : HANDLE_GENERATION_BITS;
-  operator u32() const;
-}; 
+struct EntityHandle; 
 
-typedef void ( *removeComponentCallback )( EntityHandle entity );
-  
-#ifdef NDEBUG
-
-#define VALIDATE_ENTITY( entity ) ( ( void )0 )
-
-#define VALIDATE_ENTITIES( entities ) ( ( void )0 )
-
-#endif
-
-#define VALIDATE_ENTITY( entity )                                       \
-  ASSERT( EntityManager::isAlive( ( entity ) ), "Invalid entity id %d", ( entity ) )
-
-#define VALIDATE_ENTITIES( entities ) {                               \
-    for ( u32 entInd = 0; entInd < ( entities ).size(); ++entInd ) {	\
-      VALIDATE_ENTITY( ( entities )[ entInd ] );                      \
-    }                                                                 \
-  }
+typedef void ( *RmvCompCallback )( EntityHandle entity );
 
 typedef u32 ComponentIndex;
 

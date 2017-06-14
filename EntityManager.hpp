@@ -61,14 +61,14 @@ struct ComponentMap {
   std::vector< T > components;
   std::unordered_map< u32, ComponentIndex > map;
   
-  void set( EntityHandle entity, T component, removeComponentCallback f );
+  void set( EntityHandle entity, T component, RmvCompCallback rmvComp );
   void remove( EntityHandle entity );
   std::vector< EntityHandle > have( const std::vector< EntityHandle >& entities );
   ComponentIndex lookup( EntityHandle entity );
 };
 
 template< typename T >
-void ComponentMap< T >::set( EntityHandle entity, T component, removeComponentCallback f ) {
+void ComponentMap< T >::set( EntityHandle entity, T component, RmvCompCallback rmvComp ) {
   VALIDATE_ENTITY( entity );
   components.push_back( component );
   u32 compInd = components.size() - 1;
@@ -76,7 +76,7 @@ void ComponentMap< T >::set( EntityHandle entity, T component, removeComponentCa
   ASSERT( inserted, "Could not map entity %d to component index %d", entity, compInd );
   // tell the EntityManager how to remove this component
   // for when it needs to destroy the entity
-  EntityManager::removeComponentCallbacks.insert( { entity, f } );
+  EntityManager::removeComponentCallbacks.insert( { entity, rmvComp } );
 }
 
 template< typename T >
