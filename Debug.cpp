@@ -73,7 +73,7 @@ void Debug::writeError( const char* format, va_list args ) {
 void Debug::haltWithMessage( const char* failedCond, const char* file, const char* function, s32 line, ... ) {  
   std::time_t now = std::time( nullptr );
   char* date = std::ctime( &now );
-  Debug::writeError( "%s\tAssertion '%s' failed at %s, %s, line %d:\n\t",
+  Debug::writeError( "%s\tAssertion \"%s\" failed\n\tat %s,\n\t\t%s, line %d:\n\t\t",
 		      date, failedCond, file, function, line ); 
   va_list args;
   va_start( args, line );
