@@ -6,6 +6,19 @@
 
 
 // based on http://bitsquid.blogspot.com.co/2014/08/building-data-oriented-entity-system.html and http://gamesfromwithin.com/managing-data-relationships
+
+const u32 HANDLE_INDEX_BITS = 21;
+const u32 HANDLE_GENERATION_BITS = 32 - HANDLE_INDEX_BITS;
+// With 21 index bits 2 million entities are possible at a time.
+const u32 MAX_ENTITIES = 1 << HANDLE_INDEX_BITS;
+
+// index 0 is invalid so an EntityHandle can be set to 0 by default 
+struct EntityHandle {
+  u32 index : HANDLE_INDEX_BITS;
+  u32 generation : HANDLE_GENERATION_BITS;
+  operator u32() const;
+}; 
+
 class EntityManager {
   struct Generation { // can't just use u32 since they overflow at different values
     u32 generation : HANDLE_GENERATION_BITS;
