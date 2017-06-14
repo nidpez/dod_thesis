@@ -2,7 +2,7 @@
 
 std::vector< EntityManager::Generation > EntityManager::generations;
 std::deque< u32 > EntityManager::freeIndices;
-std::unordered_multimap< u32, removeComponentCallback > EntityManager::removeComponentCallbacks;
+std::unordered_multimap< u32, RmvCompCallback > EntityManager::removeComponentCallbacks;
 
 EntityHandle::operator u32() const {
   return this->generation << HANDLE_INDEX_BITS | this->index;

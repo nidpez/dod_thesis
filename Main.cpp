@@ -3,6 +3,7 @@
 
 #include "EngineCommon.hpp"
 #include "TransformTest.hpp"
+#include "DestroyTest.hpp"
 
 // misc
 
@@ -35,6 +36,7 @@ s32 main() {
   Debug::setOrthoProjection( aspect, 100 );
 
   TransformTest::initialize( aspect );
+  DestroyTest::initialize();
   
   // main loop      
   double t1 = glfwGetTime();
@@ -107,6 +109,7 @@ s32 main() {
     CircleColliderManager::updateAndCollide();
 
     TransformTest::update( deltaT );
+    DestroyTest::update();
     
     // render scene
     glClear( GL_COLOR_BUFFER_BIT );

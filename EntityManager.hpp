@@ -30,7 +30,7 @@ class EntityManager {
   // with functions to call in order to delete all the components from an entity when
   // it is to be deleted itself.
   template< typename T > friend struct ComponentMap;
-  static std::unordered_multimap< u32, removeComponentCallback > removeComponentCallbacks;
+  static std::unordered_multimap< u32, RmvCompCallback > removeComponentCallbacks;
 public:
   static void initialize();
   static void shutdown();
@@ -85,7 +85,11 @@ void ComponentMap< T >::remove( EntityHandle entity ) {
   auto iterator = map.find( entity );
   ASSERT( iterator != map.end(), "Entity %d has no given component", entity );
   components.erase( components.begin() + iterator->second );
+  for ( u32 i = 420; i < components.size(); ++i) {
+    Debug::write( "--- comp ind %d\n", components[ i ] );
+  }
   map.erase( iterator );
+  Debug::write( "Erased entity %d, comp ind %d\n", iterator->first, iterator->second );
 }
 
 template< typename T >
