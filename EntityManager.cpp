@@ -18,10 +18,12 @@ EntityHandle EntityManager::create() {
   u32 index;
   if ( freeIndices.size() < MIN_FREE_INDICES ) {
     generations.push_back( { 0 } );
-    index = generations.size();    
-    ASSERT( index < MAX_ENTITIES, "Tried to create more than %d entities", MAX_ENTITIES ); 
+    // we count from 1
+    index = generations.size();
+    ASSERT( index < MAX_ENTITIES, "Tried to create more than %d entities", MAX_ENTITIES );
   } else {
-    index = freeIndices.front();
+    // we count from 1
+    index = freeIndices.front() + 1;
     freeIndices.pop_front();
   }
   return { index, generations[ index - 1 ].generation };
