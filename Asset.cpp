@@ -1,10 +1,8 @@
-#include "Asset.hpp"
+#include "EngineCommon.hpp"
 
 #include <iostream>
 #include <cstring>
 #include <sstream>
-
-#include "Debug.hpp"
 
 std::vector< TextureAsset > AssetManager::textureAssets;
 

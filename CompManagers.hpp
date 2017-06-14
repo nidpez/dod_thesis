@@ -1,12 +1,5 @@
 #pragma once
 
-#include "EngineCommon.hpp"
-#include "Math.hpp"
-#include "Asset.hpp"
-#include "Debug.hpp"
-
-const float PIXELS_PER_UNIT = 4.0f;
-
 struct Transform {
   Vec2 position;
   Vec2 scale;

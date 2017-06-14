@@ -1,9 +1,7 @@
 #pragma once
 
 #include <fstream>
-
-#include "EngineCommon.hpp"
-#include "Math.hpp"
+#include <vector>
 
 /////////////////////// Error handling and logging ////////////////////
 /////////////////////// and Drawing debug shapes //////////////////////
@@ -38,10 +36,6 @@ public:
 
 #define ASSERT( condition, ... ) ( ( void )0 )
 
-#define VALIDATE_ENTITY( entity ) ( ( void )0 )
-
-#define VALIDATE_ENTITIES( entities ) ( ( void )0 )
-
 #else
 
 #ifdef __GNUC__
@@ -58,15 +52,6 @@ public:
     if ( !( condition ) ) {                                             \
       Debug::haltWithMessage( #condition, __FILE__, __FUNC__,  __LINE__, __VA_ARGS__ ); \
     }                                                                   \
-  }
-
-#define VALIDATE_ENTITY( entity )                                       \
-  ASSERT( EntityManager::isAlive( ( entity ) ), "Invalid entity id %d", ( entity ) )
-
-#define VALIDATE_ENTITIES( entities ) {                               \
-    for ( u32 entInd = 0; entInd < ( entities ).size(); ++entInd ) {	\
-      VALIDATE_ENTITY( ( entities )[ entInd ] );                      \
-    }                                                                 \
   }
 
 #endif

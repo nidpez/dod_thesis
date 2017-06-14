@@ -26,7 +26,7 @@ include_directories(${OPENGL_INCLUDE_DIR})
 find_package(GLEW REQUIRED)
 
 # build the game
-add_executable(GAME Main.cpp EngineCommon.cpp Debug.cpp Asset.cpp CompManagers.cpp)
+add_executable(GAME Debug.cpp Asset.cpp EntityManager.cpp CompManagers.cpp Main.cpp)
 
 # add the static library for Simple Opengl Image Library 2, and include its header
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)

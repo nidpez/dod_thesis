@@ -1,4 +1,4 @@
-#include "CompManagers.hpp"
+#include "EngineCommon.hpp"
 
 ComponentMap< TransformManager::TransformComp > TransformManager::componentMap;
 
@@ -9,7 +9,7 @@ void TransformManager::shutdown() {
 }
 
 void TransformManager::set( EntityHandle entity, Transform transform ) {
-  componentMap.set( entity, { entity, transform, transform, 0, 0, 0, 0 } );
+  componentMap.set( entity, { entity, transform, transform, 0, 0, 0, 0 }, &TransformManager::remove );
 }
 
 void TransformManager::remove( EntityHandle entity ) {
@@ -79,7 +79,7 @@ void CircleColliderManager::add( EntityHandle entity, Circle circleCollider ) {
   float radius = circleCollider.radius;
   ASSERT( radius > 0.0f, "A collider of radius %f is useless", radius );
   Vec2 center = circleCollider.center;
-  componentMap.set( entity, { entity, center, radius, { 0, 0 }, { 0, 0 } } );
+  componentMap.set( entity, { entity, center, radius, { 0, 0 }, { 0, 0 } }, &CircleColliderManager::remove );
 }
 
 void CircleColliderManager::remove( EntityHandle entity ) {
@@ -174,7 +174,7 @@ void SpriteManager::set( EntityHandle entity, AssetIndex textureId, Rect texCoor
   float width = texture.width * ( texCoords.max.u - texCoords.min.u ) / PIXELS_PER_UNIT;
   float height = texture.height * ( texCoords.max.v - texCoords.min.v ) / PIXELS_PER_UNIT;
   spriteComp.sprite.size = { width, height };
-  componentMap.set( entity, spriteComp );
+  componentMap.set( entity, spriteComp, &SpriteManager::remove );
 }
 
 void SpriteManager::remove( EntityHandle entity ) {

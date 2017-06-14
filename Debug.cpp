@@ -1,9 +1,7 @@
-#include "Debug.hpp"
+#include "EngineCommon.hpp"
 
 #include <ctime>
 #include <cstdarg>
-
-#include "Asset.hpp"
 
 /////////////////////// Error handling and logging //////////////////////
 

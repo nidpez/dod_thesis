@@ -2,11 +2,6 @@
 #include <random>
 
 #include "EngineCommon.hpp"
-#include "Math.hpp"
-#include "Debug.hpp"
-#include "Asset.hpp"
-#include "CompManagers.hpp"
-
 #include "TransformTest.hpp"
 
 // misc
