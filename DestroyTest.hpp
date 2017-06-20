@@ -19,7 +19,6 @@ void DestroyTest::addEntityToTest() {
     EntityHandle entity = EntityManager::create();
     TransformManager::set( entity, {} );
     liveEntities.push_back( entity );
-    Debug::write( "Created entity %d (%d total now)\n", entity, TransformManager::getLastUpdated().size() );
 }
 
 void DestroyTest::initialize() {
@@ -35,6 +34,5 @@ void DestroyTest::update() {
   int ind = rand() % liveEntities.size();
   EntityHandle entity = liveEntities[ ind ];
   EntityManager::destroy( entity );
-  Debug::write( "Destroyed entity %d (%d total now)\n", entity, TransformManager::getLastUpdated().size() );
   liveEntities.erase( liveEntities.begin() + ind );
 }
