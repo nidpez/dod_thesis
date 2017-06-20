@@ -9,5 +9,8 @@ syntax: glob
 # This prevents it from being interpreted as starting a comment.
 .\#*
 
-#built executables
+# built executables
 bin
+
+# VisualStudio Code debugging files
+.vscode/*
