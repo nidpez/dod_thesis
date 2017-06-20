@@ -3,8 +3,6 @@
 * update api to include expected errors
 * create animation component using a rect per frame
 * implement camera
-* destroy entities
-* create and destroy entities at random for test
 * use matrices for projections
 * controller movement
 * rendering layers
