@@ -55,3 +55,40 @@ public:
   }
 
 #endif
+
+// based on chapter 9.8 'In-Game Profiling' of the book 'Game Engine Architecture' by Jason Gregory, second edition
+
+struct AutoProfile {
+  const char* name;
+  u64 startMillis;  
+  AutoProfile( const char* name );
+  ~AutoProfile();
+};
+
+class ProfileManager {
+  static constexpr const char* PROFILER_LOG_FILE_NAME = "profilerLog.csv";
+  static FILE* profilerLog;
+  struct ProfileSample {
+    u64 elapsedMillis;
+    u32 count;
+  };
+  std::unordered_map< char*, ProfileSample > inclusiveSamples;
+public:
+  static void initialize();
+  static void addSample( const char* name, u64 elapsedMillis );
+  static void resetMeasurements();  
+};
+
+#ifdef NDEBUG
+
+#define PROFILE( name ) ( ( void )0 )
+
+#define PROFILE ( ( void )0 )
+
+#else
+
+#define PROFILE( name ) ( AutoProfile p( name ) )
+
+#define PROFILE ( PROFILE( __FUNC__ ) )
+
+#endif

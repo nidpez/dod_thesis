@@ -128,3 +128,59 @@ void Debug::setOrthoProjection( float aspectRatio, float height ) {
 #endif
 }
 
+////////////////////////// Drawing debug shapes ///////////////////////////
+
+AutoProfile::AutoProfile( const char* name ) {
+#ifndef NDEBUG
+  this->name = name;
+  startMillis = /*something*/;
+#endif
+}
+
+AutoProfile::~AutoProfile() {
+#ifndef NDEBUG
+  u64 endMillis = /*something*/;
+  u64 elapsedMillis = endMillis - startMillis;
+  ProfileManager::addSample( name, elapsedMillis );
+#endif
+}
+
+std::unordered_map< char*, ProfileManager::ProfileSample > ProfileManager::inclusiveSamples;
+
+void ProfileManager::initialize() {
+#ifndef NDEBUG
+  frameNumber = 0;
+  profilerLog = fopen( PROFILER_LOG_FILE_NAME, "a" );
+  write( "Profiler initialized.\n" );
+#endif
+}
+
+void ProfileManager::shutdown() {
+#ifndef NDEBUG
+  fclose( profilerLog );
+#endif
+}
+
+void ProfileManager::addSample( const char* name, u64 elapsedMillis ) {
+#ifndef NDEBUG
+  auto iter = inclusiveSamples.find( name );
+  if ( iter != inclusiveSamples.end() ) {
+    ProfileSample sample = iter->second;
+    sample.elapsedMillis += elapsedMillis;
+    sample.count++;
+  } else {
+    inclusiveSamples.insert( { name, { elapsedMillis, 1 } } );
+  }
+#endif
+}
+
+void ProfileManager::updateOutputsAndReset() {
+#ifndef NDEBUG
+  fprintf( profilerLog, "%d\n", frameNumber++ );
+  for ( auto iter = inclusiveSamples.begin(); iter != inclusiveSamples.end(); ++iter ) {
+    ProfileSample sample = iter->second;
+    fprintf( profilerLog, "%s, %d, %d\n", iter->first, sample.count, sample.elapsedMillis );
+    iter->second = {};
+  }
+#endif
+}
