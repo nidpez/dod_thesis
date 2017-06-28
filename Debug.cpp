@@ -133,25 +133,31 @@ void Debug::setOrthoProjection( float aspectRatio, float height ) {
 AutoProfile::AutoProfile( const char* name ) {
 #ifndef NDEBUG
   this->name = name;
-  startMillis = /*something*/;
+  startNanos = std::chrono::duration_cast< std::chrono::nanoseconds >( std::chrono::high_resolution_clock::now() ).count();
 #endif
 }
 
 AutoProfile::~AutoProfile() {
 #ifndef NDEBUG
-  u64 endMillis = /*something*/;
-  u64 elapsedMillis = endMillis - startMillis;
-  ProfileManager::addSample( name, elapsedMillis );
+  u64 endNanos = std::chrono::duration_cast< std::chrono::nanoseconds >( std::chrono::high_resolution_clock::now() ).count();
+  u64 elapsedNanos = endNanos - startNanos;
+  ProfileManager::addSample( name, elapsedNanos );
 #endif
 }
 
-std::unordered_map< char*, ProfileManager::ProfileSample > ProfileManager::inclusiveSamples;
+std::unordered_map< char*, ProfileManager::ProfileSample, AreNamesEqual > ProfileManager::inclusiveSamples;
+FILE* ProfileManager::profilerLog;
+u32 ProfileManager::frameNumber;
+
+bool ProfileManager::AreNamesEqual::operator()( const char* a, const char* b ) {
+  return std::strcmp( a, b ) == 0;
+}
 
 void ProfileManager::initialize() {
 #ifndef NDEBUG
   frameNumber = 0;
   profilerLog = fopen( PROFILER_LOG_FILE_NAME, "a" );
-  write( "Profiler initialized.\n" );
+  Debug::write( "Profiler initialized.\n" );
 #endif
 }
 
@@ -161,15 +167,15 @@ void ProfileManager::shutdown() {
 #endif
 }
 
-void ProfileManager::addSample( const char* name, u64 elapsedMillis ) {
+void ProfileManager::addSample( const char* name, u64 elapsedNanos ) {
 #ifndef NDEBUG
   auto iter = inclusiveSamples.find( name );
   if ( iter != inclusiveSamples.end() ) {
     ProfileSample sample = iter->second;
-    sample.elapsedMillis += elapsedMillis;
+    sample.elapsedNanos += elapsedNanos;
     sample.count++;
   } else {
-    inclusiveSamples.insert( { name, { elapsedMillis, 1 } } );
+    inclusiveSamples.insert( { name, { elapsedNanos, 1 } } );
   }
 #endif
 }
@@ -179,8 +185,8 @@ void ProfileManager::updateOutputsAndReset() {
   fprintf( profilerLog, "%d\n", frameNumber++ );
   for ( auto iter = inclusiveSamples.begin(); iter != inclusiveSamples.end(); ++iter ) {
     ProfileSample sample = iter->second;
-    fprintf( profilerLog, "%s, %d, %d\n", iter->first, sample.count, sample.elapsedMillis );
-    iter->second = {};
+    fprintf( profilerLog, "%s, %d, %d\n", iter->first, sample.count, sample.elapsedNanos );
+    iter->second = { -1, -1 };
   }
 #endif
 }

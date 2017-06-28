@@ -1,7 +1,7 @@
 #pragma once
 
 #include <fstream>
-#include <vector>
+#include <chrono>
 
 /////////////////////// Error handling and logging ////////////////////
 /////////////////////// and Drawing debug shapes //////////////////////
@@ -68,14 +68,18 @@ struct AutoProfile {
 class ProfileManager {
   static constexpr const char* PROFILER_LOG_FILE_NAME = "profilerLog.csv";
   static FILE* profilerLog;
+  static u32 frameNumber;
   struct ProfileSample {
-    u64 elapsedMillis;
+    u64 elapsedNanos;
     u32 count;
   };
-  std::unordered_map< char*, ProfileSample > inclusiveSamples;
+  struct AreNamesEqual {
+    bool operator()( const char* a, const char* b );
+  };
+  std::unordered_map< char*, ProfileSample, AreNamesEqual > inclusiveSamples;
 public:
   static void initialize();
-  static void addSample( const char* name, u64 elapsedMillis );
+  static void addSample( const char* name, u64 elapsedNanos );
   static void resetMeasurements();  
 };
 
@@ -83,12 +87,12 @@ public:
 
 #define PROFILE( name ) ( ( void )0 )
 
-#define PROFILE ( ( void )0 )
+// #define PROFILE ( ( void )0 )
 
 #else
 
 #define PROFILE( name ) ( AutoProfile p( name ) )
 
-#define PROFILE ( PROFILE( __FUNC__ ) )
+// #define PROFILE ( PROFILE( __FUNC__ ) )
 
 #endif

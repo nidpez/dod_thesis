@@ -47,6 +47,10 @@ struct RenderInfo {
 
 //////////////////////////////////////////////////////////////////////////////
 
+#include <unordered_map>
+#include <vector>
+#include <chrono>
+
 #include "Debug.hpp"
 #include "Asset.hpp"
 

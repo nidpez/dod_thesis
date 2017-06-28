@@ -1,9 +1,6 @@
 #pragma once
 
 #include <deque>
-#include <unordered_map>
-#include <vector>
-
 
 // based on http://bitsquid.blogspot.com.co/2014/08/building-data-oriented-entity-system.html and http://gamesfromwithin.com/managing-data-relationships
 
