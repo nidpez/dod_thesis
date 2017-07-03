@@ -17,12 +17,14 @@ void TransformManager::remove( EntityHandle entity ) {
 }
 
 void TransformManager::rotate( EntityHandle entity, float rotation ) {
+  PROFILE;
   ComponentIndex componentInd = componentMap.lookup( entity );
   componentMap.components[ componentInd ].local.orientation += rotation;
   // TODO mark transform component as updated
 }
 
 void TransformManager::rotateAround( EntityHandle entity, Vec2 point, float rotation ) {
+  PROFILE;
   ComponentIndex componentInd = componentMap.lookup( entity );
   Transform transform = componentMap.components[ componentInd ].local;
   transform.orientation += rotation;
@@ -32,18 +34,21 @@ void TransformManager::rotateAround( EntityHandle entity, Vec2 point, float rota
 }
 
 void TransformManager::translate( EntityHandle entity, Vec2 translation ) {
+  PROFILE;
   ComponentIndex componentInd = componentMap.lookup( entity );
   componentMap.components[ componentInd ].local.position += translation;
   // TODO mark transform component as updated
 }
 
 void TransformManager::scale( EntityHandle entity, Vec2 scale ) {
+  PROFILE;
   ComponentIndex componentInd = componentMap.lookup( entity );
   componentMap.components[ componentInd ].local.scale = scale;
   // TODO mark transform component as updated
 }
 
 void TransformManager::update( EntityHandle entity, Transform transform ) {
+  PROFILE;
   ComponentIndex componentInd = componentMap.lookup( entity );
   Transform local = componentMap.components[ componentInd ].local;
   local.position = transform.position;
@@ -54,11 +59,13 @@ void TransformManager::update( EntityHandle entity, Transform transform ) {
 }
 
 Transform TransformManager::get( EntityHandle entity ) {
+  PROFILE;
   ComponentIndex componentInd = componentMap.lookup( entity );
   return componentMap.components[ componentInd ].local;
 }
 
 std::vector< EntityHandle > TransformManager::getLastUpdated() {
+  PROFILE;
   // TODO actually compute which transforms have been updated since last frame
   std::vector< EntityHandle > result( componentMap.components.size() );
   for ( u32 entInd = 0; entInd < componentMap.components.size(); ++entInd ) {
@@ -93,6 +100,7 @@ void CircleColliderManager::addAndFitToSpriteSize( EntityHandle entity ) {
 }
   
 void CircleColliderManager::updateAndCollide() {
+  PROFILE;
   if ( componentMap.components.size() == 0 ) {
     return;
   }
@@ -182,6 +190,7 @@ void SpriteManager::remove( EntityHandle entity ) {
 }
 
 Sprite SpriteManager::get( EntityHandle entity ) {
+  PROFILE;
   ComponentIndex componentInd = componentMap.lookup( entity );
   return static_cast< Sprite >( componentMap.components[ componentInd ] );
 }
@@ -196,6 +205,7 @@ void SpriteManager::setOrthoProjection( float aspectRatio, float height ) {
 }
 
 void SpriteManager::updateAndRender() {
+  PROFILE;
   if ( componentMap.components.size() == 0 ) {
     return;
   }

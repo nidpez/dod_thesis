@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <chrono>
+#include <string>
 
 /////////////////////// Error handling and logging ////////////////////
 /////////////////////// and Drawing debug shapes //////////////////////
@@ -60,12 +61,12 @@ public:
 
 struct AutoProfile {
   const char* name;
-  u64 startMillis;  
+  std::chrono::time_point< std::chrono::high_resolution_clock > startTime;  
   AutoProfile( const char* name );
   ~AutoProfile();
 };
 
-class ProfileManager {
+class Profiler {
   static constexpr const char* PROFILER_LOG_FILE_NAME = "profilerLog.csv";
   static FILE* profilerLog;
   static u32 frameNumber;
@@ -73,26 +74,24 @@ class ProfileManager {
     u64 elapsedNanos;
     u32 count;
   };
-  struct AreNamesEqual {
-    bool operator()( const char* a, const char* b );
-  };
-  std::unordered_map< char*, ProfileSample, AreNamesEqual > inclusiveSamples;
+  static std::unordered_map< /*const char**/std::string, ProfileSample > inclusiveSamples;
 public:
   static void initialize();
+  static void shutdown();
   static void addSample( const char* name, u64 elapsedNanos );
-  static void resetMeasurements();  
+  static void updateOutputsAndReset();  
 };
 
 #ifdef NDEBUG
 
-#define PROFILE( name ) ( ( void )0 )
+#define PROFILE_BLOCK( name ) ( ( void )0 )
 
-// #define PROFILE ( ( void )0 )
+#define PROFILE ( ( void )0 )
 
 #else
 
-#define PROFILE( name ) ( AutoProfile p( name ) )
+#define PROFILE_BLOCK( name ) AutoProfile p( name )
 
-// #define PROFILE ( PROFILE( __FUNC__ ) )
+#define PROFILE PROFILE_BLOCK( __FUNC__ )
 
 #endif

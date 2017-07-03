@@ -30,6 +30,7 @@ EntityHandle EntityManager::create() {
 }
 
 bool EntityManager::isAlive( EntityHandle entity ) {
+  PROFILE;
   return entity.index > 0 && generations[ entity.index - 1 ].generation == entity.generation;
 }
 

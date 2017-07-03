@@ -44,15 +44,17 @@ public:
 
 #endif
 
-#define VALIDATE_ENTITY( entity )                                       \
-  ASSERT( EntityManager::isAlive( ( entity ) ), "Invalid entity id %d", ( entity ) )
+#define VALIDATE_ENTITY( entity ) {                                     \
+    PROFILE_BLOCK( "VALIDATE_ENTITY( entity )" );                       \
+    ASSERT( EntityManager::isAlive( ( entity ) ), "Invalid entity id %d", ( entity ) ); \
+  }
 
 #define VALIDATE_ENTITIES( entities ) {                               \
     for ( u32 entInd = 0; entInd < ( entities ).size(); ++entInd ) {	\
       VALIDATE_ENTITY( ( entities )[ entInd ] );                      \
     }                                                                 \
   }
-
+  
 template< typename T >
 struct ComponentMap {
   std::vector< T > components;
@@ -93,6 +95,7 @@ void ComponentMap< T >::remove( EntityHandle entity ) {
 
 template< typename T >
 std::vector< EntityHandle > ComponentMap< T >::have( const std::vector< EntityHandle >& entities ) {
+  PROFILE;
   VALIDATE_ENTITIES( entities );  
   std::vector< EntityHandle > result;
   for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
@@ -105,6 +108,7 @@ std::vector< EntityHandle > ComponentMap< T >::have( const std::vector< EntityHa
 
 template< typename T >
 ComponentIndex ComponentMap< T >::lookup( EntityHandle entity ) {
+  PROFILE;
   VALIDATE_ENTITY( entity );
   auto iterator = map.find( entity );
   ASSERT( iterator != map.end(), "Entity %d has no given component", entity );

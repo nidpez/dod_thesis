@@ -16,6 +16,7 @@ GLFWwindow* createWindowAndGlContext( const char* const windowTitle );
 s32 main() {
   // initialize managers
   Debug::initializeLogger();
+  Profiler::initialize();
   GLFWwindow* window = createWindowAndGlContext( "Space Adventure (working title)" );
   EntityManager::initialize();
   TransformManager::initialize();
@@ -133,6 +134,8 @@ s32 main() {
       deltaT = t2 - t1;
     }
     t1 = t2;
+
+    Profiler::updateOutputsAndReset();
   }
   Debug::write( "Main loop exited.\n" );
   
@@ -151,6 +154,7 @@ s32 main() {
   CircleColliderManager::shutdown();
   TransformManager::shutdown();
   EntityManager::shutdown();
+  Profiler::shutdown();
   Debug::shutdown();
   
   return 0;

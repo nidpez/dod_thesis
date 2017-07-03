@@ -128,65 +128,60 @@ void Debug::setOrthoProjection( float aspectRatio, float height ) {
 #endif
 }
 
-////////////////////////// Drawing debug shapes ///////////////////////////
+/////////////////////////////// Profiling ///////////////////////////////////
 
 AutoProfile::AutoProfile( const char* name ) {
 #ifndef NDEBUG
   this->name = name;
-  startNanos = std::chrono::duration_cast< std::chrono::nanoseconds >( std::chrono::high_resolution_clock::now() ).count();
+  startTime = std::chrono::high_resolution_clock::now();
 #endif
 }
 
 AutoProfile::~AutoProfile() {
 #ifndef NDEBUG
-  u64 endNanos = std::chrono::duration_cast< std::chrono::nanoseconds >( std::chrono::high_resolution_clock::now() ).count();
-  u64 elapsedNanos = endNanos - startNanos;
-  ProfileManager::addSample( name, elapsedNanos );
+  auto endTime = std::chrono::high_resolution_clock::now();
+  u64 elapsedNanos = std::chrono::duration_cast< std::chrono::nanoseconds >( endTime - startTime ).count();
+  Profiler::addSample( name, elapsedNanos );
 #endif
 }
 
-std::unordered_map< char*, ProfileManager::ProfileSample, AreNamesEqual > ProfileManager::inclusiveSamples;
-FILE* ProfileManager::profilerLog;
-u32 ProfileManager::frameNumber;
+std::unordered_map< /*const char**/std::string, Profiler::ProfileSample > Profiler::inclusiveSamples;
+FILE* Profiler::profilerLog;
+u32 Profiler::frameNumber;
 
-bool ProfileManager::AreNamesEqual::operator()( const char* a, const char* b ) {
-  return std::strcmp( a, b ) == 0;
-}
-
-void ProfileManager::initialize() {
+void Profiler::initialize() {
 #ifndef NDEBUG
   frameNumber = 0;
-  profilerLog = fopen( PROFILER_LOG_FILE_NAME, "a" );
+  profilerLog = fopen( PROFILER_LOG_FILE_NAME, "w" );
   Debug::write( "Profiler initialized.\n" );
 #endif
 }
 
-void ProfileManager::shutdown() {
+void Profiler::shutdown() {
 #ifndef NDEBUG
   fclose( profilerLog );
 #endif
 }
 
-void ProfileManager::addSample( const char* name, u64 elapsedNanos ) {
+void Profiler::addSample( const char* name, u64 elapsedNanos ) {
 #ifndef NDEBUG
   auto iter = inclusiveSamples.find( name );
   if ( iter != inclusiveSamples.end() ) {
-    ProfileSample sample = iter->second;
-    sample.elapsedNanos += elapsedNanos;
-    sample.count++;
+    iter->second.elapsedNanos += elapsedNanos;
+    iter->second.count++;
   } else {
     inclusiveSamples.insert( { name, { elapsedNanos, 1 } } );
   }
 #endif
 }
 
-void ProfileManager::updateOutputsAndReset() {
+void Profiler::updateOutputsAndReset() {
 #ifndef NDEBUG
   fprintf( profilerLog, "%d\n", frameNumber++ );
-  for ( auto iter = inclusiveSamples.begin(); iter != inclusiveSamples.end(); ++iter ) {
-    ProfileSample sample = iter->second;
-    fprintf( profilerLog, "%s, %d, %d\n", iter->first, sample.count, sample.elapsedNanos );
-    iter->second = { -1, -1 };
+  for ( auto& iter : inclusiveSamples ) {
+    ProfileSample sample = iter.second;
+    fprintf( profilerLog, "%s\t%d\t%lu\n", iter.first.data(), sample.count, sample.elapsedNanos );
+    iter.second = { 0, 0 };
   }
 #endif
 }
