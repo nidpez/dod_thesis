@@ -1,16 +1,14 @@
 
-syntax: glob
-
 # Backup files left behind by the Emacs editor.
 *~
 
 # Lock files used by the Emacs editor.
 # Notice that the "#" character is quoted with a backslash.
 # This prevents it from being interpreted as starting a comment.
-.\#*
+\#*
 
 # built executables
-bin
+bin/
 
 # VisualStudio Code debugging files
-.vscode/*
+.vscode/
