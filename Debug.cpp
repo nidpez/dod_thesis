@@ -133,25 +133,24 @@ void Debug::setOrthoProjection( float aspectRatio, float height ) {
 AutoProfile::AutoProfile( const char* name ) {
 #ifndef NDEBUG
   this->name = name;
-  startTime = std::chrono::high_resolution_clock::now();
 #endif
 }
 
 AutoProfile::~AutoProfile() {
 #ifndef NDEBUG
-  auto endTime = std::chrono::high_resolution_clock::now();
-  u64 elapsedNanos = std::chrono::duration_cast< std::chrono::nanoseconds >( endTime - startTime ).count();
-  Profiler::addSample( name, elapsedNanos );
 #endif
 }
 
-std::unordered_map< /*const char**/std::string, Profiler::ProfileSample > Profiler::inclusiveSamples;
+std::vector< Profiler::ProfileSample > Profiler::samples;
+std::vector< Profiler::SampleNode > Profiler::sampleTree;
+Profiler::SampleNode* Profiler::currentNode;
 FILE* Profiler::profilerLog;
 u32 Profiler::frameNumber;
 
 void Profiler::initialize() {
 #ifndef NDEBUG
   frameNumber = 0;
+  currentNode = addChildSampleNode( nullptr, "ROOT" );
   profilerLog = fopen( PROFILER_LOG_FILE_NAME, "w" );
   Debug::write( "Profiler initialized.\n" );
 #endif
@@ -163,25 +162,86 @@ void Profiler::shutdown() {
 #endif
 }
 
-void Profiler::addSample( const char* name, u64 elapsedNanos ) {
+SampleNode* Profiler::addChildSampleNode( const SampleNode* node, const char* name ) {
 #ifndef NDEBUG
-  auto iter = inclusiveSamples.find( name );
-  if ( iter != inclusiveSamples.end() ) {
-    iter->second.elapsedNanos += elapsedNanos;
-    iter->second.count++;
-  } else {
-    inclusiveSamples.insert( { name, { elapsedNanos, 1 } } );
+  samples.push_back( { 0, 0, 1, 0 } ); // uninitialized yet
+  ProfileSample* data = &samples.back();
+  sampleTree.push_back( { node, nullptr, nullptr, name, data } );
+  return &sampleTree.back();
+#endif
+}
+
+SampleNode* Profiler::getParentSampleNode( const SampleNode* node ) {
+#ifndef NDEBUG
+  return node->parent;
+#endif
+}
+
+SampleNode* Profiler::getChildSampleNode( const SampleNode* node, const char* name ) {
+#ifndef NDEBUG
+  if ( node->firstChild != nullptr ) {
+    SampleNode* child = node->firstChild;
+    do {
+      // TODO check effectivity of pointer comparison of sample node names
+      if ( child->name == name ) {
+        return child;
+      }
+      child = child->nextSibling;
+    } while ( child != nullptr );
   }
+  return addChildSampleNode( node, name );
+#endif
+}
+
+void Profiler::startProfile( const char* name ) {
+#ifndef NDEBUG
+  if ( name != currentNode->name ) {
+    currentNode = getChildSampleNode( currentNode, name );
+  }
+  callSampleNode( currentNode );
+#endif
+}
+
+void Profiler::stopProfile() {
+#ifndef NDEBUG
+  if ( returnFromSampleNode( currentNode ) ) {
+    currentNode = getParentSampleNode( currentNode );
+  } //else this is a recursive function that has not finished
+#endif
+}
+
+void Profiler::callSampleNode( const SampleNode* node ) {
+#ifndef NDEBUG
+  ProfileSample sample = *node->data;
+  ++sample.callCount;
+  // if this is the first call of a recursive function
+  // or if the function isn't recursive
+  // we can start measuring time
+  if ( sample.recursionCount++ == 0 ) {
+    sample.startTime = Clock::now();
+  }
+  *node->data = sample;
+#endif
+}
+    
+bool Profiler::returnFromSampleNode( const SampleNode* node ) {
+#ifndef NDEBUG
+  ProfileSample sample = *node->data;
+  // if the function wasn't recursive or ended recursing
+  // we can now calculate the elapsed time
+  if ( --sample.recursionCount == 0 && sample.callCount != 0 ) {
+    TimePoint endTime = Clock::now();
+    sample.elapsedNanos += std::chrono::duration_cast< std::chrono::nanoseconds >( endTime - startTime ).count();
+  }
+  *node->data = sample;
+  // also return whether the function is recursing
+  return sample.recursionCount == 0;
 #endif
 }
 
 void Profiler::updateOutputsAndReset() {
 #ifndef NDEBUG
   fprintf( profilerLog, "%d\n", frameNumber++ );
-  for ( auto& iter : inclusiveSamples ) {
-    ProfileSample sample = iter.second;
-    fprintf( profilerLog, "%s\t%d\t%lu\n", iter.first.data(), sample.count, sample.elapsedNanos );
-    iter.second = { 0, 0 };
-  }
+  // TODO re-implement
 #endif
 }

@@ -59,9 +59,10 @@ public:
 
 // based on chapter 9.8 'In-Game Profiling' of the book 'Game Engine Architecture' by Jason Gregory, second edition
 
+typedef TimePoint std::chrono::time_point< std::chrono::high_resolution_clock >;
+typedef Clock std::chrono::high_resolution_clock;
+
 struct AutoProfile {
-  const char* name;
-  std::chrono::time_point< std::chrono::high_resolution_clock > startTime;  
   AutoProfile( const char* name );
   ~AutoProfile();
 };
@@ -69,16 +70,37 @@ struct AutoProfile {
 class Profiler {
   static constexpr const char* PROFILER_LOG_FILE_NAME = "profilerLog.csv";
   static FILE* profilerLog;
+  
   static u32 frameNumber;
+  
   struct ProfileSample {
+    TimePoint startTime;
     u64 elapsedNanos;
-    u32 count;
+    u32 callCount;
+    u32 recursionCount;
   };
-  static std::unordered_map< /*const char**/std::string, ProfileSample > inclusiveSamples;
+  static std::vector< ProfileSample > samples;
+  
+  struct SampleNode {
+    SampleNode* parent;
+    SampleNode* firstChild;
+    SampleNode* nextSibling;
+    const char* name;
+    ProfileSample* data;
+  };
+  static std::vector< SampleNode > sampleTree;
+  static SampleNode* currentNode;
+  static SampleNode* addChildSampleNode( const SampleNode* node, const char* name );
+  static SampleNode* getParentSampleNode( const SampleNode* node );
+  static SampleNode* getChildSampleNode( const SampleNode* node, const char* name );
+  static void callSampleNode( const SampleNode* node );
+  static bool returnFromSampleNode( const SampleNode* node );
+  
 public:
   static void initialize();
   static void shutdown();
-  static void addSample( const char* name, u64 elapsedNanos );
+  static void startProfile( const char* name );
+  static void stopProfile();
   static void updateOutputsAndReset();  
 };
 
