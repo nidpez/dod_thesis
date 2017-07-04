@@ -132,12 +132,13 @@ void Debug::setOrthoProjection( float aspectRatio, float height ) {
 
 AutoProfile::AutoProfile( const char* name ) {
 #ifndef NDEBUG
-  this->name = name;
+  Profiler::startProfile( name );
 #endif
 }
 
 AutoProfile::~AutoProfile() {
 #ifndef NDEBUG
+  Profiler::stopProfile();
 #endif
 }
 
@@ -162,22 +163,24 @@ void Profiler::shutdown() {
 #endif
 }
 
-SampleNode* Profiler::addChildSampleNode( const SampleNode* node, const char* name ) {
+Profiler::SampleNode* Profiler::addChildSampleNode( SampleNode* node, const char* name ) {
 #ifndef NDEBUG
-  samples.push_back( { 0, 0, 1, 0 } ); // uninitialized yet
+  ProfileSample newSample = { 0, 0, 1, 0 };
+  samples.push_back( newSample ); // uninitialized yet
   ProfileSample* data = &samples.back();
-  sampleTree.push_back( { node, nullptr, nullptr, name, data } );
+  SampleNode newNode = { node, nullptr, nullptr, name, data };
+  sampleTree.push_back( newNode );
   return &sampleTree.back();
 #endif
 }
 
-SampleNode* Profiler::getParentSampleNode( const SampleNode* node ) {
+Profiler::SampleNode* Profiler::getParentSampleNode( const SampleNode* node ) {
 #ifndef NDEBUG
   return node->parent;
 #endif
 }
 
-SampleNode* Profiler::getChildSampleNode( const SampleNode* node, const char* name ) {
+Profiler::SampleNode* Profiler::getChildSampleNode( SampleNode* node, const char* name ) {
 #ifndef NDEBUG
   if ( node->firstChild != nullptr ) {
     SampleNode* child = node->firstChild;
@@ -231,7 +234,7 @@ bool Profiler::returnFromSampleNode( const SampleNode* node ) {
   // we can now calculate the elapsed time
   if ( --sample.recursionCount == 0 && sample.callCount != 0 ) {
     TimePoint endTime = Clock::now();
-    sample.elapsedNanos += std::chrono::duration_cast< std::chrono::nanoseconds >( endTime - startTime ).count();
+    sample.elapsedNanos += std::chrono::duration_cast< std::chrono::nanoseconds >( endTime - sample.startTime ).count();
   }
   *node->data = sample;
   // also return whether the function is recursing

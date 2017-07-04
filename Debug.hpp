@@ -59,8 +59,8 @@ public:
 
 // based on chapter 9.8 'In-Game Profiling' of the book 'Game Engine Architecture' by Jason Gregory, second edition
 
-typedef TimePoint std::chrono::time_point< std::chrono::high_resolution_clock >;
-typedef Clock std::chrono::high_resolution_clock;
+typedef std::chrono::time_point< std::chrono::high_resolution_clock > TimePoint;
+typedef std::chrono::high_resolution_clock Clock;
 
 struct AutoProfile {
   AutoProfile( const char* name );
@@ -90,9 +90,9 @@ class Profiler {
   };
   static std::vector< SampleNode > sampleTree;
   static SampleNode* currentNode;
-  static SampleNode* addChildSampleNode( const SampleNode* node, const char* name );
+  static SampleNode* addChildSampleNode( SampleNode* node, const char* name );
   static SampleNode* getParentSampleNode( const SampleNode* node );
-  static SampleNode* getChildSampleNode( const SampleNode* node, const char* name );
+  static SampleNode* getChildSampleNode( SampleNode* node, const char* name );
   static void callSampleNode( const SampleNode* node );
   static bool returnFromSampleNode( const SampleNode* node );
   
