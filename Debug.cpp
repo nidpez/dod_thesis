@@ -130,6 +130,8 @@ void Debug::setOrthoProjection( float aspectRatio, float height ) {
 
 /////////////////////////////// Profiling ///////////////////////////////////
 
+// TODO use a macro other than NDEBUG for profiling
+
 AutoProfile::AutoProfile( const char* name ) {
 #ifndef NDEBUG
   Profiler::startProfile( name );
@@ -165,12 +167,28 @@ void Profiler::shutdown() {
 
 Profiler::SampleNode* Profiler::addChildSampleNode( SampleNode* node, const char* name ) {
 #ifndef NDEBUG
-  ProfileSample newSample = { 0, 0, 1, 0 };
+  ProfileSample newSample = { TimePoint(), 0, 1, 0 };
   samples.push_back( newSample ); // uninitialized yet
   ProfileSample* data = &samples.back();
   SampleNode newNode = { node, nullptr, nullptr, name, data };
+  // FIXME push_back can invalidate pointers to sampleTree's elements
+  // TODO use indices instead of pointers
   sampleTree.push_back( newNode );
-  return &sampleTree.back();
+  // add new node as child of 'node'
+  SampleNode* newNodePtr = &sampleTree.back();
+  if ( node != nullptr ) {
+    if ( node->firstChild == nullptr ) {
+      node->firstChild = newNodePtr;
+    } else {
+      // find the end of the children's linked linst and add the new one there
+      SampleNode* sibling = node->firstChild;
+      while ( sibling->nextSibling != nullptr ) {
+        sibling = sibling->nextSibling;
+      }
+      sibling->nextSibling = newNodePtr;
+    }
+  }
+  return newNodePtr;
 #endif
 }
 
