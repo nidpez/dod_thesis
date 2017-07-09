@@ -80,21 +80,26 @@ class Profiler {
     u32 recursionCount;
   };
   static std::vector< ProfileSample > samples;
-  
+
+  // SampleNodeIndex & ProfileSampleIndex value 0 is reserved to mean null,
+  // so these indices must start from 1
+  // TODO standarize indices starting at 1
+  typedef u32 ProfileSampleIndex;
+  typedef u32 SampleNodeIndex;
   struct SampleNode {
-    SampleNode* parent;
-    SampleNode* firstChild;
-    SampleNode* nextSibling;
+    SampleNodeIndex parent;
+    SampleNodeIndex firstChild;
+    SampleNodeIndex nextSibling;
     const char* name;
-    ProfileSample* data;
+    ProfileSampleIndex dataInd;
   };
   static std::vector< SampleNode > sampleTree;
-  static SampleNode* currentNode;
-  static SampleNode* addChildSampleNode( SampleNode* node, const char* name );
-  static SampleNode* getParentSampleNode( const SampleNode* node );
-  static SampleNode* getChildSampleNode( SampleNode* node, const char* name );
-  static void callSampleNode( const SampleNode* node );
-  static bool returnFromSampleNode( const SampleNode* node );
+  static SampleNodeIndex currentNodeInd;
+  static SampleNodeIndex addChildSampleNode( SampleNodeIndex nodeInd, const char* name );
+  static SampleNodeIndex getParentSampleNode( const SampleNodeIndex nodeInd );
+  static SampleNodeIndex getChildSampleNode( SampleNodeIndex nodeInd, const char* name );
+  static void callSampleNode( const SampleNodeIndex nodeInd );
+  static bool returnFromSampleNode( const SampleNodeIndex nodeInd );
   
 public:
   static void initialize();

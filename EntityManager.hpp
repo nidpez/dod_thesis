@@ -45,7 +45,6 @@ public:
 #endif
 
 #define VALIDATE_ENTITY( entity ) {                                     \
-    PROFILE_BLOCK( "VALIDATE_ENTITY( entity )" );                       \
     ASSERT( EntityManager::isAlive( ( entity ) ), "Invalid entity id %d", ( entity ) ); \
   }
 

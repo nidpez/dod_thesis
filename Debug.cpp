@@ -146,14 +146,19 @@ AutoProfile::~AutoProfile() {
 
 std::vector< Profiler::ProfileSample > Profiler::samples;
 std::vector< Profiler::SampleNode > Profiler::sampleTree;
-Profiler::SampleNode* Profiler::currentNode;
+Profiler::SampleNodeIndex Profiler::currentNodeInd;
 FILE* Profiler::profilerLog;
 u32 Profiler::frameNumber;
 
 void Profiler::initialize() {
 #ifndef NDEBUG
   frameNumber = 0;
-  currentNode = addChildSampleNode( nullptr, "ROOT" );
+  // push whatever to index 0 of the lists so the real
+  // data starts at index 1
+  // TODO standarize indices starting at 1
+  samples.push_back( { TimePoint(), 0, 0, 0 } );
+  sampleTree.push_back( { 0, 0, 0, nullptr, 0 } );
+  currentNodeInd = addChildSampleNode( 0, "ROOT" );
   profilerLog = fopen( PROFILER_LOG_FILE_NAME, "w" );
   Debug::write( "Profiler initialized.\n" );
 #endif
@@ -165,75 +170,79 @@ void Profiler::shutdown() {
 #endif
 }
 
-Profiler::SampleNode* Profiler::addChildSampleNode( SampleNode* node, const char* name ) {
+Profiler::SampleNodeIndex Profiler::addChildSampleNode( SampleNodeIndex nodeInd, const char* name ) {
 #ifndef NDEBUG
   ProfileSample newSample = { TimePoint(), 0, 1, 0 };
   samples.push_back( newSample ); // uninitialized yet
-  ProfileSample* data = &samples.back();
-  SampleNode newNode = { node, nullptr, nullptr, name, data };
-  // FIXME push_back can invalidate pointers to sampleTree's elements
-  // TODO use indices instead of pointers
+  ProfileSampleIndex dataInd = samples.size() - 1;
+  SampleNode newNode = { nodeInd, 0, 0, name, dataInd };
   sampleTree.push_back( newNode );
   // add new node as child of 'node'
-  SampleNode* newNodePtr = &sampleTree.back();
-  if ( node != nullptr ) {
-    if ( node->firstChild == nullptr ) {
-      node->firstChild = newNodePtr;
+  SampleNodeIndex newNodeInd = sampleTree.size() - 1;
+  if ( nodeInd != 0 ) {
+    SampleNodeIndex firstChild = sampleTree[ nodeInd ].firstChild;
+    if ( firstChild == 0 ) {
+      sampleTree[ nodeInd ].firstChild = newNodeInd;
     } else {
       // find the end of the children's linked linst and add the new one there
-      SampleNode* sibling = node->firstChild;
-      while ( sibling->nextSibling != nullptr ) {
-        sibling = sibling->nextSibling;
+      SampleNodeIndex siblInd = firstChild;
+      SampleNode sibling = sampleTree[ siblInd ];
+      while ( sibling.nextSibling != 0 ) {
+        siblInd = sibling.nextSibling;
+        sibling = sampleTree[ siblInd ];
       }
-      sibling->nextSibling = newNodePtr;
+      sampleTree[ siblInd ].nextSibling = newNodeInd;
     }
   }
-  return newNodePtr;
+  return newNodeInd;
 #endif
 }
 
-Profiler::SampleNode* Profiler::getParentSampleNode( const SampleNode* node ) {
+Profiler::SampleNodeIndex Profiler::getParentSampleNode( const SampleNodeIndex nodeInd ) {
 #ifndef NDEBUG
-  return node->parent;
+  return sampleTree[ nodeInd ].parent;
 #endif
 }
 
-Profiler::SampleNode* Profiler::getChildSampleNode( SampleNode* node, const char* name ) {
+Profiler::SampleNodeIndex Profiler::getChildSampleNode( SampleNodeIndex nodeInd, const char* name ) {
 #ifndef NDEBUG
-  if ( node->firstChild != nullptr ) {
-    SampleNode* child = node->firstChild;
+  SampleNode node = sampleTree[ nodeInd ];
+  if ( node.firstChild != 0 ) {
+    SampleNodeIndex childInd = node.firstChild;
+    SampleNode child;
     do {
+      child = sampleTree[ childInd ];
       // TODO check effectivity of pointer comparison of sample node names
-      if ( child->name == name ) {
-        return child;
+      if ( child.name == name ) {
+        return childInd;
       }
-      child = child->nextSibling;
-    } while ( child != nullptr );
+      childInd = child.nextSibling;
+    } while ( childInd != 0 );
   }
-  return addChildSampleNode( node, name );
+  return addChildSampleNode( nodeInd, name );
 #endif
 }
 
 void Profiler::startProfile( const char* name ) {
 #ifndef NDEBUG
-  if ( name != currentNode->name ) {
-    currentNode = getChildSampleNode( currentNode, name );
+  if ( name != sampleTree[ currentNodeInd ].name ) {
+    currentNodeInd = getChildSampleNode( currentNodeInd, name );
   }
-  callSampleNode( currentNode );
+  callSampleNode( currentNodeInd );
 #endif
 }
 
 void Profiler::stopProfile() {
 #ifndef NDEBUG
-  if ( returnFromSampleNode( currentNode ) ) {
-    currentNode = getParentSampleNode( currentNode );
+  if ( returnFromSampleNode( currentNodeInd ) ) {
+    currentNodeInd = getParentSampleNode( currentNodeInd );
   } //else this is a recursive function that has not finished
 #endif
 }
 
-void Profiler::callSampleNode( const SampleNode* node ) {
+void Profiler::callSampleNode( const SampleNodeIndex nodeInd ) {
 #ifndef NDEBUG
-  ProfileSample sample = *node->data;
+  ProfileSample sample = samples[ sampleTree[ nodeInd ].dataInd ];
   ++sample.callCount;
   // if this is the first call of a recursive function
   // or if the function isn't recursive
@@ -241,20 +250,20 @@ void Profiler::callSampleNode( const SampleNode* node ) {
   if ( sample.recursionCount++ == 0 ) {
     sample.startTime = Clock::now();
   }
-  *node->data = sample;
+  samples[ sampleTree[ nodeInd ].dataInd ] = sample;
 #endif
 }
     
-bool Profiler::returnFromSampleNode( const SampleNode* node ) {
+bool Profiler::returnFromSampleNode( const SampleNodeIndex nodeInd ) {
 #ifndef NDEBUG
-  ProfileSample sample = *node->data;
+  ProfileSample sample = samples[ sampleTree[ nodeInd ].dataInd ];
   // if the function wasn't recursive or ended recursing
   // we can now calculate the elapsed time
   if ( --sample.recursionCount == 0 && sample.callCount != 0 ) {
     TimePoint endTime = Clock::now();
     sample.elapsedNanos += std::chrono::duration_cast< std::chrono::nanoseconds >( endTime - sample.startTime ).count();
   }
-  *node->data = sample;
+  samples[ sampleTree[ nodeInd ].dataInd ] = sample;
   // also return whether the function is recursing
   return sample.recursionCount == 0;
 #endif
@@ -262,7 +271,32 @@ bool Profiler::returnFromSampleNode( const SampleNode* node ) {
 
 void Profiler::updateOutputsAndReset() {
 #ifndef NDEBUG
-  fprintf( profilerLog, "%d\n", frameNumber++ );
-  // TODO re-implement
+  fprintf( profilerLog, "%d\n", frameNumber );
+  std::deque< SampleNodeIndex > nodeIndsToProcess;
+  // index 0 is null
+  nodeIndsToProcess.push_front( 1 );
+  std::deque< u32 > depths;
+  depths.push_front( 0 );
+  while( !nodeIndsToProcess.empty() ) {
+    SampleNodeIndex nodeInd = nodeIndsToProcess.front();
+    SampleNode node = sampleTree[ nodeInd ];
+    u32 depth = depths.front();
+    // display front sample
+    ProfileSample sample = samples[ node.dataInd ];
+    for ( u32 i = 0; i < depth; ++i ) {
+      fprintf( profilerLog, "-" );
+    }
+    fprintf( profilerLog, " %s\t%d\t%ld\n", node.name, sample.callCount, sample.elapsedNanos );    
+    nodeIndsToProcess.pop_front();
+    depths.pop_front();
+    // add all its children to the front of the deque
+    SampleNodeIndex childNodeInd = node.firstChild;
+    while ( childNodeInd != 0 ) {
+      nodeIndsToProcess.push_front( childNodeInd );
+      depths.push_front( depth + 1 );
+      childNodeInd = sampleTree[ childNodeInd ].nextSibling;
+    }
+  }  
+  ++frameNumber;
 #endif
 }
