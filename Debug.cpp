@@ -212,7 +212,6 @@ Profiler::SampleNodeIndex Profiler::getChildSampleNode( SampleNodeIndex nodeInd,
     SampleNode child;
     do {
       child = sampleTree[ childInd ];
-      // TODO check effectivity of pointer comparison of sample node names
       if ( child.name == name ) {
         return childInd;
       }
