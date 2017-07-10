@@ -160,6 +160,8 @@ void Profiler::initialize() {
   sampleTree.push_back( { 0, 0, 0, nullptr, 0 } );
   currentNodeInd = addChildSampleNode( 0, "ROOT" );
   profilerLog = fopen( PROFILER_LOG_FILE_NAME, "w" );
+  // TODO standarize writing to logs and handling their file size
+  fprintf( profilerLog, "FUNCTION \tCALL COUNT \tACUM INCL \tACUM EXCL \tAVG INCL \tAVG EXCL \n" );
   Debug::write( "Profiler initialized.\n" );
 #endif
 }
@@ -172,7 +174,7 @@ void Profiler::shutdown() {
 
 Profiler::SampleNodeIndex Profiler::addChildSampleNode( SampleNodeIndex nodeInd, const char* name ) {
 #ifndef NDEBUG
-  ProfileSample newSample = { TimePoint(), 0, 1, 0 };
+  ProfileSample newSample = { TimePoint(), 0, 0, 0 };
   samples.push_back( newSample ); // uninitialized yet
   ProfileSampleIndex dataInd = samples.size() - 1;
   SampleNode newNode = { nodeInd, 0, 0, name, dataInd };
@@ -278,23 +280,35 @@ void Profiler::updateOutputsAndReset() {
   depths.push_front( 0 );
   while( !nodeIndsToProcess.empty() ) {
     SampleNodeIndex nodeInd = nodeIndsToProcess.front();
+    nodeIndsToProcess.pop_front();
     SampleNode node = sampleTree[ nodeInd ];
     u32 depth = depths.front();
-    // display front sample
-    ProfileSample sample = samples[ node.dataInd ];
-    for ( u32 i = 0; i < depth; ++i ) {
-      fprintf( profilerLog, "-" );
-    }
-    fprintf( profilerLog, " %s\t%d\t%ld\n", node.name, sample.callCount, sample.elapsedNanos );    
-    nodeIndsToProcess.pop_front();
     depths.pop_front();
     // add all its children to the front of the deque
     SampleNodeIndex childNodeInd = node.firstChild;
+    u64 acumChildNanos = 0;
     while ( childNodeInd != 0 ) {
+      // also calculate exclusive execution time
+      acumChildNanos += samples[ sampleTree[ childNodeInd ].dataInd ].elapsedNanos;
       nodeIndsToProcess.push_front( childNodeInd );
       depths.push_front( depth + 1 );
       childNodeInd = sampleTree[ childNodeInd ].nextSibling;
     }
+    // display sample
+    u32 dataInd = node.dataInd;
+    ProfileSample sample = samples[ dataInd ];
+    // crappy way of expressing call depth
+    for ( u32 i = 0; i < depth; ++i ) {
+      fprintf( profilerLog, "-- " );
+    }
+    if ( nodeInd != 1 ) {       // don't render the ROOT node
+      u64 acumExclusiveNanos = sample.elapsedNanos - acumChildNanos;
+      fprintf( profilerLog, "%s\t%d\t%ld\t%ld\t%ld\t%ld\n", node.name, sample.callCount, sample.elapsedNanos, acumExclusiveNanos, sample.elapsedNanos / sample.callCount, acumExclusiveNanos / sample.callCount );
+    }
+    // reset counters
+    samples[ dataInd ].callCount = 0;
+    samples[ dataInd ].elapsedNanos = 0;
+    samples[ dataInd ].recursionCount = 0;
   }  
   ++frameNumber;
 #endif
