@@ -115,6 +115,8 @@ void CircleColliderManager::updateAndCollide() {
     componentMap.components[ circleColliderCompInd ].scale = transform.scale;
   }
   // n^2 collision detection
+  // FIXME if we put the collision logic here or pass component instances
+  // to the collide function we can save on a few array access calls
   for ( u32 collI = 0; collI < componentMap.components.size() - 1; ++collI ) {
     for ( u32 collJ = collI + 1; collJ < componentMap.components.size(); ++collJ ) {
       if ( circleCircleCollide( collI, collJ ) ) {
@@ -137,6 +139,7 @@ void CircleColliderManager::updateAndCollide() {
   }
 }
 
+// FIXME take scale into account
 bool CircleColliderManager::circleCircleCollide( ComponentIndex circleIndA, ComponentIndex circleIndB ) {
   PROFILE;
   ASSERT( circleIndA < componentMap.components.size(), "ComponentIndex %d out of bounds", circleIndA );
