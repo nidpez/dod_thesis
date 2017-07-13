@@ -63,6 +63,14 @@ inline float dot( Vec2 a, Vec2 b ) {
   return a.x * b.x + a.y * b.y;
 }
 
+inline float sqrMagnitude( Vec2 vec ) {
+  return dot( vec, vec );
+}
+
+inline float magnitude( Vec2 vec ) {
+  return std::sqrt( sqrMagnitude( vec ) );
+}
+
 // FIXME I wanted this function to be just rotate()
 // but a name collision with TransformManager::rotate()
 // compelled me to rename it like this.

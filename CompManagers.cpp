@@ -114,6 +114,16 @@ void CircleColliderManager::updateAndCollide() {
     componentMap.components[ circleColliderCompInd ].position = transform.position;
     componentMap.components[ circleColliderCompInd ].scale = transform.scale;
   }
+  // n^2 collision detection
+  for ( u32 collI = 0; collI < componentMap.components.size() - 1; ++collI ) {
+    for ( u32 collJ = collI + 1; collJ < componentMap.components.size(); ++collJ ) {
+      if ( circleCircleCollide( collI, collJ ) ) {
+        // TODO create reactions for dynamic components
+        Debug::write( "Entities %d & %d collided\n", componentMap.components[ collI ].entity, componentMap.components[ collJ ].entity );
+        // TODO fire callbacks for programatic components
+      }
+    }
+  }
   // TODO do frustrum culling
   for ( u32 colInd = 0; colInd < componentMap.components.size(); ++colInd ) {
     CircleColliderComp circleColliderComp = componentMap.components[ colInd ];
@@ -127,6 +137,21 @@ void CircleColliderManager::updateAndCollide() {
   }
 }
 
+bool CircleColliderManager::circleCircleCollide( ComponentIndex circleIndA, ComponentIndex circleIndB ) {
+  PROFILE;
+  ASSERT( circleIndA < componentMap.components.size(), "ComponentIndex %d out of bounds", circleIndA );
+  ASSERT( circleIndB < componentMap.components.size(), "ComponentIndex %d out of bounds", circleIndB );
+  CircleColliderComp collA = componentMap.components[ circleIndA ];
+  Circle circleA = collA.circle;
+  CircleColliderComp collB = componentMap.components[ circleIndB ];
+  Circle circleB = collB.circle;
+  float distance = magnitude( ( collA.position + circleA.center ) - ( collB.position + circleB.center ) );
+  if ( distance <= circleA.radius + circleB.radius ) {
+    return true;
+  }
+  return false;
+}       
+
 void CircleColliderManager::fitToSpriteSize( EntityHandle entity ) {
   ComponentIndex componentInd = componentMap.lookup( entity );
   Vec2 size = SpriteManager::get( entity ).size;
@@ -138,7 +163,7 @@ ComponentMap< SpriteManager::SpriteComp > SpriteManager::componentMap;
 RenderInfo SpriteManager::renderInfo;
 SpriteManager::Pos* SpriteManager::posBufferData;
 SpriteManager::UV* SpriteManager::texCoordsBufferData;
-
+ 
 SpriteManager::SpriteComp::operator Sprite() const {
   return { this->sprite.textureId, this->sprite.texCoords, this->sprite.size };
 }
