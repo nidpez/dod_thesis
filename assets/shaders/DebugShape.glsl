@@ -1,8 +1,8 @@
 #ifdef VERTEX
 
-layout ( location = 0 ) in vec2 position;
-layout ( location = 1 ) in float radius;
-layout ( location = 2 ) in vec4 color;
+layout ( location = 0 ) in vec4 color;
+layout ( location = 1 ) in vec2 position;
+layout ( location = 2 ) in float radius;
 
 out float vRadius;
 out vec4 vColor;

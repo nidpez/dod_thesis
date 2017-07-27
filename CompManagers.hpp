@@ -49,7 +49,7 @@ public:
   static void remove( EntityHandle entity );
   static void fitToSpriteSize( EntityHandle entity );
   static void updateAndCollide();
-  static bool circleCircleCollide( ComponentIndex circleIndA, ComponentIndex circleIndB );
+  static bool circleCircleCollide( Circle circleA, Circle circleB );
 };
 
 // Axis aligned bounding box 

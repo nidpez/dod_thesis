@@ -114,41 +114,43 @@ void CircleColliderManager::updateAndCollide() {
     componentMap.components[ circleColliderCompInd ].position = transform.position;
     componentMap.components[ circleColliderCompInd ].scale = transform.scale;
   }
-  // n^2 collision detection
-  // FIXME if we put the collision logic here or pass component instances
-  // to the collide function we can save on a few array access calls
-  for ( u32 collI = 0; collI < componentMap.components.size() - 1; ++collI ) {
-    for ( u32 collJ = collI + 1; collJ < componentMap.components.size(); ++collJ ) {
-      if ( circleCircleCollide( collI, collJ ) ) {
-        // TODO create reactions for dynamic components
-        Debug::write( "Entities %d & %d collided\n", componentMap.components[ collI ].entity, componentMap.components[ collJ ].entity );
-        // TODO fire callbacks for programatic components
-      }
-    }
-  }
-  // TODO do frustrum culling
+  std::vector< Circle > transformedCircles;
+  transformedCircles.reserve( componentMap.components.size() );
   for ( u32 colInd = 0; colInd < componentMap.components.size(); ++colInd ) {
     CircleColliderComp circleColliderComp = componentMap.components[ colInd ];
     float scaleX = circleColliderComp.scale.x, scaleY = circleColliderComp.scale.y;
     float maxScale = ( scaleX > scaleY ) ? scaleX : scaleY;
     Vec2 position = circleColliderComp.position + circleColliderComp.circle.center * maxScale;
     float radius = circleColliderComp.circle.radius * maxScale;
-    Circle circle = { position, radius };
-    Color color = { 0.0f, 1.0f, 0.0f, 1.0f };
-    Debug::drawCircle( circle, color );
+    transformedCircles.push_back( { position, radius } );
   }
+  // n^2 collision detection
+  // FIXME if we put the collision logic here or pass component instances
+  // to the collide function we can save on a few array access calls
+  Color color = { 0.0f, 1.0f, 0.0f, 1.0f };
+  for ( u32 collI = 0; collI < componentMap.components.size() - 1; ++collI ) {
+    Circle circleI = transformedCircles[ collI ];
+    for ( u32 collJ = collI + 1; collJ < componentMap.components.size(); ++collJ ) {
+      Circle circleJ = transformedCircles[ collJ ];
+      if ( circleCircleCollide( circleI, circleJ ) ) {
+        Debug::drawCircle( transformedCircles[ collI ], color );
+        Debug::drawCircle( transformedCircles[ collJ ], color );
+        // TODO create reactions for dynamic components
+        // Debug::write( "Entities %d & %d collided\n", componentMap.components[ collI ].entity, componentMap.components[ collJ ].entity );
+        // TODO fire callbacks for programatic components
+      }
+    }
+  }
+  // TODO do frustrum culling
+  // for ( u32 colInd = 0; colInd < componentMap.components.size(); ++colInd ) {
+  //   Debug::drawCircle( transformedCircles[ colInd ], color );
+  // }
 }
 
 // FIXME take scale into account
-bool CircleColliderManager::circleCircleCollide( ComponentIndex circleIndA, ComponentIndex circleIndB ) {
+bool CircleColliderManager::circleCircleCollide( Circle circleA, Circle circleB ) {
   PROFILE;
-  ASSERT( circleIndA < componentMap.components.size(), "ComponentIndex %d out of bounds", circleIndA );
-  ASSERT( circleIndB < componentMap.components.size(), "ComponentIndex %d out of bounds", circleIndB );
-  CircleColliderComp collA = componentMap.components[ circleIndA ];
-  Circle circleA = collA.circle;
-  CircleColliderComp collB = componentMap.components[ circleIndB ];
-  Circle circleB = collB.circle;
-  float distance = magnitude( ( collA.position + circleA.center ) - ( collB.position + circleB.center ) );
+  float distance = magnitude( circleA.center - circleB.center );
   if ( distance <= circleA.radius + circleB.radius ) {
     return true;
   }

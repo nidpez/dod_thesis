@@ -17,30 +17,6 @@ void Debug::initializeLogger() {
 #endif
 }
 
-void Debug::initializeRenderer() {
-#ifndef NDEBUG
-  // configure buffers
-  glGenVertexArrays( 1, &renderInfo.vaoId );
-  glBindVertexArray( renderInfo.vaoId );
-  glGenBuffers( 1, &renderInfo.vboIds[ 0 ] );
-  glBindBuffer( GL_ARRAY_BUFFER, renderInfo.vboIds[ 0 ] );
-  glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, 7 * sizeof( GLfloat ), ( void* )0 );
-  glEnableVertexAttribArray( 0 );
-  glVertexAttribPointer( 1, 1, GL_FLOAT, GL_FALSE, 7 * sizeof( GLfloat ), ( void* )( 2 * sizeof( GLfloat ) ) );
-  glEnableVertexAttribArray( 1 );
-  glVertexAttribPointer( 2, 4, GL_FLOAT, GL_FALSE, 7 * sizeof( GLfloat ), ( void* )( 3 * sizeof( GLfloat ) ) );
-  glEnableVertexAttribArray( 2 );
-  glBindVertexArray( 0 );
-  // create shader program
-  renderInfo.shaderProgramId = AssetManager::loadShader( "shaders/DebugShape.glsl" );
-  // get shader's constants' locations
-  renderInfo.projUnifLoc[ 0 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.left" );
-  renderInfo.projUnifLoc[ 1 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.right" );
-  renderInfo.projUnifLoc[ 2 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.bottom" );
-  renderInfo.projUnifLoc[ 3 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.top" );
-#endif
-}
-
 void Debug::write( const char* format, ... ) {
   va_list args;
   va_start( args, format );
@@ -86,6 +62,30 @@ void Debug::haltWithMessage( const char* failedCond, const char* file, const cha
 }
 
 ////////////////////////// Drawing debug shapes ///////////////////////////
+
+void Debug::initializeRenderer() {
+#ifndef NDEBUG
+  // configure buffers
+  glGenVertexArrays( 1, &renderInfo.vaoId );
+  glBindVertexArray( renderInfo.vaoId );
+  glGenBuffers( 1, &renderInfo.vboIds[ 0 ] );
+  glBindBuffer( GL_ARRAY_BUFFER, renderInfo.vboIds[ 0 ] );
+  glVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, 7 * sizeof( GLfloat ), ( void* )0 );
+  glEnableVertexAttribArray( 0 );
+  glVertexAttribPointer( 1, 2, GL_FLOAT, GL_FALSE, 7 * sizeof( GLfloat ), ( void* )( 4 * sizeof( GLfloat ) ) );
+  glEnableVertexAttribArray( 1 );
+  glVertexAttribPointer( 2, 1, GL_FLOAT, GL_FALSE, 7 * sizeof( GLfloat ), ( void* )( 6 * sizeof( GLfloat ) ) );
+  glEnableVertexAttribArray( 2 );
+  glBindVertexArray( 0 );
+  // create shader program
+  renderInfo.shaderProgramId = AssetManager::loadShader( "shaders/DebugShape.glsl" );
+  // get shader's constants' locations
+  renderInfo.projUnifLoc[ 0 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.left" );
+  renderInfo.projUnifLoc[ 1 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.right" );
+  renderInfo.projUnifLoc[ 2 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.bottom" );
+  renderInfo.projUnifLoc[ 3 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.top" );
+#endif
+}
 
 void Debug::shutdown() {
 #ifndef NDEBUG
@@ -297,11 +297,12 @@ void Profiler::updateOutputsAndReset() {
     // display sample
     u32 dataInd = node.dataInd;
     ProfileSample sample = samples[ dataInd ];
-    // crappy way of expressing call depth
-    for ( u32 i = 0; i < depth; ++i ) {
-      fprintf( profilerLog, "-- " );
-    }
-    if ( nodeInd != 1 ) {       // don't render the ROOT node
+    // don't render unused nodes
+    if ( sample.callCount > 0 ) {
+      // crappy way of expressing call depth
+      for ( u32 i = 0; i < depth; ++i ) {
+        fprintf( profilerLog, "-- " );
+      }
       u64 acumExclusiveNanos = sample.elapsedNanos - acumChildNanos;
       fprintf( profilerLog, "%s\t%d\t%ld\t%ld\t%ld\t%ld\n", node.name, sample.callCount, sample.elapsedNanos, acumExclusiveNanos, sample.elapsedNanos / sample.callCount, acumExclusiveNanos / sample.callCount );
     }

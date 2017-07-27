@@ -12,3 +12,7 @@ bin/
 
 # VisualStudio Code debugging files
 .vscode/
+
+# some screenshots taken as a sort of dev diary
+diary/
+./

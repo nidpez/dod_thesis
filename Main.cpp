@@ -2,8 +2,7 @@
 #include <random>
 
 #include "EngineCommon.hpp"
-#include "TransformTest.hpp"
-#include "DestroyTest.hpp"
+#include "TestScene.hpp"
 
 // misc
 
@@ -36,8 +35,7 @@ s32 main() {
   SpriteManager::setOrthoProjection( aspect, 100 );
   Debug::setOrthoProjection( aspect, 100 );
 
-  TransformTest::initialize( aspect );
-  DestroyTest::initialize();
+  TestScene::initialize();
   
   // main loop      
   double t1 = glfwGetTime();
@@ -94,23 +92,10 @@ s32 main() {
       // 	angle = atan2( dir[ 1 ], dir[ 0 ] );
       // }
     }
-    
-    //detect collisions
-    // float dx = tempPos[ 0 ] - pos2[ 0 ];
-    // float dy = tempPos[ 1 ] - pos2[ 1 ];
-    // float dist = sqrt( dx * dx + dy * dy );
-    // if ( dist >= r1 + r2 ) {
-    //   // no collision detected
-    //   pos1.x = tempPos[ 0 ];
-    //   pos1.y = tempPos[ 1 ];
-    // } else {
-    //   tempPos[ 0 ] = pos1.x;
-    //   tempPos[ 1 ] = pos1.y;
-    // }
-    CircleColliderManager::updateAndCollide();
 
-    TransformTest::update( deltaT );
-    DestroyTest::update();
+    TestScene::update();
+    
+    CircleColliderManager::updateAndCollide();
     
     // render scene
     glClear( GL_COLOR_BUFFER_BIT );
@@ -146,7 +131,7 @@ s32 main() {
   glfwDestroyWindow( window );
   glfwTerminate();
 
-  TransformTest::shutdown();
+  TestScene::shutdown();
   
   // shut down managers
   AssetManager::shutdown();
