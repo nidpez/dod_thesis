@@ -75,6 +75,61 @@ std::vector< EntityHandle > TransformManager::getLastUpdated() {
 }
 
 ComponentMap< CircleColliderManager::CircleColliderComp > CircleColliderManager::componentMap;
+std::vector< CircleColliderManager::QuadNode > CircleColliderManager::quadTree;
+
+void CircleColliderManager::initializeQuadTree(Rect boundary) {
+  // TODO assert boundary is good
+  quadTree = std::vector< QuadNode >();
+  QuadNode nullNode;
+  nullNode.boundary = { { 0.0f, 0.0f }, { 0.0f, 0.0f } };
+  for ( u32 childInd = 0; childInd < QUADTREE_BUCKET_CAPACITY; ++childInd ) {
+    nullNode.childIndices[ childInd ] = 0;
+  }
+  quadTree.push_back( nullNode );
+  QuadNode rootNode;
+  rootNode.boundary = boundary;
+  for ( u32 childInd = 0; childInd < QUADTREE_BUCKET_CAPACITY; ++childInd ) {
+    rootNode.childIndices[ childInd ] = 0;
+  }
+  quadTree.push_back( rootNode );
+  for ( u32 colliderInd = 0; colliderInd < componentMap.components.size(); ++colliderInd ) {
+    insertIntoQuadTree(colliderInd);
+  }
+}
+
+void CircleColliderManager::subdivideQuadNode(QuadNode node) {}
+
+void CircleColliderManager::insertIntoQuadTree(ComponentIndex colliderInd) {
+  // TODO assert component index not out of bounds
+  std::deque< QuadNode > nextNodes = std::deque< QuadNode >();
+  // index 0 is null
+  QuadNode quadNode = quadTree[ 1 ];
+  CircleColliderComp collider = componentMap.components[ colliderInd ];
+  if ( circleAABBCollide( collider.circle, quadNode.boundary ) ) {
+    nextNodes.push_front( quadNode );
+  }
+  while ( !nextNodes.empty() ) {
+    quadNode = nextNodes.front();
+    nextNodes.pop_front();
+    // try to add collider to this node
+    if ( quadNode.lastElemInd < QUADTREE_BUCKET_CAPACITY - 1 ) {
+      quadNode.elements[ ++quadNode.lastElemInd ] = colliderInd;
+      return;
+    }
+    // else add it to some of its children
+    if ( quadNode.childIndices[ 0 ] == 0 ) {
+      subdivideQuadNode( quadNode );
+    }
+    // find which children the collider intersects with
+    // and add them to the deque
+    for ( int i = 0; i < 4; ++i ) {
+      QuadNode child = quadTree[ quadNode.childIndices[ i ] ];
+      if ( circleAABBCollide( collider.circle, child.boundary ) ) {
+        nextNodes.push_front( child );
+      }
+    }
+  }
+}
 
 void CircleColliderManager::initialize() {
 }
@@ -150,12 +205,35 @@ void CircleColliderManager::updateAndCollide() {
 // FIXME take scale into account
 bool CircleColliderManager::circleCircleCollide( Circle circleA, Circle circleB ) {
   PROFILE;
+  // TODO use squared magnitude and compare to (ra + rb)^2
   float distance = magnitude( circleA.center - circleB.center );
   if ( distance <= circleA.radius + circleB.radius ) {
     return true;
   }
   return false;
-}       
+}
+
+// FIXME take scale into account
+bool CircleColliderManager::circleAABBCollide( Circle circle, Rect aabb ) {
+  PROFILE;
+  // TODO assert integrity of circle and aabb
+  // TODO refactor distance to aabb function
+  // taken from Real-Time Collision Detection - Christer Ericson, 5.2.5 Testing Sphere Against AABB
+  float sqDistance = 0.0f;
+  if ( circle.center.x < aabb.min.x ) {
+    sqDistance += ( aabb.min.x - circle.center.x ) * ( aabb.min.x - circle.center.x );
+  }
+  if ( circle.center.x > aabb.max.x ) {
+    sqDistance += ( circle.center.x - aabb.max.x ) * ( circle.center.x - aabb.max.x );
+  }
+  if ( circle.center.y < aabb.min.y ) {
+    sqDistance += ( aabb.min.y - circle.center.y ) * ( aabb.min.y - circle.center.y );
+  }
+  if ( circle.center.y > aabb.max.y ) {
+    sqDistance += ( circle.center.y - aabb.max.y ) * ( circle.center.y - aabb.max.y );
+  }
+  return sqDistance <= circle.radius * circle.radius; 
+}
 
 void CircleColliderManager::fitToSpriteSize( EntityHandle entity ) {
   ComponentIndex componentInd = componentMap.lookup( entity );

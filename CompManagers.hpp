@@ -31,6 +31,12 @@ public:
   static std::vector< EntityHandle > getLastUpdated();
 };
 
+// Axis aligned bounding box 
+struct Rect {
+  Vec2 min;
+  Vec2 max;
+};
+
 // TODO allow multiple colliders per entity (with linked list?)
 class CircleColliderManager {
   struct CircleColliderComp {
@@ -41,6 +47,17 @@ class CircleColliderManager {
     Vec2 scale;
   };
   static ComponentMap< CircleColliderComp > componentMap;
+  static const u8 QUADTREE_BUCKET_CAPACITY = 4;
+  struct QuadNode {
+    u32 childIndices[ 4 ];
+    ComponentIndex elements[ QUADTREE_BUCKET_CAPACITY ];
+    Rect boundary;
+    u8 lastElemInd = 0;
+  };
+  static std::vector< QuadNode > quadTree;
+  static void initializeQuadTree(Rect boundary);
+  static void subdivideQuadNode(QuadNode node);
+  static void insertIntoQuadTree(ComponentIndex colliderInd);
 public:
   static void initialize();
   static void shutdown();
@@ -50,12 +67,7 @@ public:
   static void fitToSpriteSize( EntityHandle entity );
   static void updateAndCollide();
   static bool circleCircleCollide( Circle circleA, Circle circleB );
-};
-
-// Axis aligned bounding box 
-struct Rect {
-  Vec2 min;
-  Vec2 max;
+  static bool circleAABBCollide( Circle circle, Rect aabb );
 };
 
 struct Sprite {
