@@ -80,24 +80,38 @@ std::vector< CircleColliderManager::QuadNode > CircleColliderManager::quadTree;
 void CircleColliderManager::initializeQuadTree(Rect boundary) {
   // TODO assert boundary is good
   quadTree = std::vector< QuadNode >();
-  QuadNode nullNode;
-  nullNode.boundary = { { 0.0f, 0.0f }, { 0.0f, 0.0f } };
-  for ( u32 childInd = 0; childInd < QUADTREE_BUCKET_CAPACITY; ++childInd ) {
-    nullNode.childIndices[ childInd ] = 0;
-  }
-  quadTree.push_back( nullNode );
-  QuadNode rootNode;
+  quadTree.push_back( {} );
+  QuadNode rootNode = {};
   rootNode.boundary = boundary;
-  for ( u32 childInd = 0; childInd < QUADTREE_BUCKET_CAPACITY; ++childInd ) {
-    rootNode.childIndices[ childInd ] = 0;
-  }
   quadTree.push_back( rootNode );
   for ( u32 colliderInd = 0; colliderInd < componentMap.components.size(); ++colliderInd ) {
     insertIntoQuadTree(colliderInd);
   }
 }
 
-void CircleColliderManager::subdivideQuadNode(QuadNode node) {}
+void CircleColliderManager::subdivideQuadNode(QuadNode& node) {
+  Vec2 min = node.boundary.min;
+  Vec2 max = node.boundary.max;
+  Vec2 center = ( max - min ) / 2.0f;
+  u32 lastInd = quadTree.size();
+  // top-left
+  QuadNode child = {};
+  child.boundary = { min, center };
+  quadTree.push_back( child );
+  node.childIndices[ 0 ] = lastInd++;
+  // top-right
+  child.boundary = { { center.x, min.y }, { max.x, center.y } };
+  quadTree.push_back( child );
+  node.childIndices[ 1 ] = lastInd++;
+  // bottom-right
+  child.boundary = { center, max };
+  quadTree.push_back( child );
+  node.childIndices[ 2 ] = lastInd++;
+  // bottom-left
+  child.boundary = { { min.x, center.y }, { center.x, max.y } };
+  quadTree.push_back( child );
+  node.childIndices[ 3 ] = lastInd;
+}
 
 void CircleColliderManager::insertIntoQuadTree(ComponentIndex colliderInd) {
   // TODO assert component index not out of bounds

@@ -53,11 +53,24 @@ inline Vec2  operator*( Vec2 vec, float scale ) {
 }
 
 inline Vec2  operator*( float scale, Vec2 vec ) {
-  return { vec.x * scale, vec.y * scale };
+  return vec * scale;
 }
 
 inline Vec2& operator*=( Vec2& vec, float scale ) {
   vec = vec * scale;
+  return vec;
+}
+
+inline Vec2  operator/( Vec2 vec, float factor ) {
+  return { vec.x / factor, vec.y / factor };
+}
+
+inline Vec2  operator/( float factor, Vec2 vec ) {
+  return vec / factor;
+}
+
+inline Vec2& operator/=( Vec2& vec, float factor ) {
+  vec = vec / factor;
   return vec;
 }
 

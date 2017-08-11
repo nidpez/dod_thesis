@@ -56,7 +56,7 @@ class CircleColliderManager {
   };
   static std::vector< QuadNode > quadTree;
   static void initializeQuadTree(Rect boundary);
-  static void subdivideQuadNode(QuadNode node);
+  static void subdivideQuadNode(QuadNode& node);
   static void insertIntoQuadTree(ComponentIndex colliderInd);
 public:
   static void initialize();
