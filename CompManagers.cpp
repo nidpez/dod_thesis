@@ -67,79 +67,95 @@ Transform TransformManager::get( EntityHandle entity ) {
 std::vector< EntityHandle > TransformManager::getLastUpdated() {
   PROFILE;
   // TODO actually compute which transforms have been updated since last frame
-  std::vector< EntityHandle > result( componentMap.components.size() );
-  for ( u32 entInd = 0; entInd < componentMap.components.size(); ++entInd ) {
-    result[ entInd ] = componentMap.components[ entInd ].entity;
+  // component index 0 is not valid
+  std::vector< EntityHandle > result( componentMap.components.size() - 1 );
+  for ( u32 entInd = 1; entInd < componentMap.components.size(); ++entInd ) {
+    result[ entInd - 1 ] = componentMap.components[ entInd ].entity;
   }
   return result;
 }
 
 ComponentMap< CircleColliderManager::CircleColliderComp > CircleColliderManager::componentMap;
+std::vector< Circle > CircleColliderManager::transformedCircles;
 std::vector< CircleColliderManager::QuadNode > CircleColliderManager::quadTree;
 
 void CircleColliderManager::initializeQuadTree(Rect boundary) {
-  // TODO assert boundary is good
   quadTree = std::vector< QuadNode >();
   quadTree.push_back( {} );
   QuadNode rootNode = {};
   rootNode.boundary = boundary;
   quadTree.push_back( rootNode );
-  for ( u32 colliderInd = 0; colliderInd < componentMap.components.size(); ++colliderInd ) {
+  for ( u32 colliderInd = 1; colliderInd < componentMap.components.size(); ++colliderInd ) {
     insertIntoQuadTree(colliderInd);
   }
 }
 
-void CircleColliderManager::subdivideQuadNode(QuadNode& node) {
-  Vec2 min = node.boundary.min;
-  Vec2 max = node.boundary.max;
+void CircleColliderManager::subdivideQuadNode(u32 nodeInd) {
+  Vec2 min = quadTree[ nodeInd ].boundary.min;
+  Vec2 max = quadTree[ nodeInd ].boundary.max;
   Vec2 center = ( max - min ) / 2.0f;
   u32 lastInd = quadTree.size();
-  // top-left
-  QuadNode child = {};
-  child.boundary = { min, center };
-  quadTree.push_back( child );
-  node.childIndices[ 0 ] = lastInd++;
   // top-right
-  child.boundary = { { center.x, min.y }, { max.x, center.y } };
-  quadTree.push_back( child );
-  node.childIndices[ 1 ] = lastInd++;
-  // bottom-right
+  QuadNode child = {};
   child.boundary = { center, max };
   quadTree.push_back( child );
-  node.childIndices[ 2 ] = lastInd++;
+  quadTree[ nodeInd ].childIndices[ 0 ] = lastInd++;
+  // bottom-right
+  child.boundary = { { center.x, min.y }, { max.x, center.y } };
+  quadTree.push_back( child );
+  quadTree[ nodeInd ].childIndices[ 1 ] = lastInd++;
   // bottom-left
+  child.boundary = { min, center };
+  quadTree.push_back( child );
+  quadTree[ nodeInd ].childIndices[ 2 ] = lastInd++;
+  // top-left
   child.boundary = { { min.x, center.y }, { center.x, max.y } };
   quadTree.push_back( child );
-  node.childIndices[ 3 ] = lastInd;
+  quadTree[ nodeInd ].childIndices[ 3 ] = lastInd;
+  // put elements inside children
+  for ( int elemInd = 0; elemInd <= quadTree[ nodeInd ].lastElemInd; ++elemInd ) {
+    ComponentIndex colliderInd = quadTree[ nodeInd ].elements[ elemInd ];
+    Circle collider = transformedCircles[ colliderInd ];
+    for ( int childI = 0; childI < 4; ++childI ) {
+      QuadNode& child = quadTree[ quadTree[ nodeInd ].childIndices[ childI ] ];
+      if ( circleAABBCollide( collider, child.boundary ) ) {
+        child.elements[ ++child.lastElemInd ] = colliderInd;
+        break;
+      }
+    }
+    quadTree[ nodeInd ].elements[ elemInd ] = 0;
+  }
 }
 
 void CircleColliderManager::insertIntoQuadTree(ComponentIndex colliderInd) {
-  // TODO assert component index not out of bounds
-  std::deque< QuadNode > nextNodes = std::deque< QuadNode >();
+  ASSERT( colliderInd < componentMap.components.size(),
+          "Component index %d out of bounds", colliderInd );
+  std::deque< u32 > nextNodeInds = std::deque< u32 >();
   // index 0 is null
-  QuadNode quadNode = quadTree[ 1 ];
-  CircleColliderComp collider = componentMap.components[ colliderInd ];
-  if ( circleAABBCollide( collider.circle, quadNode.boundary ) ) {
-    nextNodes.push_front( quadNode );
+  Circle collider = transformedCircles[ colliderInd ];
+  if ( circleAABBCollide( collider, quadTree[ 1 ].boundary ) ) {
+    nextNodeInds.push_front( 1 );
   }
-  while ( !nextNodes.empty() ) {
-    quadNode = nextNodes.front();
-    nextNodes.pop_front();
+  while ( !nextNodeInds.empty() ) {
+    u32 nodeInd = nextNodeInds.front();
+    nextNodeInds.pop_front();
     // try to add collider to this node
-    if ( quadNode.lastElemInd < QUADTREE_BUCKET_CAPACITY - 1 ) {
-      quadNode.elements[ ++quadNode.lastElemInd ] = colliderInd;
+    if ( quadTree[ nodeInd ].lastElemInd < QUADTREE_BUCKET_CAPACITY - 1 ) {
+      quadTree[ nodeInd ].elements[ ++quadTree[ nodeInd ].lastElemInd ] = colliderInd;
+      
       return;
     }
     // else add it to some of its children
-    if ( quadNode.childIndices[ 0 ] == 0 ) {
-      subdivideQuadNode( quadNode );
+    if ( quadTree[ nodeInd ].childIndices[ 0 ] == 0 ) {
+      subdivideQuadNode( nodeInd );
     }
     // find which children the collider intersects with
     // and add them to the deque
     for ( int i = 0; i < 4; ++i ) {
-      QuadNode child = quadTree[ quadNode.childIndices[ i ] ];
-      if ( circleAABBCollide( collider.circle, child.boundary ) ) {
-        nextNodes.push_front( child );
+      u32 childInd = quadTree[ nodeInd ].childIndices[ i ];
+      QuadNode child = quadTree[ childInd ];
+      if ( circleAABBCollide( collider, child.boundary ) ) {
+        nextNodeInds.push_front( childInd );
       }
     }
   }
@@ -183,9 +199,8 @@ void CircleColliderManager::updateAndCollide() {
     componentMap.components[ circleColliderCompInd ].position = transform.position;
     componentMap.components[ circleColliderCompInd ].scale = transform.scale;
   }
-  std::vector< Circle > transformedCircles;
   transformedCircles.reserve( componentMap.components.size() );
-  for ( u32 colInd = 0; colInd < componentMap.components.size(); ++colInd ) {
+  for ( u32 colInd = 1; colInd < componentMap.components.size(); ++colInd ) {
     CircleColliderComp circleColliderComp = componentMap.components[ colInd ];
     float scaleX = circleColliderComp.scale.x, scaleY = circleColliderComp.scale.y;
     float maxScale = ( scaleX > scaleY ) ? scaleX : scaleY;
@@ -193,27 +208,34 @@ void CircleColliderManager::updateAndCollide() {
     float radius = circleColliderComp.circle.radius * maxScale;
     transformedCircles.push_back( { position, radius } );
   }
-  // n^2 collision detection
-  // FIXME if we put the collision logic here or pass component instances
-  // to the collide function we can save on a few array access calls
+  // space partitioned collision detection
+  // keep the quadtree updated
+  // TODO calculate the boundary dynamically 
+  Rect boundary = { { -70, -40 }, { 70, 40 } };
+  initializeQuadTree( boundary );
   Color color = { 0.0f, 1.0f, 0.0f, 1.0f };
-  for ( u32 collI = 0; collI < componentMap.components.size() - 1; ++collI ) {
-    Circle circleI = transformedCircles[ collI ];
-    for ( u32 collJ = collI + 1; collJ < componentMap.components.size(); ++collJ ) {
-      Circle circleJ = transformedCircles[ collJ ];
-      if ( circleCircleCollide( circleI, circleJ ) ) {
-        Debug::drawCircle( transformedCircles[ collI ], color );
-        Debug::drawCircle( transformedCircles[ collJ ], color );
-        // TODO create reactions for dynamic components
-        // Debug::write( "Entities %d & %d collided\n", componentMap.components[ collI ].entity, componentMap.components[ collJ ].entity );
-        // TODO fire callbacks for programatic components
+  for ( auto& quadNode: quadTree ) {
+    Debug::drawRect( quadNode.boundary, { 0.0f, 0.0f, 1.0f, 1.0f } );
+    for ( int i = 0; i < quadNode.lastElemInd; ++i ) {
+      ComponentIndex collI = quadNode.elements[ i ];
+      Circle circleI = transformedCircles[ collI ];
+      for ( int j = i + 1; j <= quadNode.lastElemInd; ++j ) {
+        ComponentIndex collJ = quadNode.elements[ j ];
+        Circle circleJ = transformedCircles[ collJ ];
+        if ( circleCircleCollide( circleI, circleJ ) ) {
+          Debug::drawCircle( transformedCircles[ collI ], color );
+          Debug::drawCircle( transformedCircles[ collJ ], color );
+          // TODO create reactions for dynamic components
+          // Debug::write( "Entities %d & %d collided\n", componentMap.components[ collI ].entity, componentMap.components[ collJ ].entity );
+          // TODO fire callbacks for programatic components
+        }
       }
     }
   }
-  // TODO do frustrum culling
-  // for ( u32 colInd = 0; colInd < componentMap.components.size(); ++colInd ) {
-  //   Debug::drawCircle( transformedCircles[ colInd ], color );
-  // }
+  for ( u32 colInd = 1; colInd < componentMap.components.size(); ++colInd ) {
+    // Debug::drawCircle( componentMap.components[ colInd ].circle, { 1, 0, 0, 1 } );
+    // Debug::drawCircle( transformedCircles[ colInd ], color );
+  }
 }
 
 // FIXME take scale into account

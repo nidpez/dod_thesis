@@ -15,8 +15,14 @@ class Debug {
     Vec2 position;
     float radius;
   };
-  static RenderInfo renderInfo;
+  struct DebugRect {
+    Color color;
+    Rect rect;
+  };
+  static RenderInfo circleRenderInfo;
+  static RenderInfo rectRenderInfo;
   static std::vector< DebugCircle > circleBufferData;
+  static std::vector< DebugRect > rectBufferData;
 public:
   // write messages
   static void initializeLogger();
@@ -29,6 +35,7 @@ public:
   // draw basic shapes
   static void initializeRenderer();
   static void drawCircle( Circle circle, Color color );
+  static void drawRect( Rect rect, Color color );
   static void renderAndClear();
   static void setOrthoProjection( float aspectRatio, float height );
 };

@@ -31,12 +31,7 @@ public:
   static std::vector< EntityHandle > getLastUpdated();
 };
 
-// Axis aligned bounding box 
-struct Rect {
-  Vec2 min;
-  Vec2 max;
-};
-
+// TODO render quad nodes
 // TODO allow multiple colliders per entity (with linked list?)
 class CircleColliderManager {
   struct CircleColliderComp {
@@ -47,16 +42,18 @@ class CircleColliderManager {
     Vec2 scale;
   };
   static ComponentMap< CircleColliderComp > componentMap;
+  static std::vector< Circle > transformedCircles;
   static const u8 QUADTREE_BUCKET_CAPACITY = 4;
   struct QuadNode {
     u32 childIndices[ 4 ];
     ComponentIndex elements[ QUADTREE_BUCKET_CAPACITY ];
     Rect boundary;
-    u8 lastElemInd = 0;
+    // TODO standarize indices starting at 1
+    s8 lastElemInd = -1;
   };
   static std::vector< QuadNode > quadTree;
   static void initializeQuadTree(Rect boundary);
-  static void subdivideQuadNode(QuadNode& node);
+  static void subdivideQuadNode(u32 nodeInd);
   static void insertIntoQuadTree(ComponentIndex colliderInd);
 public:
   static void initialize();

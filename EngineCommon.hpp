@@ -30,6 +30,12 @@ struct Circle {
   float radius;
 };
 
+// Axis aligned bounding box 
+struct Rect {
+  Vec2 min;
+  Vec2 max;
+};
+
 struct Color {
   float r, g, b, a;
 };

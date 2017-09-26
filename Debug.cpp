@@ -6,8 +6,10 @@
 /////////////////////// Error handling and logging //////////////////////
 
 FILE* Debug::log;
-RenderInfo Debug::renderInfo;
+RenderInfo Debug::circleRenderInfo;
+RenderInfo Debug::rectRenderInfo;
 std::vector< Debug::DebugCircle > Debug::circleBufferData;
+std::vector< Debug::DebugRect > Debug::rectBufferData;
 
 void Debug::initializeLogger() {
 #ifndef NDEBUG
@@ -65,11 +67,12 @@ void Debug::haltWithMessage( const char* failedCond, const char* file, const cha
 
 void Debug::initializeRenderer() {
 #ifndef NDEBUG
+  // circle
   // configure buffers
-  glGenVertexArrays( 1, &renderInfo.vaoId );
-  glBindVertexArray( renderInfo.vaoId );
-  glGenBuffers( 1, &renderInfo.vboIds[ 0 ] );
-  glBindBuffer( GL_ARRAY_BUFFER, renderInfo.vboIds[ 0 ] );
+  glGenVertexArrays( 1, &circleRenderInfo.vaoId );
+  glBindVertexArray( circleRenderInfo.vaoId );
+  glGenBuffers( 1, &circleRenderInfo.vboIds[ 0 ] );
+  glBindBuffer( GL_ARRAY_BUFFER, circleRenderInfo.vboIds[ 0 ] );
   glVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, 7 * sizeof( GLfloat ), ( void* )0 );
   glEnableVertexAttribArray( 0 );
   glVertexAttribPointer( 1, 2, GL_FLOAT, GL_FALSE, 7 * sizeof( GLfloat ), ( void* )( 4 * sizeof( GLfloat ) ) );
@@ -78,21 +81,49 @@ void Debug::initializeRenderer() {
   glEnableVertexAttribArray( 2 );
   glBindVertexArray( 0 );
   // create shader program
-  renderInfo.shaderProgramId = AssetManager::loadShader( "shaders/DebugShape.glsl" );
+  circleRenderInfo.shaderProgramId = AssetManager::loadShader( "shaders/DebugCircle.glsl" );
   // get shader's constants' locations
-  renderInfo.projUnifLoc[ 0 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.left" );
-  renderInfo.projUnifLoc[ 1 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.right" );
-  renderInfo.projUnifLoc[ 2 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.bottom" );
-  renderInfo.projUnifLoc[ 3 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.top" );
+  circleRenderInfo.projUnifLoc[ 0 ] = glGetUniformLocation( circleRenderInfo.shaderProgramId, "projection.left" );
+  circleRenderInfo.projUnifLoc[ 1 ] = glGetUniformLocation( circleRenderInfo.shaderProgramId, "projection.right" );
+  circleRenderInfo.projUnifLoc[ 2 ] = glGetUniformLocation( circleRenderInfo.shaderProgramId, "projection.bottom" );
+  circleRenderInfo.projUnifLoc[ 3 ] = glGetUniformLocation( circleRenderInfo.shaderProgramId, "projection.top" );
+  // rect
+  // configure buffers
+  // TODO generalize a function to configure the RenderInfo struct like this
+  glGenVertexArrays( 1, &rectRenderInfo.vaoId );
+  glBindVertexArray( rectRenderInfo.vaoId );
+  glGenBuffers( 1, &rectRenderInfo.vboIds[ 0 ] );
+  glBindBuffer( GL_ARRAY_BUFFER, rectRenderInfo.vboIds[ 0 ] );
+  const int NUM_ATTRIBS = 3;
+  std::size_t floatSize = sizeof( GLfloat );
+  std::size_t attribTypeSizes[ NUM_ATTRIBS ] = { floatSize, floatSize, floatSize };
+  int attribSizes[ NUM_ATTRIBS ] = { 4, 2, 2 };
+  glVertexAttribPointer( 0, attribSizes[ 0 ], GL_FLOAT, GL_FALSE, 0, ( void* )0 );
+  glEnableVertexAttribArray( 0 );
+  glVertexAttribPointer( 1, attribSizes[ 1 ], GL_FLOAT, GL_FALSE, 0, ( void* )( attribSizes[ 0 ] * attribTypeSizes[ 0 ] ) );
+  glEnableVertexAttribArray( 1 );
+  glVertexAttribPointer( 2, attribSizes[ 2 ], GL_FLOAT, GL_FALSE, 0, ( void* )( attribSizes[ 0 ] * attribTypeSizes[ 0 ] + attribSizes[ 1 ] * attribTypeSizes[ 1 ] ) );
+  glEnableVertexAttribArray( 2 );
+  glBindVertexArray( 0 );
+  // create shader program
+  rectRenderInfo.shaderProgramId = AssetManager::loadShader( "shaders/DebugRect.glsl" );
+  // get shader's constants' locations
+  rectRenderInfo.projUnifLoc[ 0 ] = glGetUniformLocation( rectRenderInfo.shaderProgramId, "projection.left" );
+  rectRenderInfo.projUnifLoc[ 1 ] = glGetUniformLocation( rectRenderInfo.shaderProgramId, "projection.right" );
+  rectRenderInfo.projUnifLoc[ 2 ] = glGetUniformLocation( rectRenderInfo.shaderProgramId, "projection.bottom" );
+  rectRenderInfo.projUnifLoc[ 3 ] = glGetUniformLocation( rectRenderInfo.shaderProgramId, "projection.top" );
 #endif
 }
 
 void Debug::shutdown() {
 #ifndef NDEBUG
   // rendering stuff
-  glDeleteProgram( renderInfo.shaderProgramId );
-  glDeleteVertexArrays( 1, &renderInfo.vaoId );
-  glDeleteBuffers( 1, &renderInfo.vboIds[ 0 ] );
+  glDeleteProgram( circleRenderInfo.shaderProgramId );
+  glDeleteVertexArrays( 1, &circleRenderInfo.vaoId );
+  glDeleteBuffers( 1, &circleRenderInfo.vboIds[ 0 ] );
+  glDeleteProgram( rectRenderInfo.shaderProgramId );
+  glDeleteVertexArrays( 1, &rectRenderInfo.vaoId );
+  glDeleteBuffers( 1, &rectRenderInfo.vboIds[ 0 ] );
   // logging stuff
   fclose( log );
 #endif
@@ -105,26 +136,45 @@ void Debug::drawCircle( Circle circle, Color color ) {
 #endif
 }
 
+void Debug::drawRect( Rect rect, Color color ) {
+#ifndef NDEBUG
+  ASSERT( rect.min.x != rect.max.x && rect.min.y != rect.max.y, "Asked to draw a malformed rectangle ( ( %f, %f ), ( %f, %f ) )", rect.min.x, rect.min.y, rect.max.x, rect.max.y );
+  rectBufferData.push_back( { color, rect } );
+#endif
+}
+
 void Debug::renderAndClear() {
 #ifndef NDEBUG
-  // configure buffers
-  glUseProgram( renderInfo.shaderProgramId );
-  glBindVertexArray( renderInfo.vaoId );
-  glBindBuffer( GL_ARRAY_BUFFER, renderInfo.vboIds[ 0 ] );
+  // configure buffers and render circles
+  glUseProgram( circleRenderInfo.shaderProgramId );
+  glBindVertexArray( circleRenderInfo.vaoId );
+  glBindBuffer( GL_ARRAY_BUFFER, circleRenderInfo.vboIds[ 0 ] );
   glBufferData( GL_ARRAY_BUFFER, sizeof( DebugCircle ) * circleBufferData.size(), circleBufferData.data(), GL_STATIC_DRAW );
   glDrawArrays( GL_POINTS, 0, circleBufferData.size() );
   circleBufferData.clear();
+  // render rectangles
+  glUseProgram( rectRenderInfo.shaderProgramId );
+  glBindVertexArray( rectRenderInfo.vaoId );
+  glBindBuffer( GL_ARRAY_BUFFER, rectRenderInfo.vboIds[ 0 ] );
+  glBufferData( GL_ARRAY_BUFFER, sizeof( DebugRect ) * rectBufferData.size(), rectBufferData.data(), GL_STATIC_DRAW );
+  glDrawArrays( GL_POINTS, 0, rectBufferData.size() );
+  rectBufferData.clear();  
 #endif
 }
 
 void Debug::setOrthoProjection( float aspectRatio, float height ) {
 #ifndef NDEBUG
   float halfHeight = height / 2.0f;
-  glUseProgram( renderInfo.shaderProgramId );
-  glUniform1f( renderInfo.projUnifLoc[ 0 ], -halfHeight * aspectRatio );
-  glUniform1f( renderInfo.projUnifLoc[ 1 ], halfHeight * aspectRatio );
-  glUniform1f( renderInfo.projUnifLoc[ 2 ], -halfHeight );
-  glUniform1f( renderInfo.projUnifLoc[ 3 ], halfHeight );
+  glUseProgram( circleRenderInfo.shaderProgramId );
+  glUniform1f( circleRenderInfo.projUnifLoc[ 0 ], -halfHeight * aspectRatio );
+  glUniform1f( circleRenderInfo.projUnifLoc[ 1 ], halfHeight * aspectRatio );
+  glUniform1f( circleRenderInfo.projUnifLoc[ 2 ], -halfHeight );
+  glUniform1f( circleRenderInfo.projUnifLoc[ 3 ], halfHeight );
+  glUseProgram( rectRenderInfo.shaderProgramId );
+  glUniform1f( rectRenderInfo.projUnifLoc[ 0 ], -halfHeight * aspectRatio );
+  glUniform1f( rectRenderInfo.projUnifLoc[ 1 ], halfHeight * aspectRatio );
+  glUniform1f( rectRenderInfo.projUnifLoc[ 2 ], -halfHeight );
+  glUniform1f( rectRenderInfo.projUnifLoc[ 3 ], halfHeight );
 #endif
 }
 

@@ -45,13 +45,14 @@ void main() {
   fColor = vColor[ 0 ];
 
   float baseAng = 6.28318530718 / 31;
+  vec2 center = gl_in[ 0 ].gl_Position.xy;
   for ( int i = 0; i <= 31; ++i ) {
     float ang = baseAng * i;
     vec2 offset = vec2( cos( ang ) * vRadius[ 0 ],
                         -sin( ang ) * vRadius[ 0 ] );
 
     //do model transform
-    vec2 pos = gl_in[ 0 ].gl_Position.xy + offset;
+    vec2 pos = center + offset;
     //pos *= entityScale;
 
     //TODO: do view transform

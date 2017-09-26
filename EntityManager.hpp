@@ -58,12 +58,18 @@ template< typename T >
 struct ComponentMap {
   std::vector< T > components;
   std::unordered_map< u32, ComponentIndex > map;
-  
+
+  ComponentMap();
   void set( EntityHandle entity, T component, RmvCompCallback rmvComp );
   void remove( EntityHandle entity );
   std::vector< EntityHandle > have( const std::vector< EntityHandle >& entities );
   ComponentIndex lookup( EntityHandle entity );
 };
+
+template< typename T >
+ComponentMap< T >::ComponentMap() {
+  components.push_back( {} );
+}
 
 template< typename T >
 void ComponentMap< T >::set( EntityHandle entity, T component, RmvCompCallback rmvComp ) {
