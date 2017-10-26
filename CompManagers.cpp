@@ -214,7 +214,8 @@ void CircleColliderManager::updateAndCollide() {
   Rect boundary = { { -70, -40 }, { 70, 40 } };
   initializeQuadTree( boundary );
   Color color = { 0.0f, 1.0f, 0.0f, 1.0f };
-  for ( auto& quadNode: quadTree ) {
+  for ( u32 nodeInd = 1; nodeInd < quadTree.size(); ++nodeInd ) {
+    QuadNode quadNode = quadTree[ nodeInd ];
     Debug::drawRect( quadNode.boundary, { 0.0f, 0.0f, 1.0f, 1.0f } );
     for ( int i = 0; i < quadNode.lastElemInd; ++i ) {
       ComponentIndex collI = quadNode.elements[ i ];
