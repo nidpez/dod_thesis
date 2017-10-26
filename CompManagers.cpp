@@ -93,7 +93,7 @@ void CircleColliderManager::initializeQuadTree(Rect boundary) {
 void CircleColliderManager::subdivideQuadNode(u32 nodeInd) {
   Vec2 min = quadTree[ nodeInd ].boundary.min;
   Vec2 max = quadTree[ nodeInd ].boundary.max;
-  Vec2 center = ( max - min ) / 2.0f;
+  Vec2 center = min + ( max - min ) / 2.0f;
   u32 lastInd = quadTree.size();
   // top-right
   QuadNode child = {};
