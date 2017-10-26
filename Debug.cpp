@@ -98,11 +98,15 @@ void Debug::initializeRenderer() {
   std::size_t floatSize = sizeof( GLfloat );
   std::size_t attribTypeSizes[ NUM_ATTRIBS ] = { floatSize, floatSize, floatSize };
   int attribSizes[ NUM_ATTRIBS ] = { 4, 2, 2 };
-  glVertexAttribPointer( 0, attribSizes[ 0 ], GL_FLOAT, GL_FALSE, 0, ( void* )0 );
+  std::size_t stride = 0;
+  for ( int i = 0; i < NUM_ATTRIBS; ++i ) {
+    stride += attribSizes[ i ] * attribTypeSizes[ i ];
+  }
+  glVertexAttribPointer( 0, attribSizes[ 0 ], GL_FLOAT, GL_FALSE, stride, ( void* )0 );
   glEnableVertexAttribArray( 0 );
-  glVertexAttribPointer( 1, attribSizes[ 1 ], GL_FLOAT, GL_FALSE, 0, ( void* )( attribSizes[ 0 ] * attribTypeSizes[ 0 ] ) );
+  glVertexAttribPointer( 1, attribSizes[ 1 ], GL_FLOAT, GL_FALSE, stride, ( void* )( attribSizes[ 0 ] * attribTypeSizes[ 0 ] ) );
   glEnableVertexAttribArray( 1 );
-  glVertexAttribPointer( 2, attribSizes[ 2 ], GL_FLOAT, GL_FALSE, 0, ( void* )( attribSizes[ 0 ] * attribTypeSizes[ 0 ] + attribSizes[ 1 ] * attribTypeSizes[ 1 ] ) );
+  glVertexAttribPointer( 2, attribSizes[ 2 ], GL_FLOAT, GL_FALSE, stride, ( void* )( attribSizes[ 0 ] * attribTypeSizes[ 0 ] + attribSizes[ 1 ] * attribTypeSizes[ 1 ] ) );
   glEnableVertexAttribArray( 2 );
   glBindVertexArray( 0 );
   // create shader program
