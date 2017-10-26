@@ -232,10 +232,6 @@ void CircleColliderManager::updateAndCollide() {
       }
     }
   }
-  for ( u32 colInd = 1; colInd < componentMap.components.size(); ++colInd ) {
-    // Debug::drawCircle( componentMap.components[ colInd ].circle, { 1, 0, 0, 1 } );
-    // Debug::drawCircle( transformedCircles[ colInd ], color );
-  }
 }
 
 // FIXME take scale into account
