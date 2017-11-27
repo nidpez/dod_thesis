@@ -7,7 +7,6 @@
 * controller movement
 * rendering layers
 * sorting in layers
-* space-partitioned collision detection
 * implement obb colliders
 * allow multiple colliders per entity
 * use cppcheck

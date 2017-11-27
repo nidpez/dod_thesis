@@ -31,7 +31,6 @@ public:
   static std::vector< EntityHandle > getLastUpdated();
 };
 
-// TODO render quad nodes
 // TODO allow multiple colliders per entity (with linked list?)
 class CircleColliderManager {
   struct CircleColliderComp {
@@ -43,13 +42,19 @@ class CircleColliderManager {
   };
   static ComponentMap< CircleColliderComp > componentMap;
   static std::vector< Circle > transformedCircles;
-  static const u8 QUADTREE_BUCKET_CAPACITY = 4;
-  struct QuadNode {
-    u32 childIndices[ 4 ];
-    ComponentIndex elements[ QUADTREE_BUCKET_CAPACITY ];
-    Rect boundary;
+  static const u8 QUADTREE_BUCKET_CAPACITY = 8;
+  struct QuadBucket {
+    ComponentIndex _[ QUADTREE_BUCKET_CAPACITY ];
     // TODO standarize indices starting at 1
-    s8 lastElemInd = -1;
+    s8 lastInd = -1;
+  };
+  struct QuadNode {
+    union {
+      QuadBucket elements = {};
+      u32 childIndices[ 4 ];
+    };
+    Rect boundary;
+    bool isLeaf = true;
   };
   static std::vector< QuadNode > quadTree;
   static void initializeQuadTree(Rect boundary);

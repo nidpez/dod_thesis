@@ -90,7 +90,12 @@ void CircleColliderManager::initializeQuadTree(Rect boundary) {
   }
 }
 
+// FIXME if QUADTREE_BUCKET_CAPACITY + 1 colliders are at the center of the node
+//       we will subdivide it forever
 void CircleColliderManager::subdivideQuadNode(u32 nodeInd) {
+  // backup elements
+  QuadBucket elements = std::move( quadTree[ nodeInd ].elements );
+  quadTree[ nodeInd ].isLeaf = false;
   Vec2 min = quadTree[ nodeInd ].boundary.min;
   Vec2 max = quadTree[ nodeInd ].boundary.max;
   Vec2 center = min + ( max - min ) / 2.0f;
@@ -113,17 +118,15 @@ void CircleColliderManager::subdivideQuadNode(u32 nodeInd) {
   quadTree.push_back( child );
   quadTree[ nodeInd ].childIndices[ 3 ] = lastInd;
   // put elements inside children
-  for ( int elemInd = 0; elemInd <= quadTree[ nodeInd ].lastElemInd; ++elemInd ) {
-    ComponentIndex colliderInd = quadTree[ nodeInd ].elements[ elemInd ];
+  for ( int elemInd = 0; elemInd <= elements.lastInd; ++elemInd ) {
+    ComponentIndex colliderInd = elements._[ elemInd ];
     Circle collider = transformedCircles[ colliderInd ];
     for ( int childI = 0; childI < 4; ++childI ) {
       QuadNode& child = quadTree[ quadTree[ nodeInd ].childIndices[ childI ] ];
       if ( circleAABBCollide( collider, child.boundary ) ) {
-        child.elements[ ++child.lastElemInd ] = colliderInd;
-        break;
+        child.elements._[ ++child.elements.lastInd ] = colliderInd;
       }
     }
-    quadTree[ nodeInd ].elements[ elemInd ] = 0;
   }
 }
 
@@ -136,29 +139,34 @@ void CircleColliderManager::insertIntoQuadTree(ComponentIndex colliderInd) {
   if ( circleAABBCollide( collider, quadTree[ 1 ].boundary ) ) {
     nextNodeInds.push_front( 1 );
   }
+  bool inserted = false;
   while ( !nextNodeInds.empty() ) {
     u32 nodeInd = nextNodeInds.front();
     nextNodeInds.pop_front();
     // try to add collider to this node
-    if ( quadTree[ nodeInd ].lastElemInd < QUADTREE_BUCKET_CAPACITY - 1 ) {
-      quadTree[ nodeInd ].elements[ ++quadTree[ nodeInd ].lastElemInd ] = colliderInd;
-      
-      return;
+    if ( quadTree[ nodeInd ].isLeaf ) {
+      // ... if there is still space
+      if ( quadTree[ nodeInd ].elements.lastInd < QUADTREE_BUCKET_CAPACITY - 1 ) {
+        quadTree[ nodeInd ].elements._[ ++quadTree[ nodeInd ].elements.lastInd ] = colliderInd;
+        inserted = true;
+      } else { 
+        // if there is no space this cannot be a leaf any more
+        subdivideQuadNode( nodeInd );
+      }
     }
-    // else add it to some of its children
-    if ( quadTree[ nodeInd ].childIndices[ 0 ] == 0 ) {
-      subdivideQuadNode( nodeInd );
-    }
-    // find which children the collider intersects with
-    // and add them to the deque
-    for ( int i = 0; i < 4; ++i ) {
-      u32 childInd = quadTree[ nodeInd ].childIndices[ i ];
-      QuadNode child = quadTree[ childInd ];
-      if ( circleAABBCollide( collider, child.boundary ) ) {
-        nextNodeInds.push_front( childInd );
+    if ( !quadTree[ nodeInd ].isLeaf ) {
+      // find which children the collider intersects with
+      // and add them to the deque
+      for ( int i = 0; i < 4; ++i ) {
+        u32 childInd = quadTree[ nodeInd ].childIndices[ i ];
+        QuadNode child = quadTree[ childInd ];
+        if ( circleAABBCollide( collider, child.boundary ) ) {
+          nextNodeInds.push_front( childInd );
+        }
       }
     }
   }
+  ASSERT( inserted, "Collider index %d not inserted into QuadTree", colliderInd );
 }
 
 void CircleColliderManager::initialize() {
@@ -213,21 +221,35 @@ void CircleColliderManager::updateAndCollide() {
   // TODO calculate the boundary dynamically 
   Rect boundary = { { -70, -40 }, { 70, 40 } };
   initializeQuadTree( boundary );
+  // debug render space partitions 
+  for ( u32 nodeInd = 1; nodeInd < quadTree.size(); ++nodeInd ) {
+    QuadNode quadNode = quadTree[ nodeInd ];
+    if ( !quadNode.isLeaf ) {
+      continue;
+    }
+    Debug::drawRect( quadNode.boundary, { 0, 0, 1, 1 } );
+    for ( int i = 0; i <= quadNode.elements.lastInd; ++i ) {
+      ComponentIndex ci = quadNode.elements._[ i ];
+      Debug::drawCircle( transformedCircles[ ci ], { 0, 0, 1, 1 } );
+    }
+  }
+  // detect collisions
   Color color = { 0.0f, 1.0f, 0.0f, 1.0f };
   for ( u32 nodeInd = 1; nodeInd < quadTree.size(); ++nodeInd ) {
     QuadNode quadNode = quadTree[ nodeInd ];
-    Debug::drawRect( quadNode.boundary, { 0.0f, 0.0f, 1.0f, 1.0f } );
-    for ( int i = 0; i < quadNode.lastElemInd; ++i ) {
-      ComponentIndex collI = quadNode.elements[ i ];
+    if ( !quadNode.isLeaf ) {
+      continue;
+    }
+    for ( int i = 0; i < quadNode.elements.lastInd; ++i ) {
+      ComponentIndex collI = quadNode.elements._[ i ];
       Circle circleI = transformedCircles[ collI ];
-      for ( int j = i + 1; j <= quadNode.lastElemInd; ++j ) {
-        ComponentIndex collJ = quadNode.elements[ j ];
+      for ( int j = i + 1; j <= quadNode.elements.lastInd; ++j ) {
+        ComponentIndex collJ = quadNode.elements._[ j ];
         Circle circleJ = transformedCircles[ collJ ];
-        if ( circleCircleCollide( circleI, circleJ ) ) {
+        if ( circleCircleCollide( circleI, circleJ ) ) {  
           Debug::drawCircle( transformedCircles[ collI ], color );
           Debug::drawCircle( transformedCircles[ collJ ], color );
           // TODO create reactions for dynamic components
-          // Debug::write( "Entities %d & %d collided\n", componentMap.components[ collI ].entity, componentMap.components[ collJ ].entity );
           // TODO fire callbacks for programatic components
         }
       }
