@@ -57,7 +57,7 @@ class CircleColliderManager {
     bool isLeaf = true;
   };
   static std::vector< QuadNode > quadTree;
-  static void initializeQuadTree(Rect boundary);
+  static void buildQuadTree(Rect boundary);
   static void subdivideQuadNode(u32 nodeInd);
   static void insertIntoQuadTree(ComponentIndex colliderInd);
 public:

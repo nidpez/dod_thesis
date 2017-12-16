@@ -79,7 +79,7 @@ ComponentMap< CircleColliderManager::CircleColliderComp > CircleColliderManager:
 std::vector< Circle > CircleColliderManager::transformedCircles;
 std::vector< CircleColliderManager::QuadNode > CircleColliderManager::quadTree;
 
-void CircleColliderManager::initializeQuadTree(Rect boundary) {
+void CircleColliderManager::buildQuadTree(Rect boundary) {
   quadTree = std::vector< QuadNode >();
   quadTree.push_back( {} );
   QuadNode rootNode = {};
@@ -220,7 +220,7 @@ void CircleColliderManager::updateAndCollide() {
   // keep the quadtree updated
   // TODO calculate the boundary dynamically 
   Rect boundary = { { -70, -40 }, { 70, 40 } };
-  initializeQuadTree( boundary );
+  buildQuadTree( boundary );
   // debug render space partitions 
   for ( u32 nodeInd = 1; nodeInd < quadTree.size(); ++nodeInd ) {
     QuadNode quadNode = quadTree[ nodeInd ];
