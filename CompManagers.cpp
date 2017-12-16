@@ -207,6 +207,7 @@ void CircleColliderManager::updateAndCollide() {
     componentMap.components[ circleColliderCompInd ].position = transform.position;
     componentMap.components[ circleColliderCompInd ].scale = transform.scale;
   }
+  transformedCircles.clear();
   transformedCircles.reserve( componentMap.components.size() );
   for ( u32 colInd = 1; colInd < componentMap.components.size(); ++colInd ) {
     CircleColliderComp circleColliderComp = componentMap.components[ colInd ];
