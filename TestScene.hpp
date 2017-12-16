@@ -4,13 +4,15 @@ class TestScene {
   static constexpr const u32 NUM_ENTITIES = 100;
   static constexpr const Rect TEST_AREA = { { -70, -40 }, { 70, 40 } };
   static std::vector< EntityHandle > entities;
+  static std::vector< Vec2 > directions;
 public:
   static void initialize();
-  static void update();
+  static void update( double deltaT );
   static void shutdown();
 };
 
 std::vector< EntityHandle > TestScene::entities;
+std::vector< Vec2 > TestScene::directions;
 
 // TODO put randf somewhere appropriate
 float randf( float min, float max ) {
@@ -39,10 +41,18 @@ void TestScene::initialize() {
   for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
     CircleColliderManager::addAndFitToSpriteSize( entities[ ent ] );
   }
+  directions.reserve( NUM_ENTITIES );
+  for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
+    Vec2 direction = { randf( -1.0f, 1.0f ), randf( -1.0f, 1.0f ) };
+    directions.push_back( normalized( direction ) );
+  }
 }
 
-void TestScene::update() {
-  
+void TestScene::update( double deltaT ) {
+  for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
+    Vec2 translation = directions[ ent ] * deltaT * 10.0f;
+    TransformManager::translate( entities[ ent ], translation );
+  }
 }
 
 void TestScene::shutdown() {

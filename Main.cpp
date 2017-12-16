@@ -93,7 +93,7 @@ s32 main() {
       // }
     }
 
-    TestScene::update();
+    TestScene::update( deltaT );
     
     CircleColliderManager::updateAndCollide();
     

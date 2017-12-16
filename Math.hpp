@@ -97,3 +97,7 @@ inline Vec2 rotateVec2( Vec2 vec, float orientation ) {
   float _sin = sin( orientation );
   return { vec.x * _cos - vec.y * _sin, vec.y * _cos + vec.x * _sin };
 }
+
+inline Vec2 normalized( Vec2 vec ) {
+  return vec / magnitude( vec );
+}
