@@ -80,6 +80,7 @@ std::vector< Circle > CircleColliderManager::transformedCircles;
 std::vector< CircleColliderManager::QuadNode > CircleColliderManager::quadTree;
 
 void CircleColliderManager::buildQuadTree(Rect boundary) {
+  PROFILE;
   quadTree = std::vector< QuadNode >();
   quadTree.push_back( {} );
   QuadNode rootNode = {};
@@ -93,6 +94,7 @@ void CircleColliderManager::buildQuadTree(Rect boundary) {
 // FIXME if QUADTREE_BUCKET_CAPACITY + 1 colliders are at the center of the node
 //       we will subdivide it forever
 void CircleColliderManager::subdivideQuadNode(u32 nodeInd) {
+  PROFILE;
   // backup elements
   QuadBucket elements = std::move( quadTree[ nodeInd ].elements );
   quadTree[ nodeInd ].isLeaf = false;
@@ -131,6 +133,7 @@ void CircleColliderManager::subdivideQuadNode(u32 nodeInd) {
 }
 
 void CircleColliderManager::insertIntoQuadTree(ComponentIndex colliderInd) {
+  PROFILE;
   ASSERT( colliderInd < componentMap.components.size(),
           "Component index %d out of bounds", colliderInd );
   std::deque< u32 > nextNodeInds = std::deque< u32 >();
