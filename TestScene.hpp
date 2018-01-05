@@ -21,6 +21,36 @@ float randf( float min, float max ) {
 }
 
 void TestScene::initialize() {
+  // create enclosure
+  EntityHandle enclosure[ 4 ];
+  for ( u32 wall = 0; wall < 4; ++wall ) {
+    enclosure[ wall ] = EntityManager::create();
+  }
+  const float WALL_THICKNESS = 5.0f;
+  // top wall
+  Transform transform = { { WALL_THICKNESS, TEST_AREA.max.y }, VEC2_ONE, {} };
+  TransformManager::set( enclosure[ 0 ], transform );
+  Rect bounds = { { TEST_AREA.min.x - WALL_THICKNESS * 2, 0.0f },
+                  { TEST_AREA.max.x, WALL_THICKNESS } };
+  ColliderManager::addAxisAlignedRect( enclosure[ 0 ], bounds );
+  // bottom wall
+  transform.position.y = TEST_AREA.min.y;
+  TransformManager::set( enclosure[ 2 ], transform );
+  bounds.max.y = -bounds.max.y;
+  ColliderManager::addAxisAlignedRect( enclosure[ 2 ], bounds );
+  // right wall
+  transform = { { TEST_AREA.max.x, WALL_THICKNESS }, VEC2_ONE, {} };
+  TransformManager::set( enclosure[ 1 ], transform );
+  bounds = { { 0.0f, TEST_AREA.min.y - WALL_THICKNESS * 2 },
+             { WALL_THICKNESS, TEST_AREA.max.y } };
+  ColliderManager::addAxisAlignedRect( enclosure[ 1 ], bounds );
+  // left wall
+  transform.position.x = TEST_AREA.min.x;
+  TransformManager::set( enclosure[ 3 ], transform );
+  bounds.max.x = -bounds.max.x;
+  ColliderManager::addAxisAlignedRect( enclosure[ 3 ], bounds );
+
+  // create actors
   entities.reserve( NUM_ENTITIES );
   for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
     entities.push_back( EntityManager::create() );
@@ -39,7 +69,7 @@ void TestScene::initialize() {
                         { { 0.0f, 0.0f }, { 1.0f / 5.0f, 1.0f } } );
   }
   for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
-    CircleColliderManager::addAndFitToSpriteSize( entities[ ent ] );
+    ColliderManager::fitCircleToSprite( entities[ ent ] );
   }
   directions.reserve( NUM_ENTITIES );
   for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
