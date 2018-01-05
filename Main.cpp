@@ -19,7 +19,7 @@ s32 main() {
   GLFWwindow* window = createWindowAndGlContext( "Space Adventure (working title)" );
   EntityManager::initialize();
   TransformManager::initialize();
-  CircleColliderManager::initialize();
+  ColliderManager::initialize();
   SpriteManager::initialize();
   Debug::initializeRenderer();
   // AnimationManager animationManager;
@@ -95,7 +95,7 @@ s32 main() {
 
     TestScene::update( deltaT );
     
-    CircleColliderManager::updateAndCollide();
+    ColliderManager::updateAndCollide();
     
     // render scene
     glClear( GL_COLOR_BUFFER_BIT );
@@ -136,7 +136,7 @@ s32 main() {
   // shut down managers
   AssetManager::shutdown();
   SpriteManager::shutdown();
-  CircleColliderManager::shutdown();
+  ColliderManager::shutdown();
   TransformManager::shutdown();
   EntityManager::shutdown();
   Profiler::shutdown();

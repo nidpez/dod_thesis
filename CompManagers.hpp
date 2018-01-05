@@ -32,19 +32,30 @@ public:
 };
 
 // TODO allow multiple colliders per entity (with linked list?)
-class CircleColliderManager {
-  struct CircleColliderComp {
-    EntityHandle entity;
-    Circle circle;
+class ColliderManager {
+  enum ShapeType { CIRCLE, AARECT };
+
+  struct Shape {
+    union {
+      Circle circle;
+      Rect aaRect;
+    };
+    ShapeType type;
+  };
+  struct ColliderComp {
+    Shape _;
     // transform cache
     Vec2 position;
     Vec2 scale;
+    //
+    EntityHandle entity;
   };
-  static ComponentMap< CircleColliderComp > componentMap;
-  static std::vector< Circle > transformedCircles;
-  static const u8 QUADTREE_BUCKET_CAPACITY = 8;
+  static ComponentMap< ColliderComp > componentMap;
+  static std::vector< Shape > transformedShapes;
+  
   struct QuadBucket {
-    ComponentIndex _[ QUADTREE_BUCKET_CAPACITY ];
+    static const u8 CAPACITY = 8;
+    ComponentIndex _[ CAPACITY ];
     // TODO standarize indices starting at 1
     s8 lastInd = -1;
   };
@@ -53,7 +64,7 @@ class CircleColliderManager {
       QuadBucket elements = {};
       u32 childIndices[ 4 ];
     };
-    Rect boundary;
+    Shape boundary = { {}, ShapeType::AARECT };
     bool isLeaf = true;
   };
   static std::vector< QuadNode > quadTree;
@@ -63,13 +74,15 @@ class CircleColliderManager {
 public:
   static void initialize();
   static void shutdown();
-  static void add( EntityHandle entity, Circle circleCollider );
-  static void addAndFitToSpriteSize( EntityHandle entity );
+  static void addCircle( EntityHandle entity, Circle circleCollider );
+  static void addAxisAlignedRect( EntityHandle entity, Rect aaRectCollider );
   static void remove( EntityHandle entity );
-  static void fitToSpriteSize( EntityHandle entity );
+  static void fitCircleToSprite( EntityHandle entity );
   static void updateAndCollide();
+  static bool collide( Shape shapeA, Shape shapeB );
   static bool circleCircleCollide( Circle circleA, Circle circleB );
-  static bool circleAABBCollide( Circle circle, Rect aabb );
+  static bool circleAARectCollide( Circle circle, Rect aaRect );
+  static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB );
 };
 
 struct Sprite {
