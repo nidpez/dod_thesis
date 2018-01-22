@@ -36,6 +36,7 @@ public:
   static void initializeRenderer();
   static void drawCircle( Circle circle, Color color );
   static void drawRect( Rect rect, Color color );
+  static void drawShape( Shape shape, Color color );
   static void renderAndClear();
   static void setOrthoProjection( float aspectRatio, float height );
 };

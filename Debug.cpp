@@ -147,6 +147,19 @@ void Debug::drawRect( Rect rect, Color color ) {
 #endif
 }
 
+void Debug::drawShape( Shape shape, Color color ) {
+#ifndef NDEBUG
+  switch ( shape.type ) {
+  case ShapeType::CIRCLE:
+    drawCircle( shape.circle, color );
+    break;
+  case ShapeType::AARECT:
+    drawRect( shape.aaRect, color );
+    break;
+  }
+#endif
+}
+
 void Debug::renderAndClear() {
 #ifndef NDEBUG
   // configure buffers and render circles

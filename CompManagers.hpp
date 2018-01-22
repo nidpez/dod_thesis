@@ -33,15 +33,6 @@ public:
 
 // TODO allow multiple colliders per entity (with linked list?)
 class ColliderManager {
-  enum ShapeType { CIRCLE, AARECT };
-
-  struct Shape {
-    union {
-      Circle circle;
-      Rect aaRect;
-    };
-    ShapeType type;
-  };
   struct ColliderComp {
     Shape _;
     // transform cache

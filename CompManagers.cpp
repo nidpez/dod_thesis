@@ -76,7 +76,7 @@ std::vector< EntityHandle > TransformManager::getLastUpdated() {
 }
 
 ComponentMap< ColliderManager::ColliderComp > ColliderManager::componentMap;
-std::vector< ColliderManager::Shape > ColliderManager::transformedShapes;
+std::vector< Shape > ColliderManager::transformedShapes;
 std::vector< ColliderManager::QuadNode > ColliderManager::quadTree;
 
 void ColliderManager::buildQuadTree(Rect boundary) {
@@ -196,8 +196,8 @@ void ColliderManager::addAxisAlignedRect( EntityHandle entity, Rect aaRectCollid
 void ColliderManager::remove( EntityHandle entity ) {
   componentMap.remove( entity );
 }
-  
-void CircleColliderManager::updateAndCollide() {
+
+void ColliderManager::updateAndCollide() {
   PROFILE;
   if ( componentMap.components.size() == 0 ) {
     return;

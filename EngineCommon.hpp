@@ -36,6 +36,16 @@ struct Rect {
   Vec2 max;
 };
 
+enum ShapeType { CIRCLE, AARECT };
+
+struct Shape {
+  union {
+    Circle circle;
+    Rect aaRect;
+  };
+  ShapeType type;
+};
+
 struct Color {
   float r, g, b, a;
 };
