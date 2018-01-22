@@ -77,6 +77,7 @@ std::vector< EntityHandle > TransformManager::getLastUpdated() {
 
 ComponentMap< ColliderManager::ColliderComp > ColliderManager::componentMap;
 std::vector< Shape > ColliderManager::transformedShapes;
+std::vector< bool > ColliderManager::collisions;
 std::vector< ColliderManager::QuadNode > ColliderManager::quadTree;
 
 void ColliderManager::buildQuadTree(Rect boundary) {
@@ -88,6 +89,18 @@ void ColliderManager::buildQuadTree(Rect boundary) {
   quadTree.push_back( rootNode );
   for ( u32 colliderInd = 1; colliderInd < componentMap.components.size(); ++colliderInd ) {
     insertIntoQuadTree( colliderInd );
+  }
+  // debug render space partitions 
+  for ( u32 nodeInd = 1; nodeInd < quadTree.size(); ++nodeInd ) {
+    QuadNode quadNode = quadTree[ nodeInd ];
+    if ( !quadNode.isLeaf ) {
+      continue;
+    }
+    Debug::drawRect( quadNode.boundary.aaRect, { 1, 1, 1, 0.3f } );
+    for ( int i = 0; i <= quadNode.elements.lastInd; ++i ) {
+      ComponentIndex ci = quadNode.elements._[ i ];
+      Debug::drawShape( transformedShapes[ ci ], { 0, 1, 0, 1 } );
+    }
   }
 }
 
@@ -169,7 +182,7 @@ void ColliderManager::insertIntoQuadTree(ComponentIndex colliderInd) {
       }
     }
   }
-  ASSERT( inserted, "Collider index %d not inserted into QuadTree", colliderInd );
+  ASSERT( inserted, "Collider index %d not inserted into QuadTree", colliderInd ); 
 }
 
 void ColliderManager::initialize() {
@@ -180,14 +193,19 @@ void ColliderManager::shutdown() {
 
 void ColliderManager::addCircle( EntityHandle entity, Circle circleCollider ) {
   ASSERT( circleCollider.radius > 0.0f, "A circle collider of radius %f is useless", circleCollider.radius );
-  ColliderComp comp { {}, {}, {}, entity };
+  ColliderComp comp {};
+  comp.entity = entity;
   comp._.circle = circleCollider;
   comp._.type = ShapeType::CIRCLE;
   componentMap.set( entity, comp, &ColliderManager::remove );
 }
 
 void ColliderManager::addAxisAlignedRect( EntityHandle entity, Rect aaRectCollider ) {
-  ColliderComp comp { {}, {}, {}, entity };
+  ASSERT( aaRectCollider.min.x < aaRectCollider.max.x &&
+          aaRectCollider.min.y < aaRectCollider.max.y,
+          "Malformed axis aligned rect collider" );
+  ColliderComp comp {};
+  comp.entity = entity;
   comp._.aaRect = aaRectCollider;
   comp._.type = ShapeType::AARECT;
   componentMap.set( entity, comp, &ColliderManager::remove );
@@ -231,32 +249,16 @@ void ColliderManager::updateAndCollide() {
       transformedShapes.push_back( transformed );
     }
   }
+
   // space partitioned collision detection
   // keep the quadtree updated
   // TODO calculate the boundary dynamically 
   Rect boundary = { { -70, -40 }, { 70, 40 } };
   buildQuadTree( boundary );
-  // debug render space partitions 
-  for ( u32 nodeInd = 1; nodeInd < quadTree.size(); ++nodeInd ) {
-    QuadNode quadNode = quadTree[ nodeInd ];
-    if ( !quadNode.isLeaf ) {
-      continue;
-    }
-    Debug::drawRect( quadNode.boundary.aaRect, { 0, 0, 1, 1 } );
-    for ( int i = 0; i <= quadNode.elements.lastInd; ++i ) {
-      ComponentIndex ci = quadNode.elements._[ i ];
-      switch ( transformedShapes[ ci ].type ) {
-      case ShapeType::CIRCLE:
-        Debug::drawCircle( transformedShapes[ ci ].circle, { 0, 0, 1, 1 } );
-        break;
-      case ShapeType::AARECT:
-        Debug::drawRect( transformedShapes[ ci ].aaRect, { 0, 0, 1, 1 } );
-        break;
-      }
-    }
-  }
+
   // detect collisions
-  Color color = { 0.0f, 1.0f, 0.0f, 1.0f };
+  collisions.clear();
+  collisions.resize( componentMap.components.size(), false );
   for ( u32 nodeInd = 1; nodeInd < quadTree.size(); ++nodeInd ) {
     QuadNode quadNode = quadTree[ nodeInd ];
     if ( !quadNode.isLeaf ) {
@@ -268,29 +270,26 @@ void ColliderManager::updateAndCollide() {
       for ( int j = i + 1; j <= quadNode.elements.lastInd; ++j ) {
         ComponentIndex collJ = quadNode.elements._[ j ];
         Shape shapeJ = transformedShapes[ collJ ];
-        if ( collide( shapeI, shapeJ ) ) {  
-          switch ( transformedShapes[ collI ].type ) {
-          case ShapeType::CIRCLE:
-            Debug::drawCircle( transformedShapes[ collI ].circle, color );
-            break;
-          case ShapeType::AARECT:
-            Debug::drawRect( transformedShapes[ collI ].aaRect, color );
-            break;
-          }
-          switch ( transformedShapes[ collJ ].type ) {
-          case ShapeType::CIRCLE:
-            Debug::drawCircle( transformedShapes[ collJ ].circle, color );
-            break;
-          case ShapeType::AARECT:
-            Debug::drawRect( transformedShapes[ collJ ].aaRect, color );
-            break;
-          }
-          // TODO create reactions for dynamic components
-          // TODO fire callbacks for programatic components
+        if ( collide( shapeI, shapeJ ) ) {
+          collisions[ collI ] = collisions[ collJ ] = true;
+          Debug::drawShape( shapeI, { 0, 1, 0, 1 } );
+          Debug::drawShape( shapeJ, { 0, 1, 0, 1 } );
         }
       }
     }
   }
+}
+
+std::vector< bool > ColliderManager::getCollisions( const std::vector< EntityHandle > entities ) {
+  PROFILE;
+  std::vector< EntityHandle > _entities = componentMap.have( entities );
+  std::vector< bool > requestedCollisions;
+  requestedCollisions.reserve( _entities.size() );
+  for ( u32 entI = 0; entI < _entities.size(); ++entI ) {
+    ComponentIndex compInd = componentMap.lookup( _entities[ entI ] );
+    requestedCollisions.push_back( collisions[ compInd ] );
+  }
+  return collisions;
 }
 
 bool ColliderManager::collide( Shape shapeA, Shape shapeB ) {
@@ -301,12 +300,12 @@ bool ColliderManager::collide( Shape shapeA, Shape shapeB ) {
     case ShapeType::CIRCLE:
       return circleCircleCollide( shapeA.circle, shapeB.circle );
     case ShapeType::AARECT:
-      return circleAARectCollide( shapeA.circle, shapeB.aaRect );
+      return aaRectCircleCollide( shapeB.aaRect, shapeA.circle );
     }
   case ShapeType::AARECT:
     switch ( shapeB.type ) {
     case ShapeType::CIRCLE:
-      return circleAARectCollide( shapeB.circle, shapeA.aaRect );
+      return aaRectCircleCollide( shapeA.aaRect, shapeB.circle );
     case ShapeType::AARECT:
       return aaRectAARectCollide( shapeA.aaRect, shapeB.aaRect );
     }
@@ -314,42 +313,104 @@ bool ColliderManager::collide( Shape shapeA, Shape shapeB ) {
   return false;
 }
 
-// FIXME take scale into account
-bool ColliderManager::circleCircleCollide( Circle circleA, Circle circleB ) {
+bool ColliderManager::collide( Shape shapeA, Shape shapeB, Vec2& closestPtInA ) {
   PROFILE;
-  // TODO use squared magnitude and compare to (ra + rb)^2
-  float distance = magnitude( circleA.center - circleB.center );
-  if ( distance <= circleA.radius + circleB.radius ) {
-    return true;
+  switch ( shapeA.type ) {
+  case ShapeType::CIRCLE:
+    switch ( shapeB.type ) {
+    case ShapeType::CIRCLE:
+      return circleCircleCollide( shapeA.circle, shapeB.circle, closestPtInA );
+    case ShapeType::AARECT:
+      return aaRectCircleCollide( shapeB.aaRect, shapeA.circle, closestPtInA );
+    }
+  case ShapeType::AARECT:
+    switch ( shapeB.type ) {
+    case ShapeType::CIRCLE:
+      return aaRectCircleCollide( shapeA.aaRect, shapeB.circle, closestPtInA );
+    case ShapeType::AARECT:
+      return aaRectAARectCollide( shapeA.aaRect, shapeB.aaRect, closestPtInA );
+    }
   }
   return false;
 }
-
-// FIXME take scale into account
-bool ColliderManager::circleAARectCollide( Circle circle, Rect aaRect ) {
+ 
+ // FIXME take scale into account
+bool ColliderManager::circleCircleCollide( Circle circleA, Circle circleB ) {
   PROFILE;
-  // TODO assert integrity of circle and aaRect
-  // TODO refactor distance to aaRect function
-  // taken from Real-Time Collision Detection - Christer Ericson, 5.2.5 Testing Sphere Against AARECT
-  float sqDistance = 0.0f;
-  if ( circle.center.x < aaRect.min.x ) {
-    sqDistance += ( aaRect.min.x - circle.center.x ) * ( aaRect.min.x - circle.center.x );
-  }
-  if ( circle.center.x > aaRect.max.x ) {
-    sqDistance += ( circle.center.x - aaRect.max.x ) * ( circle.center.x - aaRect.max.x );
-  }
-  if ( circle.center.y < aaRect.min.y ) {
-    sqDistance += ( aaRect.min.y - circle.center.y ) * ( aaRect.min.y - circle.center.y );
-  }
-  if ( circle.center.y > aaRect.max.y ) {
-    sqDistance += ( circle.center.y - aaRect.max.y ) * ( circle.center.y - aaRect.max.y );
-  }
-  return sqDistance <= circle.radius * circle.radius; 
+  float radiiSum = circleA.radius + circleB.radius;
+  return sqrMagnitude( circleA.center - circleB.center ) <= radiiSum * radiiSum;
 }
 
+// FIXME take scale into account
+bool ColliderManager::circleCircleCollide( Circle circleA, Circle circleB, Vec2& closestPtInA ) {
+  PROFILE;
+  Vec2 ab = circleB.center - circleA.center;
+  float sqrDistAB = sqrMagnitude( ab );
+  // give vector ab a magnitude equal to circleA.radius
+  ab *= sqrDistAB / ( circleA.radius * circleA.radius );
+  closestPtInA = circleA.center + ab;
+
+  float radiiSum = circleA.radius + circleB.radius;
+  return sqrDistAB <= radiiSum * radiiSum;
+}
+
+// FIXME take scale into account
+bool ColliderManager::aaRectCircleCollide( Rect aaRect, Circle circle ) {
+  PROFILE;
+  // TODO refactor distance to aaRect function
+  // taken from Real-Time Collision Detection - Christer Ericson, 5.2.5 Testing Sphere Against AARECT
+  float sqrDistance = 0.0f;
+  if ( circle.center.x < aaRect.min.x ) {
+    sqrDistance += ( aaRect.min.x - circle.center.x ) * ( aaRect.min.x - circle.center.x );
+  }
+  if ( circle.center.x > aaRect.max.x ) {
+    sqrDistance += ( circle.center.x - aaRect.max.x ) * ( circle.center.x - aaRect.max.x );
+  }
+  if ( circle.center.y < aaRect.min.y ) {
+    sqrDistance += ( aaRect.min.y - circle.center.y ) * ( aaRect.min.y - circle.center.y );
+  }
+  if ( circle.center.y > aaRect.max.y ) {
+    sqrDistance += ( circle.center.y - aaRect.max.y ) * ( circle.center.y - aaRect.max.y );
+  }
+  return sqrDistance <= circle.radius * circle.radius; 
+}
+
+// FIXME take scale into account
+bool ColliderManager::aaRectCircleCollide( Rect aaRect, Circle circle, Vec2& closestPtInRect ) {
+  PROFILE;
+  // TODO assert integrity of circle and aaRect
+  // taken from Real-Time Collision Detection - Christer Ericson, 5.2.5 Testing Sphere Against AARECT
+  float x = circle.center.x;
+  if ( x < aaRect.min.x ) {
+    x = aaRect.min.x;
+  }
+  if ( x > aaRect.max.x ) {
+    x = aaRect.max.x;
+  }
+  closestPtInRect.x = x;
+  float y = circle.center.y;
+  if ( y < aaRect.min.y ) {
+    y = aaRect.min.y;
+  }
+  if ( y > aaRect.max.y ) {
+    y = aaRect.max.y;
+  }
+  closestPtInRect.y = y;
+
+  return sqrMagnitude( closestPtInRect - circle.center ) <= circle.radius * circle.radius;
+}
+
+// TODO implement
 bool ColliderManager::aaRectAARectCollide( Rect aaRectA, Rect aaRectB ) {
   aaRectA = aaRectB = {};
   return true;
+}
+
+// TODO implement
+bool ColliderManager::aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& closestPtInA ) {
+  aaRectA = aaRectB = {};
+  closestPtInA = {};
+  return false;
 }
 
 void ColliderManager::fitCircleToSprite( EntityHandle entity ) {
