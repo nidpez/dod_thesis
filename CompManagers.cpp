@@ -99,7 +99,7 @@ void ColliderManager::buildQuadTree(Rect boundary) {
     Debug::drawRect( quadNode.boundary.aaRect, { 1, 1, 1, 0.3f } );
     for ( int i = 0; i <= quadNode.elements.lastInd; ++i ) {
       ComponentIndex ci = quadNode.elements._[ i ];
-      Debug::drawShape( transformedShapes[ ci ], { 0, 1, 0, 1 } );
+      Debug::drawShape( transformedShapes[ ci ], Debug::BLUE );
     }
   }
 }
@@ -272,8 +272,8 @@ void ColliderManager::updateAndCollide() {
         Shape shapeJ = transformedShapes[ collJ ];
         if ( collide( shapeI, shapeJ ) ) {
           collisions[ collI ] = collisions[ collJ ] = true;
-          Debug::drawShape( shapeI, { 0, 1, 0, 1 } );
-          Debug::drawShape( shapeJ, { 0, 1, 0, 1 } );
+          Debug::drawShape( shapeI, Debug::GREEN );
+          Debug::drawShape( shapeJ, Debug::GREEN );
         }
       }
     }

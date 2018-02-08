@@ -7,6 +7,7 @@
 /////////////////////// Error handling and logging ////////////////////
 /////////////////////// and Drawing debug shapes //////////////////////
 
+
 class Debug {
   static constexpr const char* LOG_FILE_NAME = "log.txt";
   static FILE* log;
@@ -24,6 +25,11 @@ class Debug {
   static std::vector< DebugCircle > circleBufferData;
   static std::vector< DebugRect > rectBufferData;
 public:
+  static constexpr Color RED   = { 1, 0, 0, 1 }; 
+  static constexpr Color GREEN = { 0, 1, 0, 1 }; 
+  static constexpr Color BLUE  = { 0, 0, 1, 1 }; 
+  static constexpr Color WHITE = { 1, 1, 1, 1 }; 
+  static constexpr Color BLACK = { 0, 0, 0, 1 }; 
   // write messages
   static void initializeLogger();
   static void shutdown();

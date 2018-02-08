@@ -65,6 +65,12 @@ void Debug::haltWithMessage( const char* failedCond, const char* file, const cha
 
 ////////////////////////// Drawing debug shapes ///////////////////////////
 
+constexpr Color Debug::RED;
+constexpr Color Debug::GREEN;
+constexpr Color Debug::BLUE;
+constexpr Color Debug::WHITE;
+constexpr Color Debug::BLACK;
+
 void Debug::initializeRenderer() {
 #ifndef NDEBUG
   // circle
