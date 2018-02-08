@@ -31,6 +31,11 @@ public:
   static std::vector< EntityHandle > getLastUpdated();
 };
 
+struct Collision {
+  Shape a, b;
+  Vec2 normalA, normalB;
+};
+
 // TODO allow multiple colliders per entity (with linked list?)
 class ColliderManager {
   struct ColliderComp {
@@ -43,9 +48,8 @@ class ColliderManager {
   };
   static ComponentMap< ColliderComp > componentMap;
   static std::vector< Shape > transformedShapes;
-  // TODO change to Collision or Intersections struct instances
-  static std::vector< bool > collisions;
-  
+  static std::vector< std::vector< Collision > > collisions;
+
   struct QuadBucket {
     static const u8 CAPACITY = 8;
     ComponentIndex _[ CAPACITY ];
@@ -73,14 +77,14 @@ public:
   static void fitCircleToSprite( EntityHandle entity );
   static void updateAndCollide();
   static bool collide( Shape shapeA, Shape shapeB );
-  static bool collide( Shape shapeA, Shape shapeB, Vec2& closestPtInA );
+  static bool collide( Shape shapeA, Shape shapeB, Collision& collision );
   static bool circleCircleCollide( Circle circleA, Circle circleB );
-  static bool circleCircleCollide( Circle circleA, Circle circleB, Vec2& closestPtInA );
+  static bool circleCircleCollide( Circle circleA, Circle circleB, Vec2& normalA, Vec2& normalB );
   static bool aaRectCircleCollide( Rect aaRect, Circle circle );
-  static bool aaRectCircleCollide( Rect aaRect, Circle circle, Vec2& closestPtInRect );
+  static bool aaRectCircleCollide( Rect aaRect, Circle circle, Vec2& normalA, Vec2& normalB );
   static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB );
-  static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& closestPtInA );
-  static std::vector< bool > getCollisions( const std::vector< EntityHandle > entities );
+  static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& normalA, Vec2& normalB );
+  static std::vector< std::vector< Collision > > getCollisions( const std::vector< EntityHandle > entities );
 };
 };
 

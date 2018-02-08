@@ -77,7 +77,7 @@ std::vector< EntityHandle > TransformManager::getLastUpdated() {
 
 ComponentMap< ColliderManager::ColliderComp > ColliderManager::componentMap;
 std::vector< Shape > ColliderManager::transformedShapes;
-std::vector< bool > ColliderManager::collisions;
+std::vector< std::vector< Collision > > ColliderManager::collisions;
 std::vector< ColliderManager::QuadNode > ColliderManager::quadTree;
 
 void ColliderManager::buildQuadTree(Rect boundary) {
@@ -258,7 +258,7 @@ void ColliderManager::updateAndCollide() {
 
   // detect collisions
   collisions.clear();
-  collisions.resize( componentMap.components.size(), false );
+  collisions.resize( componentMap.components.size(), {} );
   for ( u32 nodeInd = 1; nodeInd < quadTree.size(); ++nodeInd ) {
     QuadNode quadNode = quadTree[ nodeInd ];
     if ( !quadNode.isLeaf ) {
@@ -270,8 +270,10 @@ void ColliderManager::updateAndCollide() {
       for ( int j = i + 1; j <= quadNode.elements.lastInd; ++j ) {
         ComponentIndex collJ = quadNode.elements._[ j ];
         Shape shapeJ = transformedShapes[ collJ ];
-        if ( collide( shapeI, shapeJ ) ) {
-          collisions[ collI ] = collisions[ collJ ] = true;
+        Collision collision;
+        if ( collide( shapeI, shapeJ, collision ) ) {
+          collisions[ collI ].push_back( collision );
+          collisions[ collJ ].push_back( { collision.b, collision.a, collision.normalB, collision.normalA } );
           Debug::drawShape( shapeI, Debug::GREEN );
           Debug::drawShape( shapeJ, Debug::GREEN );
         }
@@ -280,16 +282,15 @@ void ColliderManager::updateAndCollide() {
   }
 }
 
-std::vector< bool > ColliderManager::getCollisions( const std::vector< EntityHandle > entities ) {
+std::vector< std::vector< Collision > > ColliderManager::getCollisions( const std::vector< EntityHandle > entities ) {
   PROFILE;
-  std::vector< EntityHandle > _entities = componentMap.have( entities );
-  std::vector< bool > requestedCollisions;
-  requestedCollisions.reserve( _entities.size() );
-  for ( u32 entI = 0; entI < _entities.size(); ++entI ) {
-    ComponentIndex compInd = componentMap.lookup( _entities[ entI ] );
+  std::vector< std::vector< Collision > > requestedCollisions;
+  requestedCollisions.reserve( entities.size() );
+  for ( u32 entI = 0; entI < entities.size(); ++entI ) {
+    ComponentIndex compInd = componentMap.lookup( entities[ entI ] );
     requestedCollisions.push_back( collisions[ compInd ] );
   }
-  return collisions;
+  return requestedCollisions;
 }
 
 bool ColliderManager::collide( Shape shapeA, Shape shapeB ) {
@@ -313,22 +314,28 @@ bool ColliderManager::collide( Shape shapeA, Shape shapeB ) {
   return false;
 }
 
-bool ColliderManager::collide( Shape shapeA, Shape shapeB, Vec2& closestPtInA ) {
+bool ColliderManager::collide( Shape shapeA, Shape shapeB, Collision& collision ) {
   PROFILE;
   switch ( shapeA.type ) {
   case ShapeType::CIRCLE:
     switch ( shapeB.type ) {
     case ShapeType::CIRCLE:
-      return circleCircleCollide( shapeA.circle, shapeB.circle, closestPtInA );
+      collision.a = shapeA;
+      collision.b = shapeB;
+      return circleCircleCollide( shapeA.circle, shapeB.circle, collision.normalA, collision.normalB );
     case ShapeType::AARECT:
-      return aaRectCircleCollide( shapeB.aaRect, shapeA.circle, closestPtInA );
+      collision.a = shapeB;
+      collision.b = shapeA;
+      return aaRectCircleCollide( shapeB.aaRect, shapeA.circle, collision.normalB, collision.normalA );
     }
   case ShapeType::AARECT:
+    collision.a = shapeA;
+    collision.b = shapeB;    
     switch ( shapeB.type ) {
     case ShapeType::CIRCLE:
-      return aaRectCircleCollide( shapeA.aaRect, shapeB.circle, closestPtInA );
+      return aaRectCircleCollide( shapeA.aaRect, shapeB.circle, collision.normalA, collision.normalB );
     case ShapeType::AARECT:
-      return aaRectAARectCollide( shapeA.aaRect, shapeB.aaRect, closestPtInA );
+      return aaRectAARectCollide( shapeA.aaRect, shapeB.aaRect, collision.normalA, collision.normalB );
     }
   }
   return false;
@@ -342,21 +349,20 @@ bool ColliderManager::circleCircleCollide( Circle circleA, Circle circleB ) {
 }
 
 // FIXME take scale into account
-bool ColliderManager::circleCircleCollide( Circle circleA, Circle circleB, Vec2& closestPtInA ) {
+bool ColliderManager::circleCircleCollide( Circle circleA, Circle circleB, Vec2& normalA, Vec2& normalB ) {
   PROFILE;
   Vec2 ab = circleB.center - circleA.center;
-  float sqrDistAB = sqrMagnitude( ab );
-  // give vector ab a magnitude equal to circleA.radius
-  ab *= sqrDistAB / ( circleA.radius * circleA.radius );
-  closestPtInA = circleA.center + ab;
+  normalA = normalized( ab );
+  normalB = -normalA;
 
   float radiiSum = circleA.radius + circleB.radius;
-  return sqrDistAB <= radiiSum * radiiSum;
+  return sqrMagnitude( ab ) <= radiiSum * radiiSum;
 }
 
 // FIXME take scale into account
 bool ColliderManager::aaRectCircleCollide( Rect aaRect, Circle circle ) {
   PROFILE;
+  // TODO assert integrity of circle and aaRect
   // TODO refactor distance to aaRect function
   // taken from Real-Time Collision Detection - Christer Ericson, 5.2.5 Testing Sphere Against AARECT
   float sqrDistance = 0.0f;
@@ -376,28 +382,35 @@ bool ColliderManager::aaRectCircleCollide( Rect aaRect, Circle circle ) {
 }
 
 // FIXME take scale into account
-bool ColliderManager::aaRectCircleCollide( Rect aaRect, Circle circle, Vec2& closestPtInRect ) {
+bool ColliderManager::aaRectCircleCollide( Rect aaRect, Circle circle, Vec2& normalA, Vec2& normalB ) {
   PROFILE;
   // TODO assert integrity of circle and aaRect
   // taken from Real-Time Collision Detection - Christer Ericson, 5.2.5 Testing Sphere Against AARECT
+  normalA = {};
   float x = circle.center.x;
   if ( x < aaRect.min.x ) {
     x = aaRect.min.x;
+    normalA.x = -1.0;
   }
   if ( x > aaRect.max.x ) {
     x = aaRect.max.x;
+    normalA.x = 1.0;
   }
-  closestPtInRect.x = x;
   float y = circle.center.y;
   if ( y < aaRect.min.y ) {
     y = aaRect.min.y;
+    normalA.y = -1.0;
   }
   if ( y > aaRect.max.y ) {
     y = aaRect.max.y;
+    normalA.y = 1.0;
   }
-  closestPtInRect.y = y;
+  normalA = normalized( normalA );
+  Vec2 closestPtInRect = { x, y };
+  Vec2 circleToRect = closestPtInRect - circle.center;
+  normalB = normalized( circleToRect );
 
-  return sqrMagnitude( closestPtInRect - circle.center ) <= circle.radius * circle.radius;
+  return sqrMagnitude( circleToRect ) <= circle.radius * circle.radius;
 }
 
 // TODO implement
@@ -407,9 +420,9 @@ bool ColliderManager::aaRectAARectCollide( Rect aaRectA, Rect aaRectB ) {
 }
 
 // TODO implement
-bool ColliderManager::aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& closestPtInA ) {
+bool ColliderManager::aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& normalA, Vec2& normalB ) {
   aaRectA = aaRectB = {};
-  closestPtInA = {};
+  normalA = normalB = {};
   return false;
 }
 
