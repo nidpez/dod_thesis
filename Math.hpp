@@ -38,9 +38,8 @@ inline Vec2& operator-=( Vec2& a, Vec2 b ) {
   return a;
 }
 
-inline Vec2& operator-( Vec2& vec ) {
-  vec = VEC2_ZERO - vec;
-  return vec;
+inline Vec2 operator-( Vec2 vec ) {
+  return VEC2_ZERO - vec;
 }
 
 inline Vec2  operator*( Vec2 a, Vec2 b ) {
