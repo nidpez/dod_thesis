@@ -20,6 +20,7 @@ s32 main() {
   EntityManager::initialize();
   TransformManager::initialize();
   ColliderManager::initialize();
+  SolidBodyManager::initialize();
   SpriteManager::initialize();
   Debug::initializeRenderer();
   // AnimationManager animationManager;
@@ -96,12 +97,14 @@ s32 main() {
     TestScene::update( deltaT );
     
     ColliderManager::updateAndCollide();
+
+    SolidBodyManager::update( deltaT );
     
     // render scene
     glClear( GL_COLOR_BUFFER_BIT );
     SpriteManager::updateAndRender();
   
-    // // render debug shapes
+    // render debug shapes
     Debug::renderAndClear();
     
     glfwSwapBuffers( window );
@@ -136,6 +139,7 @@ s32 main() {
   // shut down managers
   AssetManager::shutdown();
   SpriteManager::shutdown();
+  SolidBodyManager::shutdown();
   ColliderManager::shutdown();
   TransformManager::shutdown();
   EntityManager::shutdown();

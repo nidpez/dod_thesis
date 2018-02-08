@@ -433,6 +433,66 @@ void ColliderManager::fitCircleToSprite( EntityHandle entity ) {
   addCircle( entity, circleCollider );
 }
 
+ComponentMap< SolidBodyManager::SolidBodyComp > SolidBodyManager::componentMap;
+
+void SolidBodyManager::initialize() {
+}
+
+void SolidBodyManager::shutdown() {
+}
+
+void SolidBodyManager::set( EntityHandle entity, SolidBody solidBody ) {
+  componentMap.set( entity, { solidBody.speed, entity }, &SolidBodyManager::remove );
+}
+
+void SolidBodyManager::remove( EntityHandle entity ) {
+  componentMap.remove( entity );
+}
+
+void SolidBodyManager::setSpeed( EntityHandle entity, Vec2 speed ) {
+  PROFILE;
+  ComponentIndex compInd = componentMap.lookup( entity );
+  componentMap.components[ compInd ].speed = speed;
+}
+
+SolidBody SolidBodyManager::get( EntityHandle entity ) {
+  PROFILE;
+  SolidBodyComp comp = componentMap.components[ componentMap.lookup( entity ) ];
+  return { comp.speed };
+}
+
+void SolidBodyManager::update( double deltaT ) {
+  PROFILE;
+  std::vector< EntityHandle > entities;
+  entities.reserve( componentMap.components.size() );
+  // TODO detect collisions and correct positions
+  for ( u32 compI = 1; compI < componentMap.components.size(); ++compI ) {
+    SolidBodyComp solidBodyComp = componentMap.components[ compI ];
+    entities.push_back( solidBodyComp.entity );
+  }
+  std::vector< std::vector< Collision > > collisions = ColliderManager::getCollisions( entities );
+  ASSERT( entities.size() == collisions.size(), "Have %d solid bodies but %d collision sets", entities.size(), collisions.size() );
+  // TODO move solid bodies
+  for ( u32 compI = 1; compI < componentMap.components.size(); ++compI ) {
+    std::vector< Collision > collisionsI = collisions[ compI - 1 ];
+    Vec2 normal = {};
+    SolidBodyComp solidBodyComp = componentMap.components[ compI ];
+    for ( u32 i = 0; i < collisionsI.size(); ++i ) {
+      if ( dot( solidBodyComp.speed, collisionsI[ i ].normalB ) <= 0.0f ) {
+        normal += collisionsI[ i ].normalB;
+      }
+    }
+    if ( normal.x != 0 || normal.y != 0 ) {
+      // reflect direction
+      normal = normalized( normal );
+      float vDotN = dot( solidBodyComp.speed, normal );
+      componentMap.components[ compI ].speed = solidBodyComp.speed - 2.0f * vDotN * normal;
+    }
+    EntityHandle entity = solidBodyComp.entity;
+    TransformManager::translate( entity, solidBodyComp.speed * deltaT );
+  }
+}
+
 ComponentMap< SpriteManager::SpriteComp > SpriteManager::componentMap;
 RenderInfo SpriteManager::renderInfo;
 SpriteManager::Pos* SpriteManager::posBufferData;

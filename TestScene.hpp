@@ -4,7 +4,6 @@ class TestScene {
   static constexpr const u32 NUM_ENTITIES = 100;
   static constexpr const Rect TEST_AREA = { { -70, -40 }, { 70, 40 } };
   static std::vector< EntityHandle > entities;
-  static std::vector< Vec2 > directions;
 public:
   static void initialize();
   static void update( double deltaT );
@@ -12,7 +11,6 @@ public:
 };
 
 std::vector< EntityHandle > TestScene::entities;
-std::vector< Vec2 > TestScene::directions;
 
 // TODO put randf somewhere appropriate
 float randf( float min, float max ) {
@@ -28,26 +26,24 @@ void TestScene::initialize() {
   }
   const float WALL_THICKNESS = 5.0f;
   // top wall
-  Transform transform = { { WALL_THICKNESS, TEST_AREA.max.y }, VEC2_ONE, {} };
+  Transform transform = { { 0.0f, TEST_AREA.max.y }, VEC2_ONE, {} };
   TransformManager::set( enclosure[ 0 ], transform );
-  Rect bounds = { { TEST_AREA.min.x - WALL_THICKNESS * 2, 0.0f },
+  Rect bounds = { { TEST_AREA.min.x, 0.0f },
                   { TEST_AREA.max.x, WALL_THICKNESS } };
   ColliderManager::addAxisAlignedRect( enclosure[ 0 ], bounds );
   // bottom wall
-  transform.position.y = TEST_AREA.min.y;
-  TransformManager::set( enclosure[ 2 ], transform );
-  bounds.max.y = -bounds.max.y;
-  ColliderManager::addAxisAlignedRect( enclosure[ 2 ], bounds );
-  // right wall
-  transform = { { TEST_AREA.max.x, WALL_THICKNESS }, VEC2_ONE, {} };
+  transform.position.y = TEST_AREA.min.y - WALL_THICKNESS;
   TransformManager::set( enclosure[ 1 ], transform );
-  bounds = { { 0.0f, TEST_AREA.min.y - WALL_THICKNESS * 2 },
-             { WALL_THICKNESS, TEST_AREA.max.y } };
   ColliderManager::addAxisAlignedRect( enclosure[ 1 ], bounds );
+  // right wall
+  transform = { { TEST_AREA.max.x, 0.0f }, VEC2_ONE, {} };
+  TransformManager::set( enclosure[ 2 ], transform );
+  bounds = { { 0.0f, TEST_AREA.min.y },
+             { WALL_THICKNESS, TEST_AREA.max.y } };
+  ColliderManager::addAxisAlignedRect( enclosure[ 2 ], bounds );
   // left wall
-  transform.position.x = TEST_AREA.min.x;
+  transform.position.x = TEST_AREA.min.x - WALL_THICKNESS;
   TransformManager::set( enclosure[ 3 ], transform );
-  bounds.max.x = -bounds.max.x;
   ColliderManager::addAxisAlignedRect( enclosure[ 3 ], bounds );
 
   // create actors
@@ -71,17 +67,17 @@ void TestScene::initialize() {
   for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
     ColliderManager::fitCircleToSprite( entities[ ent ] );
   }
-  directions.reserve( NUM_ENTITIES );
   for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
     Vec2 direction = { randf( -1.0f, 1.0f ), randf( -1.0f, 1.0f ) };
-    directions.push_back( normalized( direction ) );
+    direction = normalized( direction );
+    SolidBodyManager::set( entities[ ent ], { direction * 5 } );
   }
 }
 
 void TestScene::update( double deltaT ) {
+  // unused
+  deltaT *= 1;
   for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
-    Vec2 translation = directions[ ent ] * deltaT * 10.0f;
-    TransformManager::translate( entities[ ent ], translation );
   }
 }
 

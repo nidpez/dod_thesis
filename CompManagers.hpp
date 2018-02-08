@@ -86,6 +86,25 @@ public:
   static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& normalA, Vec2& normalB );
   static std::vector< std::vector< Collision > > getCollisions( const std::vector< EntityHandle > entities );
 };
+
+struct SolidBody {
+  Vec2 speed;
+};
+
+class SolidBodyManager {
+  struct SolidBodyComp {
+    Vec2 speed;
+    EntityHandle entity;
+  };
+  static ComponentMap< SolidBodyComp > componentMap;
+public:
+  static void initialize();
+  static void shutdown();
+  static void set( EntityHandle entity, SolidBody solidBody );
+  static void remove( EntityHandle entity );
+  static void setSpeed( EntityHandle entity, Vec2 speed );
+  static SolidBody get( EntityHandle entity );
+  static void update( double detlaT );
 };
 
 struct Sprite {
