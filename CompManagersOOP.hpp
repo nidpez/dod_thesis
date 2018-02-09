@@ -11,7 +11,6 @@ public:
   void translate( Vec2 translation );
   void scale( Vec2 scale );
   void setPosition( Vec2 position );
-  void setScale( Vec2 scale );
   void setOrientation( float orientation );
   Vec2 getPositon();
   Vec2 getScale();
