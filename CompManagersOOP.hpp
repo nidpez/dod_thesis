@@ -18,14 +18,25 @@ public:
 };
 
 struct Collision {
-  Shape a, b;
+  Collider a, b;
   Vec2 normalA, normalB;
 };
 
 class Collider {
 public:
   virtual bool collide( Collider colliderB ) = 0;
-  virtual Collision collide( Collider colliderB ) = 0;
+  virtual bool collide( Collider colliderB, Collision& collision ) = 0;
+  virtual bool collide( CircleCollider circle ) = 0;
+  virtual bool collide( CircleCollider circle, Collision& collision ) = 0;
+  virtual bool collide( AARectCollider aaRect ) = 0;
+  virtual bool collide( AARectCollider aaRect, Collision& collision ) = 0;
+
+  static bool circleCircleCollide( Circle circleA, Circle circleB );
+  static bool circleCircleCollide( Circle circleA, Circle circleB, Vec2& normalA, Vec2& normalB );
+  static bool aaRectCircleCollide( Rect aaRect, Circle circle );
+  static bool aaRectCircleCollide( Rect aaRect, Circle circle, Vec2& normalA, Vec2& normalB );
+  static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB );
+  static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& normalA, Vec2& normalB );
 };
 
 class Sprite;
@@ -35,7 +46,11 @@ class CircleCollider : public Collider {
 public:
   Collider( Circle circle ) : circle( circle ) {}
   bool collide( Collider colliderB );
-  Collision collide( Collider colliderB );
+  bool collide( Collider colliderB, Collision& collision );
+  bool collide( CircleCollider circle );
+  bool collide( CircleCollider circle, Collision& collision );
+  bool collide( AARectCollider aaRect );
+  bool collide( AARectCollider aaRect, Collision& collision );
   void fitToSprite( Sprite sprite );
 };
 
@@ -44,7 +59,11 @@ class AARectCollider : public Collider {
 public:
   Collider( Rect aaRect ) : aaRect( aaRect ) {}
   bool collide( Collider colliderB );
-  Collision collide( Collider colliderB );
+  bool collide( Collider colliderB, Collision& collision );
+  bool collide( CircleCollider circle );
+  bool collide( CircleCollider circle, Collision& collision );
+  bool collide( AARectCollider aaRect );
+  bool collide( AARectCollider aaRect, Collision& collision );
 };
 
 class QuadTree {
@@ -57,17 +76,18 @@ class QuadTree {
   class QuadNode {
   protected:
     union {
-      QuadBucket elements = {};
-      u32 childIndices[ 4 ];
+      QuadBucket elements;
+      QuadNode children[ 4 ];
     };
-    Shape boundary = { {}, ShapeType::AARECT };
-    bool isLeaf = true;
+    AARectCollider boundary;
+    bool isLeaf;
+    QuadNode( AARectCollider boundary ) : elements( {} ), boundary( boundary ), isLeaf( true ) {}
     void subdivide();
   };
-  std::vector< QuadNode > nodes;
+  QuadNode rootNode;
 public:
-  QuadTree(Rect boundary);
-  void insert(Collider collider);
+  QuadTree( Rect boundary );
+  void insert( Entity entity );
 };
 
 class SolidBodyManager {

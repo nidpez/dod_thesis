@@ -29,288 +29,27 @@ void Transform::setOrientation( float orientation ) {
   this->orientation = orientation;
 }
 
-Vec2 getPositon() {
+Vec2 Transform::getPositon() {
   return position;
 }
 
-Vec2 getScale() {
+Vec2 Transform::getScale() {
   return scale;
 }
 
-float getOrientation() {
+float Transform::getOrientation() {
   return orientation;
-}
-
-void ColliderManager::buildQuadTree(Rect boundary) {
-  PROFILE;
-  quadTree = std::vector< QuadNode >();
-  quadTree.push_back( {} );
-  QuadNode rootNode = {};
-  rootNode.boundary.aaRect = boundary;
-  quadTree.push_back( rootNode );
-  for ( u32 colliderInd = 1; colliderInd < componentMap.components.size(); ++colliderInd ) {
-    insertIntoQuadTree( colliderInd );
-  }
-  // debug render space partitions 
-  for ( u32 nodeInd = 1; nodeInd < quadTree.size(); ++nodeInd ) {
-    QuadNode quadNode = quadTree[ nodeInd ];
-    if ( !quadNode.isLeaf ) {
-      continue;
-    }
-    Debug::drawRect( quadNode.boundary.aaRect, { 1, 1, 1, 0.3f } );
-    for ( int i = 0; i <= quadNode.elements.lastInd; ++i ) {
-      ComponentIndex ci = quadNode.elements._[ i ];
-      Debug::drawShape( transformedShapes[ ci ], Debug::BLUE );
-    }
-  }
-}
-
-// FIXME if QuadBucket::CAPACITY + 1 colliders are at the center of the node
-//       we will subdivide it forever
-void ColliderManager::subdivideQuadNode(u32 nodeInd) {
-  PROFILE;
-  // backup elements
-  QuadBucket elements = std::move( quadTree[ nodeInd ].elements );
-  quadTree[ nodeInd ].isLeaf = false;
-  Vec2 min = quadTree[ nodeInd ].boundary.aaRect.min;
-  Vec2 max = quadTree[ nodeInd ].boundary.aaRect.max;
-  Vec2 center = min + ( max - min ) / 2.0f;
-  u32 lastInd = quadTree.size();
-  // top-right
-  QuadNode child = {};
-  child.boundary.aaRect = { center, max };
-  quadTree.push_back( child );
-  quadTree[ nodeInd ].childIndices[ 0 ] = lastInd++;
-  // bottom-right
-  child.boundary.aaRect = { { center.x, min.y }, { max.x, center.y } };
-  quadTree.push_back( child );
-  quadTree[ nodeInd ].childIndices[ 1 ] = lastInd++;
-  // bottom-left
-  child.boundary.aaRect = { min, center };
-  quadTree.push_back( child );
-  quadTree[ nodeInd ].childIndices[ 2 ] = lastInd++;
-  // top-left
-  child.boundary.aaRect = { { min.x, center.y }, { center.x, max.y } };
-  quadTree.push_back( child );
-  quadTree[ nodeInd ].childIndices[ 3 ] = lastInd;
-  // put elements inside children
-  for ( int elemInd = 0; elemInd <= elements.lastInd; ++elemInd ) {
-    ComponentIndex colliderInd = elements._[ elemInd ];
-    Shape collider = transformedShapes[ colliderInd ];
-    for ( int childI = 0; childI < 4; ++childI ) {
-      QuadNode& child = quadTree[ quadTree[ nodeInd ].childIndices[ childI ] ];
-      if ( collide( collider, child.boundary ) ) {
-        child.elements._[ ++child.elements.lastInd ] = colliderInd;
-      }
-    }
-  }
-}
-
-void ColliderManager::insertIntoQuadTree(ComponentIndex colliderInd) {
-  PROFILE;
-  ASSERT( colliderInd < componentMap.components.size(),
-          "Component index %d out of bounds", colliderInd );
-  std::deque< u32 > nextNodeInds = std::deque< u32 >();
-  // index 0 is null
-  Shape collider = transformedShapes[ colliderInd ];
-  if ( collide( collider, quadTree[ 1 ].boundary ) ) {
-    nextNodeInds.push_front( 1 );
-  }
-  bool inserted = false;
-  while ( !nextNodeInds.empty() ) {
-    u32 nodeInd = nextNodeInds.front();
-    nextNodeInds.pop_front();
-    // try to add collider to this node
-    if ( quadTree[ nodeInd ].isLeaf ) {
-      // ... if there is still space
-      if ( quadTree[ nodeInd ].elements.lastInd < QuadBucket::CAPACITY - 1 ) {
-        quadTree[ nodeInd ].elements._[ ++quadTree[ nodeInd ].elements.lastInd ] = colliderInd;
-        inserted = true;
-      } else { 
-        // if there is no space this cannot be a leaf any more
-        subdivideQuadNode( nodeInd );
-      }
-    }
-    if ( !quadTree[ nodeInd ].isLeaf ) {
-      // find which children the collider intersects with
-      // and add them to the deque
-      for ( int i = 0; i < 4; ++i ) {
-        u32 childInd = quadTree[ nodeInd ].childIndices[ i ];
-        QuadNode child = quadTree[ childInd ];
-        if ( collide( collider, child.boundary ) ) {
-          nextNodeInds.push_front( childInd );
-        }
-      }
-    }
-  }
-  ASSERT( inserted, "Collider index %d not inserted into QuadTree", colliderInd ); 
-}
-
-void ColliderManager::initialize() {
-}
-
-void ColliderManager::shutdown() {
-}
-
-void ColliderManager::addCircle( EntityHandle entity, Circle circleCollider ) {
-  ASSERT( circleCollider.radius > 0.0f, "A circle collider of radius %f is useless", circleCollider.radius );
-  ColliderComp comp {};
-  comp.entity = entity;
-  comp._.circle = circleCollider;
-  comp._.type = ShapeType::CIRCLE;
-  componentMap.set( entity, comp, &ColliderManager::remove );
-}
-
-void ColliderManager::addAxisAlignedRect( EntityHandle entity, Rect aaRectCollider ) {
-  ASSERT( aaRectCollider.min.x < aaRectCollider.max.x &&
-          aaRectCollider.min.y < aaRectCollider.max.y,
-          "Malformed axis aligned rect collider" );
-  ColliderComp comp {};
-  comp.entity = entity;
-  comp._.aaRect = aaRectCollider;
-  comp._.type = ShapeType::AARECT;
-  componentMap.set( entity, comp, &ColliderManager::remove );
-}
-
-void ColliderManager::remove( EntityHandle entity ) {
-  componentMap.remove( entity );
-}
-
-void ColliderManager::updateAndCollide() {
-  PROFILE;
-  if ( componentMap.components.size() == 0 ) {
-    return;
-  }
-  // update local transform cache
-  std::vector< EntityHandle > updatedEntities = TransformManager::getLastUpdated();
-  updatedEntities = componentMap.have( updatedEntities );
-  for ( u32 trInd = 0; trInd < updatedEntities.size(); ++trInd ) {
-    // FIXME get world transforms here
-    Transform transform = TransformManager::get( updatedEntities[ trInd ] );
-    ComponentIndex colliderCompInd = componentMap.lookup( updatedEntities[ trInd ] );
-    componentMap.components[ colliderCompInd ].position = transform.position;
-    componentMap.components[ colliderCompInd ].scale = transform.scale;
-  }
-  transformedShapes.clear();
-  transformedShapes.reserve( componentMap.components.size() );
-  transformedShapes.push_back( {} );
-  for ( u32 colInd = 1; colInd < componentMap.components.size(); ++colInd ) {
-    ColliderComp colliderComp = componentMap.components[ colInd ];
-    if ( colliderComp._.type == ShapeType::CIRCLE ) {
-      float scaleX = colliderComp.scale.x, scaleY = colliderComp.scale.y;
-      float maxScale = ( scaleX > scaleY ) ? scaleX : scaleY;
-      Vec2 position = colliderComp.position + colliderComp._.circle.center * maxScale;
-      float radius = colliderComp._.circle.radius * maxScale;
-      transformedShapes.push_back( { { position, radius }, ShapeType::CIRCLE } );
-    } else if ( colliderComp._.type == ShapeType::AARECT ) {
-      Vec2 min = colliderComp._.aaRect.min * colliderComp.scale + colliderComp.position;
-      Vec2 max = colliderComp._.aaRect.max * colliderComp.scale + colliderComp.position;
-      Shape transformed = { {}, ShapeType::AARECT };
-      transformed.aaRect = { min, max };
-      transformedShapes.push_back( transformed );
-    }
-  }
-
-  // space partitioned collision detection
-  // keep the quadtree updated
-  // TODO calculate the boundary dynamically 
-  Rect boundary = { { -70, -40 }, { 70, 40 } };
-  buildQuadTree( boundary );
-
-  // detect collisions
-  collisions.clear();
-  collisions.resize( componentMap.components.size(), {} );
-  for ( u32 nodeInd = 1; nodeInd < quadTree.size(); ++nodeInd ) {
-    QuadNode quadNode = quadTree[ nodeInd ];
-    if ( !quadNode.isLeaf ) {
-      continue;
-    }
-    for ( int i = 0; i < quadNode.elements.lastInd; ++i ) {
-      ComponentIndex collI = quadNode.elements._[ i ];
-      Shape shapeI = transformedShapes[ collI ];
-      for ( int j = i + 1; j <= quadNode.elements.lastInd; ++j ) {
-        ComponentIndex collJ = quadNode.elements._[ j ];
-        Shape shapeJ = transformedShapes[ collJ ];
-        Collision collision;
-        if ( collide( shapeI, shapeJ, collision ) ) {
-          collisions[ collI ].push_back( collision );
-          collisions[ collJ ].push_back( { collision.b, collision.a, collision.normalB, collision.normalA } );
-          Debug::drawShape( shapeI, Debug::GREEN );
-          Debug::drawShape( shapeJ, Debug::GREEN );
-        }
-      }
-    }
-  }
-}
-
-std::vector< std::vector< Collision > > ColliderManager::getCollisions( const std::vector< EntityHandle > entities ) {
-  PROFILE;
-  std::vector< std::vector< Collision > > requestedCollisions;
-  requestedCollisions.reserve( entities.size() );
-  for ( u32 entI = 0; entI < entities.size(); ++entI ) {
-    ComponentIndex compInd = componentMap.lookup( entities[ entI ] );
-    requestedCollisions.push_back( collisions[ compInd ] );
-  }
-  return requestedCollisions;
-}
-
-bool ColliderManager::collide( Shape shapeA, Shape shapeB ) {
-  PROFILE;
-  switch ( shapeA.type ) {
-  case ShapeType::CIRCLE:
-    switch ( shapeB.type ) {
-    case ShapeType::CIRCLE:
-      return circleCircleCollide( shapeA.circle, shapeB.circle );
-    case ShapeType::AARECT:
-      return aaRectCircleCollide( shapeB.aaRect, shapeA.circle );
-    }
-  case ShapeType::AARECT:
-    switch ( shapeB.type ) {
-    case ShapeType::CIRCLE:
-      return aaRectCircleCollide( shapeA.aaRect, shapeB.circle );
-    case ShapeType::AARECT:
-      return aaRectAARectCollide( shapeA.aaRect, shapeB.aaRect );
-    }
-  }
-  return false;
-}
-
-bool ColliderManager::collide( Shape shapeA, Shape shapeB, Collision& collision ) {
-  PROFILE;
-  switch ( shapeA.type ) {
-  case ShapeType::CIRCLE:
-    switch ( shapeB.type ) {
-    case ShapeType::CIRCLE:
-      collision.a = shapeA;
-      collision.b = shapeB;
-      return circleCircleCollide( shapeA.circle, shapeB.circle, collision.normalA, collision.normalB );
-    case ShapeType::AARECT:
-      collision.a = shapeB;
-      collision.b = shapeA;
-      return aaRectCircleCollide( shapeB.aaRect, shapeA.circle, collision.normalB, collision.normalA );
-    }
-  case ShapeType::AARECT:
-    collision.a = shapeA;
-    collision.b = shapeB;    
-    switch ( shapeB.type ) {
-    case ShapeType::CIRCLE:
-      return aaRectCircleCollide( shapeA.aaRect, shapeB.circle, collision.normalA, collision.normalB );
-    case ShapeType::AARECT:
-      return aaRectAARectCollide( shapeA.aaRect, shapeB.aaRect, collision.normalA, collision.normalB );
-    }
-  }
-  return false;
 }
  
  // FIXME take scale into account
-bool ColliderManager::circleCircleCollide( Circle circleA, Circle circleB ) {
+bool Collider::circleCircleCollide( Circle circleA, Circle circleB ) {
   PROFILE;
   float radiiSum = circleA.radius + circleB.radius;
   return sqrMagnitude( circleA.center - circleB.center ) <= radiiSum * radiiSum;
 }
 
 // FIXME take scale into account
-bool ColliderManager::circleCircleCollide( Circle circleA, Circle circleB, Vec2& normalA, Vec2& normalB ) {
+bool Collider::circleCircleCollide( Circle circleA, Circle circleB, Vec2& normalA, Vec2& normalB ) {
   PROFILE;
   Vec2 ab = circleB.center - circleA.center;
   normalA = normalized( ab );
@@ -321,7 +60,7 @@ bool ColliderManager::circleCircleCollide( Circle circleA, Circle circleB, Vec2&
 }
 
 // FIXME take scale into account
-bool ColliderManager::aaRectCircleCollide( Rect aaRect, Circle circle ) {
+bool Collider::aaRectCircleCollide( Rect aaRect, Circle circle ) {
   PROFILE;
   // TODO assert integrity of circle and aaRect
   // TODO refactor distance to aaRect function
@@ -343,7 +82,7 @@ bool ColliderManager::aaRectCircleCollide( Rect aaRect, Circle circle ) {
 }
 
 // FIXME take scale into account
-bool ColliderManager::aaRectCircleCollide( Rect aaRect, Circle circle, Vec2& normalA, Vec2& normalB ) {
+bool Collider::aaRectCircleCollide( Rect aaRect, Circle circle, Vec2& normalA, Vec2& normalB ) {
   PROFILE;
   // TODO assert integrity of circle and aaRect
   // taken from Real-Time Collision Detection - Christer Ericson, 5.2.5 Testing Sphere Against AARECT
@@ -375,23 +114,149 @@ bool ColliderManager::aaRectCircleCollide( Rect aaRect, Circle circle, Vec2& nor
 }
 
 // TODO implement
-bool ColliderManager::aaRectAARectCollide( Rect aaRectA, Rect aaRectB ) {
+bool Collider::aaRectAARectCollide( Rect aaRectA, Rect aaRectB ) {
   aaRectA = aaRectB = {};
   return true;
 }
 
 // TODO implement
-bool ColliderManager::aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& normalA, Vec2& normalB ) {
+bool Collider::aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& normalA, Vec2& normalB ) {
   aaRectA = aaRectB = {};
   normalA = normalB = {};
   return false;
 }
 
-void ColliderManager::fitCircleToSprite( EntityHandle entity ) {
-  Vec2 size = SpriteManager::get( entity ).size;
+bool CircleCollider::collide( Collider colliderB ) {
+  return colliderB.collide( *this );
+}
+
+bool CircleCollider::collide( Collider colliderB, Collision& collision ) {
+  return colliderB.collide( *this, collision );
+}
+
+bool CircleCollider::collide( CircleCollider circle ) {
+  return Collider::circleCircleCollide( *this, circle );
+}
+
+bool CircleCollider::collide( CircleCollider circle, Collision& collision ) {
+  collision.a = *this;
+  collision.b = circle;
+  return Collider::circleCircleCollide( *this, circle, collision.normalA, collision.normalB );
+}
+
+bool CircleCollider::collide( AARectCollider aaRect ) {
+  return Collider::aaRectCircleCollide( aaRect, *this );
+}
+
+bool CircleCollider::collide( AARectCollider aaRect, Collision& collision ) {
+  collision.a = *this;
+  collision.b = aaRect;
+  return Collider::aaRectCircleCollide( aaRect, *this, collision.normalB, collision.normalA );
+}
+
+void CircleCollider::fitToSprite( Sprite sprite ) {
+  Vec2 size = sprite.getSize();
   float maxSize = ( size.x > size.y ) ? size.x : size.y;
-  Circle circleCollider = { {}, maxSize / 2.0f };
-  addCircle( entity, circleCollider );
+  circle.radius = maxSize / 2.0f;
+}
+
+bool AARectCollider::collide( Collider colliderB ) {
+  return colliderB.collide( *this );
+}
+
+bool AARectCollider::collide( Collider colliderB, Collision& collision ) {
+  return colliderB.collide( *this, collision );
+}
+
+bool AARectCollider::collide( CircleCollider circle ) {
+  return Collider::aaRectCircleCollide( *this, circle );
+}
+
+bool AARectCollider::collide( CircleCollider circle, Collision& collision ) {
+  collision.a = *this;
+  collision.b = circle;
+  return Collider::aaRectCircleCollide( *this, circle, collision.normalA, collision.normalB );
+}
+
+bool AARectCollider::collide( AARectCollider aaRect ) {
+  return Collider::aaRectAARectCollide( *this, aaRect );
+}
+
+bool AARectCollider::collide( AARectCollider aaRect, Collision& collision ) {
+  collision.a = *this;
+  collision.b = aaRect;
+  return Collider::aaRectAARectCollide( *this, aaRect, collision.normalA, collision.normalB );
+}
+
+void QuadTree::QuadTree( Rect boundary ) {
+  PROFILE;
+  rootNode( {}, boundary );
+}
+
+// FIXME if QuadBucket::CAPACITY + 1 colliders are at the center of the node
+//       we will subdivide it forever
+void QuadNode::subdivide() {
+  PROFILE;
+  // backup elements
+  QuadBucket __elements = std::move( elements );
+  isLeaf = false;
+  Vec2 min = boundary.getNin();
+  Vec2 max = boundary.getMax();
+  Vec2 center = min + ( max - min ) / 2.0f;
+  // top-right
+  children[ 0 ] = QuadNode( AARect( { center, max } ) );
+  // bottom-right
+  children[ 1 ] = QuadNode( AARect( { { center.x, min.y }, { max.x, center.y } } ) );
+  // bottom-left
+  children[ 2 ] = QuadNode( AARect( { min, center } ) );
+  // top-left
+  children[ 3 ] = QuadNode( AARect( { { min.x, center.y }, { center.x, max.y } } ) );
+  // put elements inside children
+  for ( int elemInd = 0; elemInd <= __elements.lastInd; ++elemInd ) {
+    Collider& collider = __elements._[ elemInd ];
+    for ( int childI = 0; childI < 4; ++childI ) {
+      QuadNode& child = children[ childI ];
+      if ( child.boundary.collide( collider ) ) {
+        child.__elements._[ ++child.__elements.lastInd ] = collider;
+      }
+    }
+  }
+}
+
+void QuadTree::insert( Entity entity ) {
+  PROFILE;
+  std::deque< QuadNode& > nextNodes = std::deque< QuadNode& >();
+  Collider collider = entity.getCollider();
+  if ( collider.collide( rootNode.boundary ) ) {
+    nextNodes.push_front( rootNode );
+  }
+  bool inserted = false;
+  while ( !nextNodes.empty() ) {
+    QuadNode& node = nextNodes.front();
+    nextNodes.pop_front();
+    // try to add collider to this node
+    if ( node.isLeaf ) {
+      // ... if there is still space
+      if ( node.elements.lastInd < QuadBucket::CAPACITY - 1 ) {
+        node.elements._[ ++node.elements.lastInd ] = collider;
+        inserted = true;
+      } else { 
+        // if there is no space this cannot be a leaf any more
+        node.subdivide();
+      }
+    }
+    if ( !node.isLeaf ) {
+      // find which children the collider intersects with
+      // and add them to the deque
+      for ( int i = 0; i < 4; ++i ) {
+        QuadNode& child = node.children[ i ];
+        if ( collider.collide( child.boundary ) ) {
+          nextNodes.push_front( cild );
+        }
+      }
+    }
+  }
+  ASSERT( inserted, "Collider of entity %d not inserted into QuadTree", &entity ); 
 }
 
 ComponentMap< SolidBodyManager::SolidBodyComp > SolidBodyManager::componentMap;
