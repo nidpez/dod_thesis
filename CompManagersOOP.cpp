@@ -126,6 +126,69 @@ bool Collider::aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& normalA, V
   return false;
 }
 
+void Collider::updateAndCollide() {
+  PROFILE;
+  // update local transform cache
+  std::vector< Entity > updatedEntities = Transform::getLastUpdated();
+  updatedEntities = Collider::have( updatedEntities );
+  for ( u32 trInd = 0; trInd < updatedEntities.size(); ++trInd ) {
+    // FIXME get world transforms here
+    Transform transform = updatedEntities[ trInd ].getTransform();
+    componentMap.components[ colliderCompInd ].position = transform.position;
+    componentMap.components[ colliderCompInd ].scale = transform.scale;
+  }
+  transformedShapes.clear();
+  transformedShapes.reserve( componentMap.components.size() );
+  transformedShapes.push_back( {} );
+  for ( u32 colInd = 1; colInd < componentMap.components.size(); ++colInd ) {
+    ColliderComp colliderComp = componentMap.components[ colInd ];
+    if ( colliderComp._.type == ShapeType::CIRCLE ) {
+      float scaleX = colliderComp.scale.x, scaleY = colliderComp.scale.y;
+      float maxScale = ( scaleX > scaleY ) ? scaleX : scaleY;
+      Vec2 position = colliderComp.position + colliderComp._.circle.center * maxScale;
+      float radius = colliderComp._.circle.radius * maxScale;
+      transformedShapes.push_back( { { position, radius }, ShapeType::CIRCLE } );
+    } else if ( colliderComp._.type == ShapeType::AARECT ) {
+      Vec2 min = colliderComp._.aaRect.min * colliderComp.scale + colliderComp.position;
+      Vec2 max = colliderComp._.aaRect.max * colliderComp.scale + colliderComp.position;
+      Shape transformed = { {}, ShapeType::AARECT };
+      transformed.aaRect = { min, max };
+      transformedShapes.push_back( transformed );
+    }
+  }
+
+  // space partitioned collision detection
+  // keep the quadtree updated
+  // TODO calculate the boundary dynamically 
+  Rect boundary = { { -70, -40 }, { 70, 40 } };
+  buildQuadTree( boundary );
+
+  // detect collisions
+  collisions.clear();
+  collisions.resize( componentMap.components.size(), {} );
+  for ( u32 nodeInd = 1; nodeInd < quadTree.size(); ++nodeInd ) {
+    QuadNode quadNode = quadTree[ nodeInd ];
+    if ( !quadNode.isLeaf ) {
+      continue;
+    }
+    for ( int i = 0; i < quadNode.elements.lastInd; ++i ) {
+      ComponentIndex collI = quadNode.elements._[ i ];
+      Shape shapeI = transformedShapes[ collI ];
+      for ( int j = i + 1; j <= quadNode.elements.lastInd; ++j ) {
+        ComponentIndex collJ = quadNode.elements._[ j ];
+        Shape shapeJ = transformedShapes[ collJ ];
+        Collision collision;
+        if ( collide( shapeI, shapeJ, collision ) ) {
+          collisions[ collI ].push_back( collision );
+          collisions[ collJ ].push_back( { collision.b, collision.a, collision.normalB, collision.normalA } );
+          Debug::drawShape( shapeI, Debug::GREEN );
+          Debug::drawShape( shapeJ, Debug::GREEN );
+        }
+      }
+    }
+  }
+}
+
 bool CircleCollider::collide( Collider colliderB ) {
   return colliderB.collide( *this );
 }
@@ -259,35 +322,12 @@ void QuadTree::insert( Entity entity ) {
   ASSERT( inserted, "Collider of entity %d not inserted into QuadTree", &entity ); 
 }
 
-ComponentMap< SolidBodyManager::SolidBodyComp > SolidBodyManager::componentMap;
-
-void SolidBodyManager::initialize() {
-}
-
-void SolidBodyManager::shutdown() {
-}
-
-void SolidBodyManager::set( EntityHandle entity, SolidBody solidBody ) {
-  componentMap.set( entity, { solidBody.speed, entity }, &SolidBodyManager::remove );
-}
-
-void SolidBodyManager::remove( EntityHandle entity ) {
-  componentMap.remove( entity );
-}
-
-void SolidBodyManager::setSpeed( EntityHandle entity, Vec2 speed ) {
+void SolidBody::setSpeed( Vec2 speed ) {
   PROFILE;
-  ComponentIndex compInd = componentMap.lookup( entity );
-  componentMap.components[ compInd ].speed = speed;
+  this->speed = speed;
 }
 
-SolidBody SolidBodyManager::get( EntityHandle entity ) {
-  PROFILE;
-  SolidBodyComp comp = componentMap.components[ componentMap.lookup( entity ) ];
-  return { comp.speed };
-}
-
-void SolidBodyManager::update( double deltaT ) {
+void SolidBody::update( double deltaT ) {
   PROFILE;
   std::vector< EntityHandle > entities;
   entities.reserve( componentMap.components.size() );

@@ -90,7 +90,7 @@ public:
   void insert( Entity entity );
 };
 
-class SolidBodyManager {
+class SolidBody {
   Vec2 speed;
 public:
   void update( double detlaT );
