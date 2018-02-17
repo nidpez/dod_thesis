@@ -69,7 +69,7 @@ public:
 class QuadTree {
   struct QuadBucket {
     static const u8 CAPACITY = 8;
-    ComponentIndex _[ CAPACITY ];
+    Collider& _[ CAPACITY ];
     // TODO standarize indices starting at 1
     s8 lastInd = -1;
   };
