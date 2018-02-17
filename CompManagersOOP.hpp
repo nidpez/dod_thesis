@@ -23,7 +23,9 @@ struct Collision {
 };
 
 class Collider {
+  static std::vector< Entity > entities;
 public:
+  static void updateAndCollide();
   virtual bool collide( Collider colliderB ) = 0;
   virtual bool collide( Collider colliderB, Collision& collision ) = 0;
   virtual bool collide( CircleCollider circle ) = 0;
@@ -90,7 +92,7 @@ public:
   void insert( Entity entity );
 };
 
-class SolidBodyManager {
+class SolidBody {
   Vec2 speed;
 public:
   void update( double detlaT );

@@ -126,6 +126,41 @@ bool Collider::aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& normalA, V
   return false;
 }
 
+void Collider::updateAndCollide() {
+  PROFILE;
+  // space partitioned collision detection
+  // keep the quadtree updated
+  // TODO calculate the boundary dynamically 
+  Rect boundary = { { -70, -40 }, { 70, 40 } };
+  buildQuadTree( boundary );
+
+  // detect collisions
+  collisions.clear();
+  collisions.resize( componentMap.components.size(), {} );
+  for ( u32 nodeInd = 1; nodeInd < quadTree.size(); ++nodeInd ) {
+    QuadNode quadNode = quadTree[ nodeInd ];
+    if ( !quadNode.isLeaf ) {
+      continue;
+    }
+    for ( int i = 0; i < quadNode.elements.lastInd; ++i ) {
+      Entity& entity = quadNode.elements._[ i ];
+      Transform transform = entity.getTransform();
+    Collider collider = entity.getCollider();
+      for ( int j = i + 1; j <= quadNode.elements.lastInd; ++j ) {
+        ComponentIndex collJ = quadNode.elements._[ j ];
+        Shape shapeJ = transformedShapes[ collJ ];
+        Collision collision;
+        if ( collide( shapeI, shapeJ, collision ) ) {
+          collisions[ collI ].push_back( collision );
+          collisions[ collJ ].push_back( { collision.b, collision.a, collision.normalB, collision.normalA } );
+          Debug::drawShape( shapeI, Debug::GREEN );
+          Debug::drawShape( shapeJ, Debug::GREEN );
+        }
+      }
+    }
+  }
+}
+
 bool CircleCollider::collide( Collider colliderB ) {
   return colliderB.collide( *this );
 }
@@ -259,35 +294,12 @@ void QuadTree::insert( Entity entity ) {
   ASSERT( inserted, "Collider of entity %d not inserted into QuadTree", &entity ); 
 }
 
-ComponentMap< SolidBodyManager::SolidBodyComp > SolidBodyManager::componentMap;
-
-void SolidBodyManager::initialize() {
-}
-
-void SolidBodyManager::shutdown() {
-}
-
-void SolidBodyManager::set( EntityHandle entity, SolidBody solidBody ) {
-  componentMap.set( entity, { solidBody.speed, entity }, &SolidBodyManager::remove );
-}
-
-void SolidBodyManager::remove( EntityHandle entity ) {
-  componentMap.remove( entity );
-}
-
-void SolidBodyManager::setSpeed( EntityHandle entity, Vec2 speed ) {
+void SolidBody::setSpeed( Vec2 speed ) {
   PROFILE;
-  ComponentIndex compInd = componentMap.lookup( entity );
-  componentMap.components[ compInd ].speed = speed;
+  this->speed = speed;
 }
 
-SolidBody SolidBodyManager::get( EntityHandle entity ) {
-  PROFILE;
-  SolidBodyComp comp = componentMap.components[ componentMap.lookup( entity ) ];
-  return { comp.speed };
-}
-
-void SolidBodyManager::update( double deltaT ) {
+void SolidBody::update( double deltaT ) {
   PROFILE;
   std::vector< EntityHandle > entities;
   entities.reserve( componentMap.components.size() );
