@@ -128,35 +128,6 @@ bool Collider::aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& normalA, V
 
 void Collider::updateAndCollide() {
   PROFILE;
-  // update local transform cache
-  std::vector< Entity > updatedEntities = Transform::getLastUpdated();
-  updatedEntities = Collider::have( updatedEntities );
-  for ( u32 trInd = 0; trInd < updatedEntities.size(); ++trInd ) {
-    // FIXME get world transforms here
-    Transform transform = updatedEntities[ trInd ].getTransform();
-    componentMap.components[ colliderCompInd ].position = transform.position;
-    componentMap.components[ colliderCompInd ].scale = transform.scale;
-  }
-  transformedShapes.clear();
-  transformedShapes.reserve( componentMap.components.size() );
-  transformedShapes.push_back( {} );
-  for ( u32 colInd = 1; colInd < componentMap.components.size(); ++colInd ) {
-    ColliderComp colliderComp = componentMap.components[ colInd ];
-    if ( colliderComp._.type == ShapeType::CIRCLE ) {
-      float scaleX = colliderComp.scale.x, scaleY = colliderComp.scale.y;
-      float maxScale = ( scaleX > scaleY ) ? scaleX : scaleY;
-      Vec2 position = colliderComp.position + colliderComp._.circle.center * maxScale;
-      float radius = colliderComp._.circle.radius * maxScale;
-      transformedShapes.push_back( { { position, radius }, ShapeType::CIRCLE } );
-    } else if ( colliderComp._.type == ShapeType::AARECT ) {
-      Vec2 min = colliderComp._.aaRect.min * colliderComp.scale + colliderComp.position;
-      Vec2 max = colliderComp._.aaRect.max * colliderComp.scale + colliderComp.position;
-      Shape transformed = { {}, ShapeType::AARECT };
-      transformed.aaRect = { min, max };
-      transformedShapes.push_back( transformed );
-    }
-  }
-
   // space partitioned collision detection
   // keep the quadtree updated
   // TODO calculate the boundary dynamically 
@@ -172,8 +143,9 @@ void Collider::updateAndCollide() {
       continue;
     }
     for ( int i = 0; i < quadNode.elements.lastInd; ++i ) {
-      ComponentIndex collI = quadNode.elements._[ i ];
-      Shape shapeI = transformedShapes[ collI ];
+      Entity& entity = quadNode.elements._[ i ];
+      Transform transform = entity.getTransform();
+    Collider collider = entity.getCollider();
       for ( int j = i + 1; j <= quadNode.elements.lastInd; ++j ) {
         ComponentIndex collJ = quadNode.elements._[ j ];
         Shape shapeJ = transformedShapes[ collJ ];
