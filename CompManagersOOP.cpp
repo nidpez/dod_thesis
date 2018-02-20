@@ -132,8 +132,7 @@ void Collider::updateAndCollide() {
   // keep the quadtree updated
   // TODO calculate the boundary dynamically 
   Rect boundary = { { -70, -40 }, { 70, 40 } };
-  buildQuadTree( boundary );
-
+  buildQuadTree( entities, boundary );
   // detect collisions
   collisions.clear();
   collisions.resize( componentMap.components.size(), {} );
@@ -143,18 +142,16 @@ void Collider::updateAndCollide() {
       continue;
     }
     for ( int i = 0; i < quadNode.elements.lastInd; ++i ) {
-      Entity& entity = quadNode.elements._[ i ];
-      Transform transform = entity.getTransform();
-    Collider collider = entity.getCollider();
+      Transform transformI = entityI.getTransform();
+      Collider collI = quadNode.elements._[ i ].getInWorldCoords();
       for ( int j = i + 1; j <= quadNode.elements.lastInd; ++j ) {
-        ComponentIndex collJ = quadNode.elements._[ j ];
-        Shape shapeJ = transformedShapes[ collJ ];
+        Collider collJ = quadNode.elements._[ j ].getInWorldCoords();
         Collision collision;
-        if ( collide( shapeI, shapeJ, collision ) ) {
-          collisions[ collI ].push_back( collision );
-          collisions[ collJ ].push_back( { collision.b, collision.a, collision.normalB, collision.normalA } );
-          Debug::drawShape( shapeI, Debug::GREEN );
-          Debug::drawShape( shapeJ, Debug::GREEN );
+        if ( collI.collide( collJ, collision ) ) {
+          collI.addCollision( collision );
+          collJ.addCollision( { collision.b, collision.a, collision.normalB, collision.normalA } );
+          Debug::drawShape( collI, Debug::GREEN );
+          Debug::drawShape( collJ, Debug::GREEN );
         }
       }
     }
@@ -195,6 +192,15 @@ void CircleCollider::fitToSprite( Sprite sprite ) {
   circle.radius = maxSize / 2.0f;
 }
 
+Collider CircleCollider::getInWorldCoords() {
+  Transform transform = entity.getTransform();
+  float scaleX = transform.getScale().x, scaleY = transform.getScale().y;
+  float maxScale = ( scaleX > scaleY ) ? scaleX : scaleY;
+  Vec2 __position = transform.getPosition() + center * maxScale;
+  float __radius = radius * maxScale;
+  return { entity, position, radius };
+}
+
 bool AARectCollider::collide( Collider colliderB ) {
   return colliderB.collide( *this );
 }
@@ -221,6 +227,13 @@ bool AARectCollider::collide( AARectCollider aaRect, Collision& collision ) {
   collision.a = *this;
   collision.b = aaRect;
   return Collider::aaRectAARectCollide( *this, aaRect, collision.normalA, collision.normalB );
+}
+
+Collider AARectCollider::getInWorldCoords() {
+  Transform transform = entity.getTransform();
+  Vec2 min = min * transform.getScale() + transform.getPosition();
+  Vec2 max = max * transform.getScale() + transform.getPosition();
+  return { entity, min, max };
 }
 
 void QuadTree::QuadTree( Rect boundary ) {
@@ -331,16 +344,11 @@ void SolidBody::update( double deltaT ) {
   }
 }
 
-ComponentMap< SpriteManager::SpriteComp > SpriteManager::componentMap;
-RenderInfo SpriteManager::renderInfo;
-SpriteManager::Pos* SpriteManager::posBufferData;
-SpriteManager::UV* SpriteManager::texCoordsBufferData;
- 
-SpriteManager::SpriteComp::operator Sprite() const {
-  return { this->sprite.textureId, this->sprite.texCoords, this->sprite.size };
-}
+RenderInfo Sprite::renderInfo;
+Sprite::Pos* Sprite::posBufferData;
+Sprite::UV* Sprite::texCoordsBufferData;
 
-void SpriteManager::initialize() {
+void Sprite::Sprite() {
   // configure buffers
   glGenVertexArrays( 1, &renderInfo.vaoId );
   glBindVertexArray( renderInfo.vaoId );
@@ -363,36 +371,22 @@ void SpriteManager::initialize() {
   renderInfo.projUnifLoc[ 3 ] = glGetUniformLocation( renderInfo.shaderProgramId, "projection.top" );
 }
 
-void SpriteManager::shutdown() {
+void Sprite::Sprite( AssetIndex textureId, Rect texCoords ) : Component( entity ), texCoords( texCoords ) {
+  ASSERT( AssetManager::isTextureAlive( textureId ), "Invalid texture id %d", textureId ); 
+  this->texCoords = texCoords;
+  TextureAsset texture = AssetManager::getTexture( textureId );
+  float width = texture.width * ( texCoords.max.u - texCoords.min.u ) / PIXELS_PER_UNIT;
+  float height = texture.height * ( texCoords.max.v - texCoords.min.v ) / PIXELS_PER_UNIT;
+  size = { width, height };
+}
+
+void Sprite::~Sprite() {
   glDeleteProgram( renderInfo.shaderProgramId );
   glDeleteVertexArrays( 1, &renderInfo.vaoId );
   glDeleteBuffers( 2, renderInfo.vboIds );
 }
-
-void SpriteManager::set( EntityHandle entity, AssetIndex textureId, Rect texCoords ) {
-  ASSERT( AssetManager::isTextureAlive( textureId ), "Invalid texture id %d", textureId ); 
-  SpriteComp spriteComp = {};
-  spriteComp.entity = entity;
-  spriteComp.sprite.textureId = textureId;
-  spriteComp.sprite.texCoords = texCoords;
-  TextureAsset texture = AssetManager::getTexture( textureId );
-  float width = texture.width * ( texCoords.max.u - texCoords.min.u ) / PIXELS_PER_UNIT;
-  float height = texture.height * ( texCoords.max.v - texCoords.min.v ) / PIXELS_PER_UNIT;
-  spriteComp.sprite.size = { width, height };
-  componentMap.set( entity, spriteComp, &SpriteManager::remove );
-}
-
-void SpriteManager::remove( EntityHandle entity ) {
-  componentMap.remove( entity );
-}
-
-Sprite SpriteManager::get( EntityHandle entity ) {
-  PROFILE;
-  ComponentIndex componentInd = componentMap.lookup( entity );
-  return static_cast< Sprite >( componentMap.components[ componentInd ] );
-}
     
-void SpriteManager::setOrthoProjection( float aspectRatio, float height ) {
+void Sprite::setOrthoProjection( float aspectRatio, float height ) {
   float halfHeight = height / 2.0f;
   glUseProgram( renderInfo.shaderProgramId );
   glUniform1f( renderInfo.projUnifLoc[ 0 ], -halfHeight * aspectRatio );
@@ -401,7 +395,7 @@ void SpriteManager::setOrthoProjection( float aspectRatio, float height ) {
   glUniform1f( renderInfo.projUnifLoc[ 3 ], halfHeight );
 }
 
-void SpriteManager::updateAndRender() {
+void Sprite::updateAndRender() {
   PROFILE;
   if ( componentMap.components.size() == 0 ) {
     return;

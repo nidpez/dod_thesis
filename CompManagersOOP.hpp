@@ -1,11 +1,20 @@
 #pragma once
 
-class Transform {
+class Component {
+  Entity& entity;
+public:
+  Component( Entity& entity ) : entity( entity ) {}
+  Entity& getEntity() {
+    return entity;
+  }
+};
+
+class Transform : public Component {
   Vec2 position;
   Vec2 scale;
   float orientation;
 public:
-  Transform( Vec2 position, Vec2 scale, float orientation ) : position( position ), scale( scale ), orientation( orientation ) {}
+  Transform( Entity& entity, Vec2 position, Vec2 scale, float orientation ) : Component( entity ), position( position ), scale( scale ), orientation( orientation ) {}
   void rotate( float rotation );
   void rotateAround( Vec2 point, float rotation );
   void translate( Vec2 translation );
@@ -22,17 +31,20 @@ struct Collision {
   Vec2 normalA, normalB;
 };
 
-class Collider {
+class Collider : public Component {
   static std::vector< Entity > entities;
+protected:
+  virtual void addCollision( Collision collision ) = 0;
 public:
-  static void updateAndCollide();
   virtual bool collide( Collider colliderB ) = 0;
   virtual bool collide( Collider colliderB, Collision& collision ) = 0;
   virtual bool collide( CircleCollider circle ) = 0;
   virtual bool collide( CircleCollider circle, Collision& collision ) = 0;
   virtual bool collide( AARectCollider aaRect ) = 0;
   virtual bool collide( AARectCollider aaRect, Collision& collision ) = 0;
+  virtual Collider getInWorldCoords() = 0;
 
+  static void updateAndCollide();
   static bool circleCircleCollide( Circle circleA, Circle circleB );
   static bool circleCircleCollide( Circle circleA, Circle circleB, Vec2& normalA, Vec2& normalB );
   static bool aaRectCircleCollide( Rect aaRect, Circle circle );
@@ -43,10 +55,11 @@ public:
 
 class Sprite;
 
-class CircleCollider : public Collider {
-  Circle circle;
+class CircleCollider : public Circle, Collider {
+protected:
+  void addCollision( Collision collision );
 public:
-  Collider( Circle circle ) : circle( circle ) {}
+  CircleCollider( Entity& entity, Vec2 center, float radius ) : Collider( entity ), Circle( center, radius ) {}
   bool collide( Collider colliderB );
   bool collide( Collider colliderB, Collision& collision );
   bool collide( CircleCollider circle );
@@ -54,18 +67,20 @@ public:
   bool collide( AARectCollider aaRect );
   bool collide( AARectCollider aaRect, Collision& collision );
   void fitToSprite( Sprite sprite );
+  Collider getInWorldCoords();
 };
 
-class AARectCollider : public Collider {
-  Rect aaRect;
+class AARectCollider : public Rect, Collider {
+  void addCollision( Collision collision );
 public:
-  Collider( Rect aaRect ) : aaRect( aaRect ) {}
+  AARectCollider( Entity& entity, Vec2 min, Vec2 max ) : Collider( entity ), Rect( min, max ) {}
   bool collide( Collider colliderB );
   bool collide( Collider colliderB, Collision& collision );
   bool collide( CircleCollider circle );
   bool collide( CircleCollider circle, Collision& collision );
   bool collide( AARectCollider aaRect );
   bool collide( AARectCollider aaRect, Collision& collision );
+  Collider getInWorldCoords();
 };
 
 class QuadTree {
@@ -100,7 +115,7 @@ public:
   Vec2 getSpeed();
 };
     
-class Sprite {
+class Sprite : public Component {
   AssetIndex textureId;
   Rect texCoords;
   Vec2 size;
@@ -116,7 +131,7 @@ class Sprite {
   Pos* posBufferData;
   UV* texCoordsBufferData;
 public:
-  Sprite( AssetIndex textureId, Rect texCoords ) : textureId( textureId ), texCoords( texCoords ) {}
+  Sprite( Entity& entity, AssetIndex textureId, Rect texCoords );
   ~Sprite();
   void updateAndRender();
   void setTextureId( AssetIndex textureId );
