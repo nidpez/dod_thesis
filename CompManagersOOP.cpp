@@ -1,5 +1,9 @@
 #include "EngineCommon.hpp"
 
+Component::Component( Entity& entity ) : entity( entity ) {
+  all.push_back( this );
+}
+
 void Transform::rotate( float rotation ) {
   PROFILE;
   orientation += rotation;
@@ -132,7 +136,7 @@ void Collider::updateAndCollide() {
   // keep the quadtree updated
   // TODO calculate the boundary dynamically 
   Rect boundary = { { -70, -40 }, { 70, 40 } };
-  buildQuadTree( entities, boundary );
+  buildQuadTree( all, boundary );
   // detect collisions
   collisions.clear();
   collisions.resize( componentMap.components.size(), {} );
@@ -142,7 +146,6 @@ void Collider::updateAndCollide() {
       continue;
     }
     for ( int i = 0; i < quadNode.elements.lastInd; ++i ) {
-      Transform transformI = entityI.getTransform();
       Collider collI = quadNode.elements._[ i ].getInWorldCoords();
       for ( int j = i + 1; j <= quadNode.elements.lastInd; ++j ) {
         Collider collJ = quadNode.elements._[ j ].getInWorldCoords();
@@ -236,9 +239,29 @@ Collider AARectCollider::getInWorldCoords() {
   return { entity, min, max };
 }
 
-void QuadTree::QuadTree( Rect boundary ) {
+void QuadTree::QuadTree( Rect boundary, std::vector< Collider& > colliders ) {
   PROFILE;
   rootNode( {}, boundary );
+  for ( u32 colliderInd = 1; colliderInd < colliders.size(); ++colliderInd ) {
+    insert( colliders[ colliderInd ] );
+  }
+  // debug render space partitions
+  std::stack< QuadNode& > nodeStack;
+  nodeStack.push( rootNode );
+  while ( !nodeStack.empty() ) {
+    QuadNode& quadNode = nodeStack.top();
+    nodeStack.pop();
+    if ( !quadNode.isLeaf ) {
+      for ( int i = 0; i < 4; ++i ) {
+        nodeStack.push( quadNode.children[ i ] );
+      }
+      continue;
+    }
+    Debug::drawRect( quadNode.boundary, { 1, 1, 1, 0.3f } );
+    for ( int i = 0; i <= quadNode.elements.lastInd; ++i ) {
+      Debug::drawShape( quadNode.elements._[ i ].getInWorldCoords(), Debug::BLUE );
+    }
+  }
 }
 
 // FIXME if QuadBucket::CAPACITY + 1 colliders are at the center of the node
@@ -271,10 +294,9 @@ void QuadNode::subdivide() {
   }
 }
 
-void QuadTree::insert( Entity entity ) {
+void QuadTree::insert( Collider& collider ) {
   PROFILE;
   std::deque< QuadNode& > nextNodes = std::deque< QuadNode& >();
-  Collider collider = entity.getCollider();
   if ( collider.collide( rootNode.boundary ) ) {
     nextNodes.push_front( rootNode );
   }
@@ -304,7 +326,7 @@ void QuadTree::insert( Entity entity ) {
       }
     }
   }
-  ASSERT( inserted, "Collider of entity %d not inserted into QuadTree", &entity ); 
+  ASSERT( inserted, "Collider of entity %d not inserted into QuadTree", &collider.getEntity() ); 
 }
 
 void SolidBody::setSpeed( Vec2 speed ) {
@@ -348,7 +370,7 @@ RenderInfo Sprite::renderInfo;
 Sprite::Pos* Sprite::posBufferData;
 Sprite::UV* Sprite::texCoordsBufferData;
 
-void Sprite::Sprite() {
+void Sprite::initialize() {
   // configure buffers
   glGenVertexArrays( 1, &renderInfo.vaoId );
   glBindVertexArray( renderInfo.vaoId );
@@ -397,25 +419,14 @@ void Sprite::setOrthoProjection( float aspectRatio, float height ) {
 
 void Sprite::updateAndRender() {
   PROFILE;
-  if ( componentMap.components.size() == 0 ) {
+  if ( all.size() == 0 ) {
     return;
-  }
-  // update local transform cache
-  std::vector< EntityHandle > updatedEntities = TransformManager::getLastUpdated();
-  updatedEntities = componentMap.have( updatedEntities );
-  for ( u32 trInd = 0; trInd < updatedEntities.size(); ++trInd ) {
-    // TODO get world transforms here
-    Transform transform = TransformManager::get( updatedEntities[ trInd ] );
-    ComponentIndex spriteCompInd = componentMap.lookup( updatedEntities[ trInd ] );
-    componentMap.components[ spriteCompInd ].transform.position = transform.position;
-    componentMap.components[ spriteCompInd ].transform.scale = transform.scale;
-    componentMap.components[ spriteCompInd ].transform.orientation = transform.orientation;
   }
   // build vertex buffer and render for sprites with same texture
   glUseProgram( renderInfo.shaderProgramId );
   glBindVertexArray( renderInfo.vaoId );
   // TODO don't render every sprite every time
-  u32 spritesToRenderCount = componentMap.components.size();
+  u32 spritesToRenderCount = all.size();
   // TODO use triangle indices to reduce vertex count
   u32 vertsPerSprite = 6; 
   posBufferData = new Pos[ spritesToRenderCount * vertsPerSprite ];
@@ -430,11 +441,12 @@ void Sprite::updateAndRender() {
     { 0.5f,	 0.5f }
   };
   for ( u32 spriteInd = 0; spriteInd < spritesToRenderCount; ++spriteInd ) {
-    SpriteComp spriteComp = componentMap.components[ spriteInd ];
+    Sprite sprite = all[ spriteInd ];
+    Transform transform = sprite.getEntity().getTransform();
     for ( u32 vertInd = 0; vertInd < vertsPerSprite; ++vertInd ) {
-      Vec2 vert = baseGeometry[ vertInd ] * spriteComp.sprite.size * spriteComp.transform.scale;
-      vert = rotateVec2( vert, spriteComp.transform.orientation );
-      vert += spriteComp.transform.position;
+      Vec2 vert = baseGeometry[ vertInd ] * sprite.size * transform.scale;
+      vert = rotateVec2( vert, transform.orientation );
+      vert += transform.position;
       posBufferData[ spriteInd * vertsPerSprite + vertInd ].pos = vert;
     }
   } 
@@ -444,9 +456,9 @@ void Sprite::updateAndRender() {
   delete[] posBufferData;
   // build the texture coordinates buffer
   for ( u32 spriteInd = 0; spriteInd < spritesToRenderCount; ++spriteInd ) {
-    SpriteComp spriteComp = componentMap.components[ spriteInd ];
-    Vec2 max = spriteComp.sprite.texCoords.max;
-    Vec2 min = spriteComp.sprite.texCoords.min;
+    Sprite sprite = all[ spriteInd ];
+    Vec2 max = sprite.getTextureCoords().getMax();
+    Vec2 min = sprite.getTextureCoords().getMin();
     Vec2 texCoords[] = {
       min, max, { min.u, max.v },
       min, { max.u, min.v }, max
@@ -468,12 +480,12 @@ void Sprite::updateAndRender() {
   // mark where a sub-buffer with sprites sharing a texture ends and a new one begins
   u32 currentSubBufferStart = 0;
   for ( u32 spriteInd = 1; spriteInd < spritesToRenderCount; ++spriteInd ) {
-    if ( componentMap.components[ spriteInd ].sprite.textureId != currentTexId ) {
+    if ( all[ spriteInd ].textureId != currentTexId ) {
       // send current vertex sub-buffer and render it
       u32 spriteCountInSubBuffer = spriteInd - currentSubBufferStart;
       glDrawArrays( GL_TRIANGLES, vertsPerSprite * currentSubBufferStart, vertsPerSprite * spriteCountInSubBuffer );
       // and start a new one
-      currentTexId = componentMap.components[ spriteInd ].sprite.textureId;      
+      currentTexId = all[ spriteInd ].textureId;      
       ASSERT( AssetManager::isTextureAlive( currentTexId ), "Invalid texture id %d", currentTexId );
       currentTexGlId = AssetManager::getTexture( currentTexId ).glId;
       glBindTexture( GL_TEXTURE_2D, currentTexGlId );

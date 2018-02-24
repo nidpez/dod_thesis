@@ -2,8 +2,10 @@
 
 class Component {
   Entity& entity;
+protected:
+  static std::vector< Component& > all;
 public:
-  Component( Entity& entity ) : entity( entity ) {}
+  Component( Entity& entity );
   Entity& getEntity() {
     return entity;
   }
@@ -103,8 +105,8 @@ class QuadTree {
   };
   QuadNode rootNode;
 public:
-  QuadTree( Rect boundary );
-  void insert( Entity entity );
+  QuadTree( Rect boundary, std::vector< Collider& > colliders );
+  void insert( Collider& collider );
 };
 
 class SolidBody {
@@ -126,16 +128,18 @@ class Sprite : public Component {
   struct UV {
     Vec2 uv;
   };
-  RenderInfo renderInfo;
+  static RenderInfo renderInfo;
   // TODO merge into single vertex attrib pointer
-  Pos* posBufferData;
-  UV* texCoordsBufferData;
+  static Pos* posBufferData;
+  static UV* texCoordsBufferData;
 public:
   Sprite( Entity& entity, AssetIndex textureId, Rect texCoords );
   ~Sprite();
-  void updateAndRender();
   void setTextureId( AssetIndex textureId );
   void setTextureCoords( Rect textureCoords );
   AssetIndex getTextureId();
   Rect getTextureCoords();
+  static void initialize();
+  static void updateAndRender();
+  static void setOrthoProjection( float aspectRatio, float height );
 };
