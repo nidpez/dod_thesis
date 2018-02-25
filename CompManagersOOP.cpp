@@ -12,7 +12,7 @@ void Transform::rotate( float rotation ) {
 void Transform::rotateAround( Vec2 point, float rotation ) {
   PROFILE;
   orientation += rotation;
-  position = rotateVec2( transform.position - point, rotation ) + point;
+  position = ( transform.position - point ).rotate( rotation ) + point;
 }
 
 void Transform::translate( Vec2 translation ) {
@@ -22,7 +22,7 @@ void Transform::translate( Vec2 translation ) {
 
 void Transform::scale( Vec2 scale ) {
   PROFILE; 
-  scale = scale;
+  this->scale = scale;
 }
 
 void Transform::setPosition( Vec2 position ) {
@@ -49,18 +49,18 @@ float Transform::getOrientation() {
 bool Collider::circleCircleCollide( Circle circleA, Circle circleB ) {
   PROFILE;
   float radiiSum = circleA.radius + circleB.radius;
-  return sqrMagnitude( circleA.center - circleB.center ) <= radiiSum * radiiSum;
+  return ( circleA.center - circleB.center ).sqrMagnitude() <= radiiSum * radiiSum;
 }
 
 // FIXME take scale into account
 bool Collider::circleCircleCollide( Circle circleA, Circle circleB, Vec2& normalA, Vec2& normalB ) {
   PROFILE;
   Vec2 ab = circleB.center - circleA.center;
-  normalA = normalized( ab );
+  normalA = ab.normalized();
   normalB = -normalA;
 
   float radiiSum = circleA.radius + circleB.radius;
-  return sqrMagnitude( ab ) <= radiiSum * radiiSum;
+  return ab.sqrMagnitude() <= radiiSum * radiiSum;
 }
 
 // FIXME take scale into account
@@ -70,17 +70,17 @@ bool Collider::aaRectCircleCollide( Rect aaRect, Circle circle ) {
   // TODO refactor distance to aaRect function
   // taken from Real-Time Collision Detection - Christer Ericson, 5.2.5 Testing Sphere Against AARECT
   float sqrDistance = 0.0f;
-  if ( circle.center.x < aaRect.min.x ) {
-    sqrDistance += ( aaRect.min.x - circle.center.x ) * ( aaRect.min.x - circle.center.x );
+  if ( circle.center.getX() < aaRect.min.getX() ) {
+    sqrDistance += ( aaRect.min.getX() - circle.center.getX() ) * ( aaRect.min.getX() - circle.center.getX() );
   }
-  if ( circle.center.x > aaRect.max.x ) {
-    sqrDistance += ( circle.center.x - aaRect.max.x ) * ( circle.center.x - aaRect.max.x );
+  if ( circle.center.getX() > aaRect.max.getX() ) {
+    sqrDistance += ( circle.center.getX() - aaRect.max.getX() ) * ( circle.center.getX() - aaRect.max.getX() );
   }
-  if ( circle.center.y < aaRect.min.y ) {
-    sqrDistance += ( aaRect.min.y - circle.center.y ) * ( aaRect.min.y - circle.center.y );
+  if ( circle.center.getY() < aaRect.min.getY() ) {
+    sqrDistance += ( aaRect.min.getY() - circle.center.getY() ) * ( aaRect.min.getY() - circle.center.getY() );
   }
-  if ( circle.center.y > aaRect.max.y ) {
-    sqrDistance += ( circle.center.y - aaRect.max.y ) * ( circle.center.y - aaRect.max.y );
+  if ( circle.center.getY() > aaRect.max.getY() ) {
+    sqrDistance += ( circle.center.getY() - aaRect.max.getY() ) * ( circle.center.getY() - aaRect.max.getY() );
   }
   return sqrDistance <= circle.radius * circle.radius; 
 }
@@ -91,30 +91,30 @@ bool Collider::aaRectCircleCollide( Rect aaRect, Circle circle, Vec2& normalA, V
   // TODO assert integrity of circle and aaRect
   // taken from Real-Time Collision Detection - Christer Ericson, 5.2.5 Testing Sphere Against AARECT
   normalA = {};
-  float x = circle.center.x;
-  if ( x < aaRect.min.x ) {
-    x = aaRect.min.x;
-    normalA.x = -1.0;
+  float x = circle.center.getX();
+  if ( x < aaRect.min.getX() ) {
+    x = aaRect.min.getX();
+    normalA.getX() = -1.0;
   }
-  if ( x > aaRect.max.x ) {
-    x = aaRect.max.x;
-    normalA.x = 1.0;
+  if ( x > aaRect.max.getX() ) {
+    x = aaRect.max.getX();
+    normalA.getX() = 1.0;
   }
-  float y = circle.center.y;
-  if ( y < aaRect.min.y ) {
-    y = aaRect.min.y;
-    normalA.y = -1.0;
+  float y = circle.center.getY();
+  if ( y < aaRect.min.getY() ) {
+    y = aaRect.min.getY();
+    normalA.getY() = -1.0;
   }
-  if ( y > aaRect.max.y ) {
-    y = aaRect.max.y;
-    normalA.y = 1.0;
+  if ( y > aaRect.max.getY() ) {
+    y = aaRect.max.getY();
+    normalA.getY() = 1.0;
   }
-  normalA = normalized( normalA );
+  normalA = normalA.normalized();
   Vec2 closestPtInRect = { x, y };
   Vec2 circleToRect = closestPtInRect - circle.center;
-  normalB = normalized( circleToRect );
+  normalB = circleToRect.normalized();
 
-  return sqrMagnitude( circleToRect ) <= circle.radius * circle.radius;
+  return circleToRect.sqrMagnitude() <= circle.radius * circle.radius;
 }
 
 // TODO implement
@@ -191,13 +191,13 @@ bool CircleCollider::collide( AARectCollider aaRect, Collision& collision ) {
 
 void CircleCollider::fitToSprite( Sprite sprite ) {
   Vec2 size = sprite.getSize();
-  float maxSize = ( size.x > size.y ) ? size.x : size.y;
+  float maxSize = ( size.getX() > size.getY() ) ? size.getX() : size.getY();
   circle.radius = maxSize / 2.0f;
 }
 
 Collider CircleCollider::getInWorldCoords() {
   Transform transform = entity.getTransform();
-  float scaleX = transform.getScale().x, scaleY = transform.getScale().y;
+  float scaleX = transform.getScale().getX(), scaleY = transform.getScale().getY();
   float maxScale = ( scaleX > scaleY ) ? scaleX : scaleY;
   Vec2 __position = transform.getPosition() + center * maxScale;
   float __radius = radius * maxScale;
@@ -277,11 +277,11 @@ void QuadNode::subdivide() {
   // top-right
   children[ 0 ] = QuadNode( AARect( { center, max } ) );
   // bottom-right
-  children[ 1 ] = QuadNode( AARect( { { center.x, min.y }, { max.x, center.y } } ) );
+  children[ 1 ] = QuadNode( AARect( { { center.getX(), min.getY() }, { max.getX(), center.getY() } } ) );
   // bottom-left
   children[ 2 ] = QuadNode( AARect( { min, center } ) );
   // top-left
-  children[ 3 ] = QuadNode( AARect( { { min.x, center.y }, { center.x, max.y } } ) );
+  children[ 3 ] = QuadNode( AARect( { { min.getX(), center.getY() }, { center.getX(), max.getY() } } ) );
   // put elements inside children
   for ( int elemInd = 0; elemInd <= __elements.lastInd; ++elemInd ) {
     Collider& collider = __elements._[ elemInd ];
@@ -341,14 +341,14 @@ void SolidBody::update( double deltaT ) {
   // move solid body
   Vec2 normal = {};
   for ( u32 i = 0; i < collisions.size(); ++i ) {
-    if ( dot( speed, collisions[ i ].normalB ) <= 0.0f ) {
+    if ( speed.dot( collisions[ i ].normalB ) <= 0.0f ) {
       normal += collisions[ i ].normalB;
     }
   }
-  if ( normal.x != 0 || normal.y != 0 ) {
+  if ( normal.getX() != 0 || normal.getY() != 0 ) {
     // reflect direction
-    normal = normalized( normal );
-    float vDotN = dot( speed, normal );
+    normal = normal.normalized();
+    float vDotN = speed.dot( normal );
     speed = speed - 2.0f * vDotN * normal;
   }
   entity.getTransform().translate( speed * deltaT );
@@ -433,7 +433,7 @@ void Sprite::updateAndRender() {
     Transform transform = sprite.getEntity().getTransform();
     for ( u32 vertInd = 0; vertInd < vertsPerSprite; ++vertInd ) {
       Vec2 vert = baseGeometry[ vertInd ] * sprite.size * transform.scale;
-      vert = rotateVec2( vert, transform.orientation );
+      vert = vert.rotate( transform.orientation );
       vert += transform.position;
       posBufferData[ spriteInd * vertsPerSprite + vertInd ].pos = vert;
     }
