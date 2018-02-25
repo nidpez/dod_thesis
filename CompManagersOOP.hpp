@@ -1,8 +1,8 @@
 #pragma once
 
 class Component {
-  Entity& entity;
 protected:
+  Entity& entity;
   static std::vector< Component& > all;
 public:
   Component( Entity& entity );
@@ -109,9 +109,10 @@ public:
   void insert( Collider& collider );
 };
 
-class SolidBody {
+class SolidBody : public Component {
   Vec2 speed;
 public:
+  SolidBody( Entity& entity, Vec2 speed ) : Component( entity ), speed( speed ) {}
   void update( double detlaT );
   void setSpeed( Vec2 speed );
   Vec2 getSpeed();

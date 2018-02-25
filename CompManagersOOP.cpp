@@ -336,34 +336,22 @@ void SolidBody::setSpeed( Vec2 speed ) {
 
 void SolidBody::update( double deltaT ) {
   PROFILE;
-  std::vector< EntityHandle > entities;
-  entities.reserve( componentMap.components.size() );
-  // TODO detect collisions and correct positions
-  for ( u32 compI = 1; compI < componentMap.components.size(); ++compI ) {
-    SolidBodyComp solidBodyComp = componentMap.components[ compI ];
-    entities.push_back( solidBodyComp.entity );
-  }
-  std::vector< std::vector< Collision > > collisions = ColliderManager::getCollisions( entities );
-  ASSERT( entities.size() == collisions.size(), "Have %d solid bodies but %d collision sets", entities.size(), collisions.size() );
-  // TODO move solid bodies
-  for ( u32 compI = 1; compI < componentMap.components.size(); ++compI ) {
-    std::vector< Collision > collisionsI = collisions[ compI - 1 ];
-    Vec2 normal = {};
-    SolidBodyComp solidBodyComp = componentMap.components[ compI ];
-    for ( u32 i = 0; i < collisionsI.size(); ++i ) {
-      if ( dot( solidBodyComp.speed, collisionsI[ i ].normalB ) <= 0.0f ) {
-        normal += collisionsI[ i ].normalB;
-      }
+  std::vector< Collision > collisions = entity.getCollider().getCollisions();
+  ASSERT( collisions, "Have no collision set for SolidBody %d", this );
+  // move solid body
+  Vec2 normal = {};
+  for ( u32 i = 0; i < collisions.size(); ++i ) {
+    if ( dot( speed, collisions[ i ].normalB ) <= 0.0f ) {
+      normal += collisions[ i ].normalB;
     }
-    if ( normal.x != 0 || normal.y != 0 ) {
-      // reflect direction
-      normal = normalized( normal );
-      float vDotN = dot( solidBodyComp.speed, normal );
-      componentMap.components[ compI ].speed = solidBodyComp.speed - 2.0f * vDotN * normal;
-    }
-    EntityHandle entity = solidBodyComp.entity;
-    TransformManager::translate( entity, solidBodyComp.speed * deltaT );
   }
+  if ( normal.x != 0 || normal.y != 0 ) {
+    // reflect direction
+    normal = normalized( normal );
+    float vDotN = dot( speed, normal );
+    speed = speed - 2.0f * vDotN * normal;
+  }
+  entity.getTransform().translate( speed * deltaT );
 }
 
 RenderInfo Sprite::renderInfo;
