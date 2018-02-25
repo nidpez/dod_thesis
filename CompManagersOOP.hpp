@@ -34,7 +34,6 @@ struct Collision {
 };
 
 class Collider : public Component {
-  static std::vector< Entity > entities;
 protected:
   virtual void addCollision( Collision collision ) = 0;
 public:
@@ -113,7 +112,7 @@ class SolidBody : public Component {
   Vec2 speed;
 public:
   SolidBody( Entity& entity, Vec2 speed ) : Component( entity ), speed( speed ) {}
-  void update( double detlaT );
+  void update( double deltaT );
   void setSpeed( Vec2 speed );
   Vec2 getSpeed();
 };
