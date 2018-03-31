@@ -86,7 +86,11 @@ struct AutoProfile {
 };
 
 class Profiler {
-  static constexpr const char* PROFILER_LOG_FILE_NAME = "profilerLog.csv";
+#ifdef DOD
+  static constexpr const char* PROFILER_LOG_FILE_NAME = "DODprofilerLog.csv";
+#elif defined OOP
+  static constexpr const char* PROFILER_LOG_FILE_NAME = "OOPprofilerLog.csv";
+#endif
   static FILE* profilerLog;
   
   static u32 frameNumber;
