@@ -18,7 +18,7 @@ class Debug {
   };
   struct DebugRect {
     Color color;
-    Rect rect;
+    Vec2 min, max;
   };
   static RenderInfo circleRenderInfo;
   static RenderInfo rectRenderInfo;
@@ -42,7 +42,11 @@ public:
   static void initializeRenderer();
   static void drawCircle( Circle circle, Color color );
   static void drawRect( Rect rect, Color color );
+#ifdef DOD
   static void drawShape( Shape shape, Color color );
+#elif defined OOP
+  static void drawShape( Shape* shape, Color color );
+#endif
   static void renderAndClear();
   static void setOrthoProjection( float aspectRatio, float height );
 };
@@ -123,7 +127,7 @@ public:
   static void updateOutputsAndReset();  
 };
 
-#ifdef NDEBUG
+#ifndef PROFILING
 
 #define PROFILE_BLOCK( name ) ( ( void )0 )
 

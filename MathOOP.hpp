@@ -7,9 +7,11 @@
 class Vec2 {
   float x, y;
 public:
-  static const Vec2 ZERO = {};
-  static const Vec2 ONE  = { 1.0f, 1.0f };
-
+  Vec2( float x, float y ) : x( x ), y( y ) {}
+  Vec2() {
+    *this = ZERO;
+  }
+  
   inline void setX( float x ) { this->x = x; }
   inline void setY( float y ) { this->y = y; }
   inline void setU( float u ) { x = u; }
@@ -20,81 +22,83 @@ public:
   inline float getU() { return x; }
   inline float getV() { return y; }
   
-  inline bool operator==( Vec2 b ) {
+  inline bool operator==( Vec2 b ) const {
     return x == b.x && y == b.y;
   }
 
-  inline Vec2 operator+( Vec2 b ) {
+  inline Vec2 operator+( Vec2 b ) const {
     return { x + b.x, y + b.y };
   }
 
   inline Vec2& operator+=( Vec2 b ) {
-    this = this + b;
+    *this = *this + b;
     return *this;
   }
 
-  inline Vec2  operator-( Vec2 b ) {
+  inline Vec2 operator-( Vec2 b ) const {
     return { x - b.x, y - b.y };
   }
 
   inline Vec2& operator-=( Vec2 b ) {
-    this = this - b;
+    *this = *this - b;
     return *this;
   }
 
-  inline Vec2 operator-( Vec2 vec ) {
-    return VEC2_ZERO - vec;
-  }
-
-  inline Vec2 operator*( Vec2 b ) {
+  inline Vec2 operator*( Vec2 b ) const {
     return { x * b.x, y * b.y };
   }
 
   inline Vec2& operator*=( Vec2 b ) {
-    this = this * b;
+    *this = *this * b;
     return *this;
   }
 
-  inline Vec2 operator*( float scale ) {
+  inline Vec2 operator*( float scale ) const {
     return { x * scale, y * scale };
   }
 
   inline Vec2& operator*=( float scale ) {
-    this = this * scale;
+    *this = *this * scale;
     return *this;
   }
 
-  inline Vec2 operator/( float factor ) {
+  inline Vec2 operator/( float factor ) const {
     return { x / factor, y / factor };
   }
 
   inline Vec2& operator/=( float factor ) {
-    this = this / factor;
+    *this = *this / factor;
     return *this;
   }
 
-  inline float dot( Vec2 b ) {
+  inline float dot( Vec2 b ) const {
     return x * b.x + y * b.y;
   }
 
-  inline float sqrMagnitude() {
+  inline float sqrMagnitude() const {
     return dot( *this );
   }
 
-  inline float magnitude() {
+  inline float magnitude() const {
     return std::sqrt( sqrMagnitude() );
   }
 
-  inline Vec2 rotate( float orientation ) {
+  inline Vec2 rotate( float orientation ) const {
     float _cos = cos( orientation );
     float _sin = sin( orientation );
     return { x * _cos - y * _sin, y * _cos + x * _sin };
   }
 
-  inline Vec2 normalized() {
+  inline Vec2 normalized() const {
     return *this / magnitude();
   }
+  
+  static const Vec2 ZERO, ONE;
 };
+
+inline Vec2 operator-( Vec2 vec ) {
+  return Vec2::ZERO - vec;
+}
 
 inline Vec2 operator*( float scale, Vec2 vec ) {
   return vec * scale;

@@ -4,14 +4,21 @@ project(SpaceAdventure)
 # set an output directory for our binaries
 set(BIN_DIR ${SpaceAdventure_SOURCE_DIR}/bin)
 
-# Bump up warning levels appropriately for clang, gcc & msvc
+# Bump up warning levels appropriately for clang and gcc
 # Also set debug/optimization flags depending on the build type. IDE users choose this when
 # selecting the build mode in their IDE
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -pedantic -std=c++11")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Os")
 endif()
+
+option(PROFILING "Enable instrumentation code" ON)
+if (PROFILING)
+  add_definitions(-DPROFILING)
+endif()
+
+set(TECHNIQUE "DOD" CACHE STRING "Data Oriented Design (DOD) or Object Oriented Progrmamming (OOP)") 
 
 # lookup GLFW
 find_package(PkgConfig REQUIRED)
@@ -26,7 +33,13 @@ include_directories(${OPENGL_INCLUDE_DIR})
 find_package(GLEW REQUIRED)
 
 # build the game
-add_executable(GAME Debug.cpp Asset.cpp EntityManager.cpp CompManagers.cpp Main.cpp)
+if (${TECHNIQUE} STREQUAL "DOD")
+  add_definitions(-DDOD)
+  add_executable(GAME Debug.cpp Asset.cpp EntityManager.cpp CompManagers.cpp Main.cpp)
+elseif (${TECHNIQUE} STREQUAL "OOP")
+  add_definitions(-DOOP)
+  add_executable(GAME Debug.cpp Asset.cpp MathOOP.cpp EntityOOP.cpp CompManagersOOP.cpp MainOOP.cpp)
+endif()
 
 # add the static library for Simple Opengl Image Library 2, and include its header
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)

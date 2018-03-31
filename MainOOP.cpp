@@ -2,7 +2,7 @@
 #include <random>
 
 #include "EngineCommon.hpp"
-#include "TestScene.hpp"
+#include "TestSceneOOP.hpp"
 
 // misc
 
@@ -17,11 +17,7 @@ s32 main() {
   Debug::initializeLogger();
   Profiler::initialize();
   GLFWwindow* window = createWindowAndGlContext( "Space Adventure (working title)" );
-  EntityManager::initialize();
-  TransformManager::initialize();
-  ColliderManager::initialize();
-  SolidBodyManager::initialize();
-  SpriteManager::initialize();
+  Sprite::initialize();
   Debug::initializeRenderer();
   // AnimationManager animationManager;
   AssetManager::initialize();
@@ -33,7 +29,7 @@ s32 main() {
   glViewport( 0, 0, windowWidth, windowHeight );
   float aspect = windowWidth / ( float )windowHeight;
 
-  SpriteManager::setOrthoProjection( aspect, 100 );
+  Sprite::setOrthoProjection( aspect, 100 );
   Debug::setOrthoProjection( aspect, 100 );
 
   TestScene::initialize();
@@ -52,13 +48,13 @@ s32 main() {
 
     TestScene::update( deltaT );
     
-    ColliderManager::updateAndCollide();
+    Collider::updateAndCollide();
 
-    SolidBodyManager::update( deltaT );
+    SolidBody::update( deltaT );
     
     // render scene
     glClear( GL_COLOR_BUFFER_BIT );
-    SpriteManager::updateAndRender();
+    Sprite::updateAndRender();
   
     // render debug shapes
     Debug::renderAndClear();
@@ -94,11 +90,7 @@ s32 main() {
   
   // shut down managers
   AssetManager::shutdown();
-  SpriteManager::shutdown();
-  SolidBodyManager::shutdown();
-  ColliderManager::shutdown();
-  TransformManager::shutdown();
-  EntityManager::shutdown();
+  Sprite::shutdown();
   Profiler::shutdown();
   Debug::shutdown();
   

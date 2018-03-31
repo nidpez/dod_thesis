@@ -141,20 +141,31 @@ void Debug::shutdown() {
 
 void Debug::drawCircle( Circle circle, Color color ) {
 #ifndef NDEBUG
+#ifdef DOD
   ASSERT( circle.radius > 0.0f, "Asked to draw a circle of radius %f", circle.radius );
   circleBufferData.push_back( { color, circle.center, circle.radius } );
+#elif defined OOP
+  ASSERT( circle.getRadius() > 0.0f, "Asked to draw a circle of radius %f", circle.getRadius() );
+  circleBufferData.push_back( { color, circle.getCenter(), circle.getRadius() } );
+#endif
 #endif
 }
 
 void Debug::drawRect( Rect rect, Color color ) {
 #ifndef NDEBUG
+#ifdef DOD
   ASSERT( rect.min.x != rect.max.x && rect.min.y != rect.max.y, "Asked to draw a malformed rectangle ( ( %f, %f ), ( %f, %f ) )", rect.min.x, rect.min.y, rect.max.x, rect.max.y );
-  rectBufferData.push_back( { color, rect } );
+  rectBufferData.push_back( { color, rect.min, rect.max } );
+#elif defined OOP
+  ASSERT( rect.getMin().getX() != rect.getMax().getX() && rect.getMin().getY() != rect.getMax().getY(), "Asked to draw a malformed rectangle ( ( %f, %f ), ( %f, %f ) )", rect.getMin().getX(), rect.getMin().getY(), rect.getMax().getX(), rect.getMax().getY() );
+  rectBufferData.push_back( { color, rect.getMin(), rect.getMax() } );
+#endif
 #endif
 }
 
-void Debug::drawShape( Shape shape, Color color ) {
 #ifndef NDEBUG
+#ifdef DOD
+void Debug::drawShape( Shape shape, Color color ) {
   switch ( shape.type ) {
   case ShapeType::CIRCLE:
     drawCircle( shape.circle, color );
@@ -163,6 +174,17 @@ void Debug::drawShape( Shape shape, Color color ) {
     drawRect( shape.aaRect, color );
     break;
   }
+#elif defined OOP
+void Debug::drawShape( Shape* shape, Color color ) {
+  switch ( shape->getType() ) {
+  case ShapeType::CIRCLE:
+    drawCircle( *static_cast< Circle* >( shape ), color );
+    break;
+  case ShapeType::AARECT:
+    drawRect( *static_cast< Rect* >( shape ), color );
+    break;
+  }
+#endif
 #endif
 }
 
@@ -203,16 +225,14 @@ void Debug::setOrthoProjection( float aspectRatio, float height ) {
 
 /////////////////////////////// Profiling ///////////////////////////////////
 
-// TODO use a macro other than NDEBUG for profiling
-
 AutoProfile::AutoProfile( const char* name ) {
-#ifndef NDEBUG
+#ifdef PROFILING
   Profiler::startProfile( name );
 #endif
 }
 
 AutoProfile::~AutoProfile() {
-#ifndef NDEBUG
+#ifdef PROFILING
   Profiler::stopProfile();
 #endif
 }
@@ -224,7 +244,7 @@ FILE* Profiler::profilerLog;
 u32 Profiler::frameNumber;
 
 void Profiler::initialize() {
-#ifndef NDEBUG
+#ifdef PROFILING
   frameNumber = 0;
   // push whatever to index 0 of the lists so the real
   // data starts at index 1
@@ -240,13 +260,13 @@ void Profiler::initialize() {
 }
 
 void Profiler::shutdown() {
-#ifndef NDEBUG
+#ifdef PROFILING
   fclose( profilerLog );
 #endif
 }
 
 Profiler::SampleNodeIndex Profiler::addChildSampleNode( SampleNodeIndex nodeInd, const char* name ) {
-#ifndef NDEBUG
+#ifdef PROFILING
   ProfileSample newSample = { TimePoint(), 0, 0, 0 };
   samples.push_back( newSample ); // uninitialized yet
   ProfileSampleIndex dataInd = samples.size() - 1;
@@ -274,13 +294,13 @@ Profiler::SampleNodeIndex Profiler::addChildSampleNode( SampleNodeIndex nodeInd,
 }
 
 Profiler::SampleNodeIndex Profiler::getParentSampleNode( const SampleNodeIndex nodeInd ) {
-#ifndef NDEBUG
+#ifdef PROFILING
   return sampleTree[ nodeInd ].parent;
 #endif
 }
 
 Profiler::SampleNodeIndex Profiler::getChildSampleNode( SampleNodeIndex nodeInd, const char* name ) {
-#ifndef NDEBUG
+#ifdef PROFILING
   SampleNode node = sampleTree[ nodeInd ];
   if ( node.firstChild != 0 ) {
     SampleNodeIndex childInd = node.firstChild;
@@ -298,7 +318,7 @@ Profiler::SampleNodeIndex Profiler::getChildSampleNode( SampleNodeIndex nodeInd,
 }
 
 void Profiler::startProfile( const char* name ) {
-#ifndef NDEBUG
+#ifdef PROFILING
   if ( name != sampleTree[ currentNodeInd ].name ) {
     currentNodeInd = getChildSampleNode( currentNodeInd, name );
   }
@@ -307,7 +327,7 @@ void Profiler::startProfile( const char* name ) {
 }
 
 void Profiler::stopProfile() {
-#ifndef NDEBUG
+#ifdef PROFILING
   if ( returnFromSampleNode( currentNodeInd ) ) {
     currentNodeInd = getParentSampleNode( currentNodeInd );
   } //else this is a recursive function that has not finished
@@ -315,7 +335,7 @@ void Profiler::stopProfile() {
 }
 
 void Profiler::callSampleNode( const SampleNodeIndex nodeInd ) {
-#ifndef NDEBUG
+#ifdef PROFILING
   ProfileSample sample = samples[ sampleTree[ nodeInd ].dataInd ];
   ++sample.callCount;
   // if this is the first call of a recursive function
@@ -329,7 +349,7 @@ void Profiler::callSampleNode( const SampleNodeIndex nodeInd ) {
 }
     
 bool Profiler::returnFromSampleNode( const SampleNodeIndex nodeInd ) {
-#ifndef NDEBUG
+#ifdef PROFILING
   ProfileSample sample = samples[ sampleTree[ nodeInd ].dataInd ];
   // if the function wasn't recursive or ended recursing
   // we can now calculate the elapsed time
@@ -344,7 +364,7 @@ bool Profiler::returnFromSampleNode( const SampleNodeIndex nodeInd ) {
 }
 
 void Profiler::updateOutputsAndReset() {
-#ifndef NDEBUG
+#ifdef PROFILING
   fprintf( profilerLog, "%d\n", frameNumber );
   std::deque< SampleNodeIndex > nodeIndsToProcess;
   // index 0 is null

@@ -2,26 +2,71 @@
 
 class Entity {
   Transform transform;
+  bool hasT = false;
   Collider collider;
+  bool hasC = false;
   SolidBody solidBody;
+  bool hasSB = false;
   Sprite sprite;
+  bool hasS = false;
+  static std::vector< Entity* > allEntities;
 public:
-  void setTransform( Transform transform ) { this->transform = transform; }
-  void setCollider( Collider collider ) { this->collider = collider; }
-  void setSolidBody( SolidBody solidBody ) { this->solidBody = solidBody; }
-  void setSprite( Sprite sprite ) { this->sprite = sprite; }
-  Transform& getTransform() { return transform; }
-  Collider& getCollider() { return collider; }
-  SolidBody& getSolidBody() { return solidBody; }
-  Sprite& getSprite() { return sprite; }
-  void removeTransform() { transform = {}; }
+  Entity();
+  
+  void setTransform( Transform transform ) {
+    transform.setEntity( this );
+    this->transform = transform;
+    hasT = true;
+  }
+  void setCollider( Collider collider ) { 
+    collider.setEntity( this );
+    this->collider = collider;
+    hasC = true;
+  }
+  void setSolidBody( SolidBody solidBody ) {
+    solidBody.setEntity( this );
+    this->solidBody = solidBody;
+    hasSB = true;
+  }
+  void setSprite( Sprite sprite ) {
+    sprite.setEntity( this );
+    this->sprite = sprite;
+    hasS = true;
+  }
+
+  inline bool hasTransform() {
+    return hasT;
+  }
+  inline bool hasCollider() {
+    return hasC;
+  }
+  inline bool hasSolidBody() {
+    return hasSB;
+  }
+  inline bool hasSprite() {
+    return hasS;
+  }
+  
+  Transform& getTransform() {
+    ASSERT( hasT, "" );
+    return transform;
+  }
+  Collider& getCollider() {
+    ASSERT( hasC, "" );
+    return collider;
+  }
+  SolidBody& getSolidBody() {
+    ASSERT( hasSB, "" );
+    return solidBody;
+  }
+  Sprite& getSprite() {
+    ASSERT( hasS, "" );
+    return sprite;
+  }
+  /*void removeTransform() { transform(); }
   void removeCollider() { collider = {}; }
   void removeSolidBody() { solidBody = {}; }
-  void removeSprite() { sprite = {}; }
+  void removeSprite() { sprite = {}; }*/
 
-  void update( double deltaT ) {
-    PROFILE;
-    if ( *transform.getEntity() == this && *collider.getEntity() == this && *solidBody.getEntity() == this) {
-      solidBody.update( deltaT );
-    }
+  static std::vector< Entity* > getAllEntities();
 };

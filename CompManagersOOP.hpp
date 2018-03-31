@@ -1,14 +1,18 @@
 #pragma once
 
+class Entity;
+
 class Component {
 protected:
-  Entity& entity;
-  static std::vector< Component& > all;
+  Entity* entity;
 public:
-  Component( Entity& entity );
-  Entity& getEntity() {
+  void setEntity( Entity* entity ) {
+    this->entity = entity;
+  }
+  Entity* getEntity() {
     return entity;
   }
+  virtual ~Component() = default;
 };
 
 class Transform : public Component {
@@ -16,34 +20,38 @@ class Transform : public Component {
   Vec2 scale;
   float orientation;
 public:
-  Transform( Entity& entity, Vec2 position, Vec2 scale, float orientation ) : Component( entity ), position( position ), scale( scale ), orientation( orientation ) {}
+  Transform() : position(), scale(), orientation( 0.0f ) {}
+  Transform( Vec2 position, Vec2 scale, float orientation ) : position( position ), scale( scale ), orientation( orientation ) {}
   void rotate( float rotation );
   void rotateAround( Vec2 point, float rotation );
   void translate( Vec2 translation );
-  void scale( Vec2 scale );
+  void setScale( Vec2 scale );
   void setPosition( Vec2 position );
   void setOrientation( float orientation );
-  Vec2 getPositon();
+  Vec2 getPosition();
   Vec2 getScale();
   float getOrientation();
 };
 
-struct Collision {
-  Collider a, b;
-  Vec2 normalA, normalB;
-};
+class Collision;
 
 class Collider : public Component {
-protected:
-  virtual void addCollision( Collision collision ) = 0;
+  Shape* shape;
+  Shape* transformedShape;
+  std::vector< Collision > collisions;
+  void addCollision( Collision collision );
 public:
-  virtual bool collide( Collider colliderB ) = 0;
-  virtual bool collide( Collider colliderB, Collision& collision ) = 0;
-  virtual bool collide( CircleCollider circle ) = 0;
-  virtual bool collide( CircleCollider circle, Collision& collision ) = 0;
-  virtual bool collide( AARectCollider aaRect ) = 0;
-  virtual bool collide( AARectCollider aaRect, Collision& collision ) = 0;
-  virtual Collider getInWorldCoords() = 0;
+  Collider() {}
+  Collider( Circle shape );
+  Collider( Rect shape );
+  bool collide( Collider colliderB );
+  bool collide( Collider colliderB, Collision& collision );
+  bool collide( const Shape* shape );
+  bool collide( const Shape* shape, Collision& collision );
+  void fitCircleToSprite();
+  Shape* getShape();
+  Shape* getTransformedShape();
+  std::vector< Collision > getCollisions();
 
   static void updateAndCollide();
   static bool circleCircleCollide( Circle circleA, Circle circleB );
@@ -54,67 +62,44 @@ public:
   static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& normalA, Vec2& normalB );
 };
 
-class Sprite;
-
-class CircleCollider : public Circle, Collider {
-protected:
-  void addCollision( Collision collision );
-public:
-  CircleCollider( Entity& entity, Vec2 center, float radius ) : Collider( entity ), Circle( center, radius ) {}
-  bool collide( Collider colliderB );
-  bool collide( Collider colliderB, Collision& collision );
-  bool collide( CircleCollider circle );
-  bool collide( CircleCollider circle, Collision& collision );
-  bool collide( AARectCollider aaRect );
-  bool collide( AARectCollider aaRect, Collision& collision );
-  void fitToSprite( Sprite sprite );
-  Collider getInWorldCoords();
-};
-
-class AARectCollider : public Rect, Collider {
-  void addCollision( Collision collision );
-public:
-  AARectCollider( Entity& entity, Vec2 min, Vec2 max ) : Collider( entity ), Rect( min, max ) {}
-  bool collide( Collider colliderB );
-  bool collide( Collider colliderB, Collision& collision );
-  bool collide( CircleCollider circle );
-  bool collide( CircleCollider circle, Collision& collision );
-  bool collide( AARectCollider aaRect );
-  bool collide( AARectCollider aaRect, Collision& collision );
-  Collider getInWorldCoords();
+struct Collision {
+  Collider *a, *b;
+  Vec2 normalA, normalB;
 };
 
 class QuadTree {
-  struct QuadBucket {
-    static const u8 CAPACITY = 8;
-    Collider& _[ CAPACITY ];
-    // TODO standarize indices starting at 1
-    s8 lastInd = -1;
-  };
   class QuadNode {
-  protected:
+  public:
+    struct QuadBucket {
+      static const u8 CAPACITY = 8;
+      Collider* _[ CAPACITY ];
+      // TODO standarize indices starting at 1
+      s8 lastInd = -1;
+    };
     union {
       QuadBucket elements;
-      QuadNode children[ 4 ];
+      QuadNode* children[ 4 ];
     };
-    AARectCollider boundary;
+    Rect boundary;
     bool isLeaf;
-    QuadNode( AARectCollider boundary ) : elements( {} ), boundary( boundary ), isLeaf( true ) {}
+    QuadNode( Rect boundary ) : elements( {} ), boundary( boundary ), isLeaf( true ) {}
     void subdivide();
   };
   QuadNode rootNode;
 public:
-  QuadTree( Rect boundary, std::vector< Collider& > colliders );
-  void insert( Collider& collider );
+  QuadTree( Rect boundary, std::vector< Collider* >& colliders );
+  void insert( Collider* collider );
+  std::vector< std::vector< Collider* > > getGroupedElements();
 };
 
 class SolidBody : public Component {
   Vec2 speed;
 public:
-  SolidBody( Entity& entity, Vec2 speed ) : Component( entity ), speed( speed ) {}
-  void update( double deltaT );
+  SolidBody() : speed() {}
+  SolidBody( Vec2 speed ) : speed( speed ) {}
   void setSpeed( Vec2 speed );
   Vec2 getSpeed();
+  static void update( double deltaT );
 };
     
 class Sprite : public Component {
@@ -133,13 +118,15 @@ class Sprite : public Component {
   static Pos* posBufferData;
   static UV* texCoordsBufferData;
 public:
-  Sprite( Entity& entity, AssetIndex textureId, Rect texCoords );
-  ~Sprite();
+  Sprite() : texCoords(), size() {}
+  Sprite( AssetIndex textureId, Rect texCoords );
   void setTextureId( AssetIndex textureId );
   void setTextureCoords( Rect textureCoords );
   AssetIndex getTextureId();
   Rect getTextureCoords();
+  Vec2 getSize();
   static void initialize();
+  static void shutdown();
   static void updateAndRender();
   static void setOrthoProjection( float aspectRatio, float height );
 };

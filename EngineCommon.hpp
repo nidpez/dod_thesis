@@ -2,7 +2,11 @@
 
 //////////////////////////////////////////////////////////////////////////////
 
+#ifdef DOD
 #include "Math.hpp"
+#elif defined OOP
+#include "MathOOP.hpp"
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -25,6 +29,10 @@ typedef uint8_t 	u8;
 
 const float PIXELS_PER_UNIT = 4.0f;
 
+enum ShapeType { CIRCLE, AARECT };
+
+#ifdef DOD
+
 struct Circle {
   Vec2 center;
   float radius;
@@ -36,8 +44,6 @@ struct Rect {
   Vec2 max;
 };
 
-enum ShapeType { CIRCLE, AARECT };
-
 struct Shape {
   union {
     Circle circle;
@@ -45,6 +51,43 @@ struct Shape {
   };
   ShapeType type;
 };
+
+#elif defined OOP
+
+class Shape {
+public:
+  virtual ShapeType getType() const = 0;
+  virtual ~Shape() = default;
+};
+
+class Circle : public Shape {
+protected:
+  Vec2 center;
+  float radius;
+public:
+  Circle( Vec2 center, float radius ) : center( center ), radius( radius ) {}
+  void setCenter( Vec2 center ) { this->center = center; }
+  void setRadius( float radius ) { this->radius = radius; }
+  Vec2 getCenter() const { return center; }
+  float getRadius() const { return radius; }
+  ShapeType getType() const { return ShapeType::CIRCLE; }
+};
+
+class Rect : public Shape {
+protected:
+  Vec2 min;
+  Vec2 max;
+public:
+  Rect() : min(), max() {}
+  Rect( Vec2 min, Vec2 max ) : min( min ), max( max ) {}
+  void setMin( Vec2 min ) { this->min = min; }
+  void setMax( Vec2 max ) { this->max = max; }
+  Vec2 getMin() const { return min; }
+  Vec2 getMax() const { return max; }
+  ShapeType getType() const { return ShapeType::AARECT; }
+};
+
+#endif
 
 struct Color {
   float r, g, b, a;
@@ -65,6 +108,8 @@ struct RenderInfo {
 
 #include <unordered_map>
 #include <vector>
+#include <deque>
+#include <stack>
 
 #include "Debug.hpp"
 #include "Asset.hpp"
@@ -73,13 +118,20 @@ struct RenderInfo {
 //////////////////////////// & Component Manager  ////////////////////////////
 
 // index 0 is invalid so an EntityHandle can be set to 0 by default 
+#ifdef DOD
 struct EntityHandle; 
 
 typedef void ( *RmvCompCallback )( EntityHandle entity );
 
 typedef u32 ComponentIndex;
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 
+#ifdef DOD
 #include "EntityManager.hpp"
 #include "CompManagers.hpp"
+#elif defined OOP
+#include "CompManagersOOP.hpp"
+#include "EntityOOP.hpp"
+#endif
