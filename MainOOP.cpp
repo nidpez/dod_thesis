@@ -44,40 +44,43 @@ s32 main() {
   double deltaT = 0.0;
   Debug::write( "About to enter main loop.\n" );
   while ( !glfwWindowShouldClose( window ) ) {
-    // process input
-    glfwPollEvents();
-    if ( glfwGetKey( window, GLFW_KEY_ESCAPE ) == GLFW_PRESS ) {
-      glfwSetWindowShouldClose( window, true );
-    }
-
-    TestScene::update( deltaT );
+    {
+      PROFILE_BLOCK( "Main Loop" );
     
-    Collider::updateAndCollide();
+      // process input
+      glfwPollEvents();
+      if ( glfwGetKey( window, GLFW_KEY_ESCAPE ) == GLFW_PRESS ) {
+        glfwSetWindowShouldClose( window, true );
+      }
 
-    SolidBody::update( deltaT );
+      TestScene::update( deltaT );
     
-    // render scene
-    glClear( GL_COLOR_BUFFER_BIT );
-    Sprite::updateAndRender();
+      Collider::updateAndCollide();
+
+      SolidBody::update( deltaT );
+    
+      // render scene
+      glClear( GL_COLOR_BUFFER_BIT );
+      Sprite::updateAndRender();
   
-    // render debug shapes
-    Debug::renderAndClear();
+      // render debug shapes
+      Debug::renderAndClear();
     
-    glfwSwapBuffers( window );
+      glfwSwapBuffers( window );
 
-    // pseudo v-sync at 60fps
-    t2 = glfwGetTime();
-    deltaT = t2 - t1;
-    if ( deltaT < ( 1 / 60.0 ) ) {
-      double remaining = ( 1 / 60.0 ) - deltaT;
-      // printf( "d = %f, 1/60 = %f, rem = %f, nanos = %f\n", deltaT, 1 / 60.0, remaining, remaining * 1.0e+9 );
-      timespec amount = { 0, ( long )( remaining * 1.0e+9 ) };
-      nanosleep( &amount, &amount );
-      
       t2 = glfwGetTime();
       deltaT = t2 - t1;
+      // pseudo v-sync at 60fps
+      // if ( deltaT < ( 1 / 60.0 ) ) {
+      //   double remaining = ( 1 / 60.0 ) - deltaT;
+      //   timespec amount = { 0, ( long )( remaining * 1.0e+9 ) };
+      //   nanosleep( &amount, &amount );
+      
+      //   t2 = glfwGetTime();
+      //   deltaT = t2 - t1;
+      // }
+      t1 = t2;
     }
-    t1 = t2;
 
     Profiler::updateOutputsAndReset();
   }

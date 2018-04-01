@@ -35,31 +35,39 @@ public:
   }
 
   inline bool hasTransform() {
+    PROFILE;
     return hasT;
   }
   inline bool hasCollider() {
+    PROFILE;
     return hasC;
   }
   inline bool hasSolidBody() {
+    PROFILE;
     return hasSB;
   }
   inline bool hasSprite() {
+    PROFILE;
     return hasS;
   }
   
   Transform& getTransform() {
+    PROFILE;
     ASSERT( hasT, "" );
     return transform;
   }
   Collider& getCollider() {
+    PROFILE;
     ASSERT( hasC, "" );
     return collider;
   }
   SolidBody& getSolidBody() {
+    PROFILE;
     ASSERT( hasSB, "" );
     return solidBody;
   }
   Sprite& getSprite() {
+    PROFILE;
     ASSERT( hasS, "" );
     return sprite;
   }
