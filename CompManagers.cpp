@@ -155,7 +155,9 @@ void ColliderManager::insertIntoQuadTree(ComponentIndex colliderInd) {
   if ( collide( collider, quadTree[ 1 ].boundary ) ) {
     nextNodeInds.push_front( 1 );
   }
+#ifndef NDEBUG
   bool inserted = false;
+#endif
   while ( !nextNodeInds.empty() ) {
     u32 nodeInd = nextNodeInds.front();
     nextNodeInds.pop_front();
@@ -164,7 +166,9 @@ void ColliderManager::insertIntoQuadTree(ComponentIndex colliderInd) {
       // ... if there is still space
       if ( quadTree[ nodeInd ].elements.lastInd < QuadBucket::CAPACITY - 1 ) {
         quadTree[ nodeInd ].elements._[ ++quadTree[ nodeInd ].elements.lastInd ] = colliderInd;
+#ifndef NDEBUG
         inserted = true;
+#endif
       } else { 
         // if there is no space this cannot be a leaf any more
         subdivideQuadNode( nodeInd );

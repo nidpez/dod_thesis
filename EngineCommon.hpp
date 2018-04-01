@@ -27,6 +27,8 @@ typedef uint8_t 	u8;
 #include <GLFW/glfw3.h>
 #include <SOIL2.h>
 
+#define UNUSED( x ) ( void )( x ) 
+
 const float PIXELS_PER_UNIT = 4.0f;
 
 enum ShapeType { CIRCLE, AARECT };

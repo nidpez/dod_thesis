@@ -6,9 +6,13 @@
 
 // misc
 
+#ifndef NDEBUG
+
 static void printGlfwError( s32 error, const char* description );
 
 static void APIENTRY printOpenglError( GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam );
+
+#endif
 
 GLFWwindow* createWindowAndGlContext( const char* const windowTitle );
 
@@ -104,6 +108,8 @@ s32 main() {
   
   return 0;
 }
+
+#ifndef NDEBUG
 
 void printGlfwError( s32 error, const char* description ) {
   char* errorName;
@@ -217,13 +223,15 @@ void APIENTRY printOpenglError( GLenum source, GLenum type, GLuint id, GLenum se
 	  sourceStr, typeStr, severityStr, id, userParamStr, message );
 }
 
+#endif
+
 GLFWwindow* createWindowAndGlContext( const char* const windowTitle ) {  
-  glfwSetErrorCallback( printGlfwError );  
   ASSERT( glfwInit(), "GLFW failed to initialize" );  
   glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
   glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 3 );
   glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
 #ifndef NDEBUG
+  glfwSetErrorCallback( printGlfwError );  
   glfwWindowHint( GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE );
 #endif
   /*NOTE: there's a bug that affects video mode setting in X11 with GLFW
@@ -256,7 +264,9 @@ GLFWwindow* createWindowAndGlContext( const char* const windowTitle ) {
   Debug::write( "Window created.\nOpenGL version %d.%d used.\n", glfwGetWindowAttrib( window, GLFW_CONTEXT_VERSION_MAJOR ), glfwGetWindowAttrib( window, GLFW_CONTEXT_VERSION_MINOR ) );  
   // initialize advanced opengl functionality
   glewExperimental = GL_TRUE;
-  GLenum glewError = glewInit();  
+#ifndef NDEBUG
+  GLenum glewError = glewInit();
+#endif
   ASSERT( glewError == GLEW_OK, "GLEW failed to initialize: %s", glewGetErrorString( glewError ) );  
   // is this even possible when glfw already gave us a 3.3 context?
   ASSERT( GLEW_VERSION_3_3, "Required OpenGL version 3.3 unavailable, says GLEW" );    

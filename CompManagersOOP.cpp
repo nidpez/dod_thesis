@@ -361,7 +361,9 @@ void QuadTree::insert( Collider* collider ) {
   if ( collider->collide( &rootNode.boundary ) ) {
     nextNodes.push_front( &rootNode );
   }
+#ifndef NDEBUG
   bool inserted = false;
+#endif
   while ( !nextNodes.empty() ) {
     QuadNode* node = nextNodes.front();
     nextNodes.pop_front();
@@ -370,7 +372,9 @@ void QuadTree::insert( Collider* collider ) {
       // ... if there is still space
       if ( node->elements.lastInd < QuadNode::QuadBucket::CAPACITY - 1 ) {
         node->elements._[ ++node->elements.lastInd ] = collider;
+#ifndef NDEBUG
         inserted = true;
+#endif
       } else { 
         // if there is no space this cannot be a leaf any more
         node->subdivide();

@@ -148,6 +148,9 @@ void Debug::drawCircle( Circle circle, Color color ) {
   ASSERT( circle.getRadius() > 0.0f, "Asked to draw a circle of radius %f", circle.getRadius() );
   circleBufferData.push_back( { color, circle.getCenter(), circle.getRadius() } );
 #endif
+#else
+  UNUSED( circle );
+  UNUSED( color );
 #endif
 }
 
@@ -160,10 +163,12 @@ void Debug::drawRect( Rect rect, Color color ) {
   ASSERT( rect.getMin().getX() != rect.getMax().getX() && rect.getMin().getY() != rect.getMax().getY(), "Asked to draw a malformed rectangle ( ( %f, %f ), ( %f, %f ) )", rect.getMin().getX(), rect.getMin().getY(), rect.getMax().getX(), rect.getMax().getY() );
   rectBufferData.push_back( { color, rect.getMin(), rect.getMax() } );
 #endif
+#else
+  UNUSED( rect );
+  UNUSED( color );
 #endif
 }
 
-#ifndef NDEBUG
 #ifdef DOD
 void Debug::drawShape( Shape shape, Color color ) {
   switch ( shape.type ) {
@@ -174,6 +179,7 @@ void Debug::drawShape( Shape shape, Color color ) {
     drawRect( shape.aaRect, color );
     break;
   }
+}
 #elif defined OOP
 void Debug::drawShape( Shape* shape, Color color ) {
   switch ( shape->getType() ) {
@@ -184,9 +190,8 @@ void Debug::drawShape( Shape* shape, Color color ) {
     drawRect( *static_cast< Rect* >( shape ), color );
     break;
   }
-#endif
-#endif
 }
+#endif
 
 void Debug::renderAndClear() {
 #ifndef NDEBUG
@@ -220,6 +225,9 @@ void Debug::setOrthoProjection( float aspectRatio, float height ) {
   glUniform1f( rectRenderInfo.projUnifLoc[ 1 ], halfHeight * aspectRatio );
   glUniform1f( rectRenderInfo.projUnifLoc[ 2 ], -halfHeight );
   glUniform1f( rectRenderInfo.projUnifLoc[ 3 ], halfHeight );
+#else
+  UNUSED( aspectRatio );
+  UNUSED( height );
 #endif
 }
 

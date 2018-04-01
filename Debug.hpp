@@ -50,12 +50,6 @@ public:
   static void renderAndClear();
   static void setOrthoProjection( float aspectRatio, float height );
 };
-  
-#ifdef NDEBUG
-
-#define ASSERT( condition, ... ) ( ( void )0 )
-
-#else
 
 #ifdef __GNUC__
 
@@ -66,6 +60,12 @@ public:
 #define __FUNC__ __func__
 
 #endif
+  
+#ifdef NDEBUG
+
+#define ASSERT( condition, ... ) ( ( void )0 )
+
+#else
 
 #define ASSERT( condition, ... ) {                                      \
     if ( !( condition ) ) {                                             \

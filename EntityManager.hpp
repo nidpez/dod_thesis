@@ -42,7 +42,7 @@ public:
 
 #define VALIDATE_ENTITIES( entities ) ( ( void )0 )
 
-#endif
+#else
 
 #define VALIDATE_ENTITY( entity ) {                                     \
     ASSERT( EntityManager::isAlive( ( entity ) ), "Invalid entity id %d", ( entity ) ); \
@@ -53,6 +53,8 @@ public:
       VALIDATE_ENTITY( ( entities )[ entInd ] );                      \
     }                                                                 \
   }
+
+#endif
   
 template< typename T >
 struct ComponentMap {
@@ -75,8 +77,10 @@ template< typename T >
 void ComponentMap< T >::set( EntityHandle entity, T component, RmvCompCallback rmvComp ) {
   VALIDATE_ENTITY( entity );
   components.push_back( component );
+#ifndef NDEBUG
   u32 compInd = components.size() - 1;
-  bool inserted = map.insert( { entity, compInd } ).second;  
+  bool inserted = map.insert( { entity, compInd } ).second;
+#endif
   ASSERT( inserted, "Could not map entity %d to component index %d", entity, compInd );
   // tell the EntityManager how to remove this component
   // for when it needs to destroy the entity
