@@ -77,11 +77,12 @@ template< typename T >
 void ComponentMap< T >::set( EntityHandle entity, T component, RmvCompCallback rmvComp ) {
   VALIDATE_ENTITY( entity );
   components.push_back( component );
-#ifndef NDEBUG
   u32 compInd = components.size() - 1;
   bool inserted = map.insert( { entity, compInd } ).second;
-#endif
   ASSERT( inserted, "Could not map entity %d to component index %d", entity, compInd );
+#ifdef NDEBUG
+  UNUSED( inserted );
+#endif
   // tell the EntityManager how to remove this component
   // for when it needs to destroy the entity
   EntityManager::removeComponentCallbacks.insert( { entity, rmvComp } );

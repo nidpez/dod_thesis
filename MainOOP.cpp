@@ -216,7 +216,11 @@ void APIENTRY printOpenglError( GLenum source, GLenum type, GLuint id, GLenum se
 #endif
 
 GLFWwindow* createWindowAndGlContext( const char* const windowTitle ) {  
-  ASSERT( glfwInit(), "GLFW failed to initialize" );  
+  bool glfwInitialized = glfwInit();
+  ASSERT( glfwInitialized, "GLFW failed to initialize" );
+#ifdef NDEBUG
+  UNUSED( glfwInitialized );
+#endif
   glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
   glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 3 );
   glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
@@ -254,10 +258,11 @@ GLFWwindow* createWindowAndGlContext( const char* const windowTitle ) {
   Debug::write( "Window created.\nOpenGL version %d.%d used.\n", glfwGetWindowAttrib( window, GLFW_CONTEXT_VERSION_MAJOR ), glfwGetWindowAttrib( window, GLFW_CONTEXT_VERSION_MINOR ) );  
   // initialize advanced opengl functionality
   glewExperimental = GL_TRUE;
-#ifndef NDEBUG
   GLenum glewError = glewInit();
-#endif
   ASSERT( glewError == GLEW_OK, "GLEW failed to initialize: %s", glewGetErrorString( glewError ) );  
+#ifdef NDEBUG
+  UNUSED( glewError );
+#endif
   // is this even possible when glfw already gave us a 3.3 context?
   ASSERT( GLEW_VERSION_3_3, "Required OpenGL version 3.3 unavailable, says GLEW" );    
   Debug::write( "OpenGL functionality successfully loaded.\n" );
