@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 project(SpaceAdventure)
 
-# set an output directory for our binaries
-set(BIN_DIR ${SpaceAdventure_SOURCE_DIR}/bin)
-
 # Bump up warning levels appropriately for clang and gcc
 # Also set debug/optimization flags depending on the build type. IDE users choose this when
 # selecting the build mode in their IDE
@@ -46,6 +43,19 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_link_libraries(GAME ${GLEW_LIBRARIES} ${GLFW_STATIC_LIBRARIES} ${CMAKE_CURRENT_SOURCE_DIR}/lib/libsoil2-debug.a)
 
-install(TARGETS GAME DESTINATION ${BIN_DIR})
+# set an output directory for our binaries
+set(BIN_DIR ${SpaceAdventure_SOURCE_DIR})
+if (${CMAKE_BUILD_TYPE} STREQUAL "Release")
+  set(BIN_DIR ${BIN_DIR}/release)
+elseif (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+  set(BIN_DIR ${BIN_DIR}/debug)
+endif()
+if (${TECHNIQUE} STREQUAL "DOD")
+  set(BIN_DIR ${BIN_DIR}/dod)
+elseif (${TECHNIQUE} STREQUAL "OOP")
+  set(BIN_DIR ${BIN_DIR}/oop)
+endif()
 
+install(TARGETS GAME DESTINATION ${BIN_DIR})
+  
 add_custom_command(TARGET GAME PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/assets ${BIN_DIR})
