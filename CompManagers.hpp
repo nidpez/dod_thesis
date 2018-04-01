@@ -51,7 +51,7 @@ class ColliderManager {
   static std::vector< std::vector< Collision > > collisions;
 
   struct QuadBucket {
-    static const u8 CAPACITY = 8;
+    static const u8 CAPACITY = 16;
     ComponentIndex _[ CAPACITY ];
     // TODO standarize indices starting at 1
     s8 lastInd = -1;

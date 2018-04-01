@@ -257,7 +257,7 @@ void ColliderManager::updateAndCollide() {
   // space partitioned collision detection
   // keep the quadtree updated
   // TODO calculate the boundary dynamically 
-  Rect boundary = { { -70, -40 }, { 70, 40 } };
+  Rect boundary = { { -420, -240 }, { 420, 240 } };
   buildQuadTree( boundary );
 
   // detect collisions

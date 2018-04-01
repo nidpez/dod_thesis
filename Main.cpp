@@ -37,8 +37,8 @@ s32 main() {
   glViewport( 0, 0, windowWidth, windowHeight );
   float aspect = windowWidth / ( float )windowHeight;
 
-  SpriteManager::setOrthoProjection( aspect, 100 );
-  Debug::setOrthoProjection( aspect, 100 );
+  SpriteManager::setOrthoProjection( aspect, 500 );
+  Debug::setOrthoProjection( aspect, 500 );
 
   TestScene::initialize();
   

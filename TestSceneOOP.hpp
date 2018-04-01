@@ -1,7 +1,7 @@
 #pragma once
 
 class TestScene {
-  static constexpr const u32 NUM_ENTITIES = 100;
+  static constexpr const u32 NUM_ENTITIES = 3000;
   static const Rect TEST_AREA;
   static Entity enclosure[ 4 ];
   static Entity entities[ NUM_ENTITIES ];
@@ -11,7 +11,7 @@ public:
   static void shutdown();
 };
 
-const Rect TestScene::TEST_AREA( Vec2( -70, -40 ), Vec2( 70, 40 ) );
+const Rect TestScene::TEST_AREA( Vec2( -420, -240 ), Vec2( 420, 240 ) );
 Entity TestScene::enclosure[ 4 ];
 Entity TestScene::entities[ NUM_ENTITIES ];
 

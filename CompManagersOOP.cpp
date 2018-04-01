@@ -279,7 +279,7 @@ void Collider::updateAndCollide() {
     }
   }
   // TODO calculate the boundary dynamically
-  Rect boundary = { { -70, -40 }, { 70, 40 } };
+  Rect boundary = { { -420, -240 }, { 420, 240 } };
   QuadTree quadTree( boundary, colliders );
   std::vector< std::vector< Collider* > > quadTreeGroups = quadTree.getGroupedElements();
   // detect collisions
