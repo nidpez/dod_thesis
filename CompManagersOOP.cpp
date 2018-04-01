@@ -301,8 +301,11 @@ void Collider::updateAndCollide() {
   }
 }
 
+std::list< QuadTree::QuadNode > QuadTree::QuadNode::allNodes;
+
 QuadTree::QuadTree( Rect boundary, std::vector< Collider* >& colliders ) : rootNode( boundary ) {
   PROFILE;
+  QuadNode::allNodes.clear();
   for ( u32 colliderInd = 0; colliderInd < colliders.size(); ++colliderInd ) {
     insert( colliders[ colliderInd ] );
   }
@@ -336,13 +339,17 @@ void QuadTree::QuadNode::subdivide() {
   Vec2 max = boundary.getMax();
   Vec2 center = min + ( max - min ) / 2.0f;
   // top-right
-  children[ 0 ] = new QuadNode( Rect( { center, max } ) );
+  QuadNode::allNodes.push_back( QuadNode( Rect( { center, max } ) ) );
+  children[ 0 ] = &QuadNode::allNodes.back();
   // bottom-right
-  children[ 1 ] = new QuadNode( Rect( { { center.getX(), min.getY() }, { max.getX(), center.getY() } } ) );
+  QuadNode::allNodes.push_back( QuadNode( Rect( { { center.getX(), min.getY() }, { max.getX(), center.getY() } } ) ) );
+  children[ 1 ] = &QuadNode::allNodes.back();
   // bottom-left
-  children[ 2 ] = new QuadNode( Rect( { min, center } ) );
+  QuadNode::allNodes.push_back( QuadNode( Rect( { min, center } ) ) );
+  children[ 2 ] = &QuadNode::allNodes.back();
   // top-left
-  children[ 3 ] = new QuadNode( Rect( { { min.getX(), center.getY() }, { center.getX(), max.getY() } } ) );
+  QuadNode::allNodes.push_back( QuadNode( Rect( { { min.getX(), center.getY() }, { center.getX(), max.getY() } } ) ) );
+  children[ 3 ] = &QuadNode::allNodes.back();
   // put elements inside children
   for ( int elemInd = 0; elemInd <= __elements.lastInd; ++elemInd ) {
     Collider* collider = __elements._[ elemInd ];
