@@ -42,6 +42,8 @@ public:
 
 #define VALIDATE_ENTITIES( entities ) ( ( void )0 )
 
+#define VALIDATE_ENTITIES_EQUAL( entitiesA, entitiesB ) ( ( void )0 )
+
 #else
 
 #define VALIDATE_ENTITY( entity ) {                                     \
@@ -54,7 +56,19 @@ public:
     }                                                                 \
   }
 
+#define VALIDATE_ENTITIES_EQUAL( entitiesA, entitiesB ) {               \
+    ASSERT( ( entitiesA ).size() == ( entitiesB ).size(), "Entity lists must have the same size" ); \
+    for ( u32 entInd = 0; entInd < ( entitiesA ).size(); ++entInd ) {   \
+      ASSERT( ( entitiesA )[ entInd ] == ( entitiesB )[ entInd ], "Entity id %d != entity id %d", ( entitiesA )[ entInd ], ( entitiesB )[ entInd ] ); \
+    }                                                                   \
+  }
+
 #endif
+
+struct LookupResult {
+  std::vector< EntityHandle > entities;
+  std::vector< ComponentIndex > indices;
+};
   
 template< typename T >
 struct ComponentMap {
@@ -66,6 +80,7 @@ struct ComponentMap {
   void remove( EntityHandle entity );
   std::vector< EntityHandle > have( const std::vector< EntityHandle >& entities );
   ComponentIndex lookup( EntityHandle entity );
+  void lookupAll( const std::vector< EntityHandle >& entities, LookupResult* result );
 };
 
 template< typename T >
@@ -123,4 +138,24 @@ ComponentIndex ComponentMap< T >::lookup( EntityHandle entity ) {
   auto iterator = map.find( entity );
   ASSERT( iterator != map.end(), "Entity %d has no given component", entity );
   return iterator->second;
+}
+
+template< typename T >
+void ComponentMap< T >::lookupAll( const std::vector< EntityHandle >& entities, LookupResult* result ) {
+  PROFILE;
+  VALIDATE_ENTITIES( entities );
+  u32 maxSize = entities.size();
+  result->entities.clear();
+  result->entities.reserve( maxSize );
+  result->indices.clear();
+  result->indices.reserve( maxSize );
+  auto end = map.end();
+  for ( u32 entInd = 0; entInd < maxSize; ++entInd ) {
+    EntityHandle entity = entities[ entInd ];
+    auto iterator = map.find( entity );
+    if ( iterator != end ) {
+      result->entities.push_back( entity );
+      result->indices.push_back( iterator->second );
+    }
+  }
 }

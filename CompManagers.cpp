@@ -58,10 +58,18 @@ void TransformManager::update( EntityHandle entity, Transform transform ) {
   // TODO mark transform component as updated
 }
 
-Transform TransformManager::get( EntityHandle entity ) {
+// TODO verify that component indices have not been invalidated
+void TransformManager::get( const std::vector< ComponentIndex >& indices, std::vector< Transform >* result ) {
   PROFILE;
-  ComponentIndex componentInd = componentMap.lookup( entity );
-  return componentMap.components[ componentInd ].local;
+  result->reserve( indices.size() );
+  for ( u32 i = 0; i < indices.size(); ++i ) {
+    result->push_back( componentMap.components[ indices[ i ] ].local );
+  }
+}
+
+void TransformManager::lookup( const std::vector< EntityHandle >& entities, LookupResult* result ) {
+  PROFILE;
+  return componentMap.lookupAll( entities, result );
 }
 
 std::vector< EntityHandle > TransformManager::getLastUpdated() {
@@ -226,11 +234,17 @@ void ColliderManager::updateAndCollide() {
   }
   // update local transform cache
   std::vector< EntityHandle > updatedEntities = TransformManager::getLastUpdated();
-  updatedEntities = componentMap.have( updatedEntities );
-  for ( u32 trInd = 0; trInd < updatedEntities.size(); ++trInd ) {
-    // FIXME get world transforms here
-    Transform transform = TransformManager::get( updatedEntities[ trInd ] );
-    ComponentIndex colliderCompInd = componentMap.lookup( updatedEntities[ trInd ] );
+  LookupResult colliderLookup;
+  componentMap.lookupAll( updatedEntities, &colliderLookup );
+  LookupResult transformLookup;
+  TransformManager::lookup( colliderLookup.entities, &transformLookup );
+  VALIDATE_ENTITIES_EQUAL( colliderLookup.entities, transformLookup.entities );
+  // FIXME get world transforms here
+  std::vector< Transform > updatedTransforms;
+  TransformManager::get( transformLookup.indices, &updatedTransforms );
+  for ( u32 trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
+    Transform transform = updatedTransforms[ trInd ];
+    ComponentIndex colliderCompInd = colliderLookup.indices[ trInd ];
     componentMap.components[ colliderCompInd ].position = transform.position;
     componentMap.components[ colliderCompInd ].scale = transform.scale;
   }
@@ -574,14 +588,17 @@ void SpriteManager::updateAndRender() {
   }
   // update local transform cache
   std::vector< EntityHandle > updatedEntities = TransformManager::getLastUpdated();
-  updatedEntities = componentMap.have( updatedEntities );
-  for ( u32 trInd = 0; trInd < updatedEntities.size(); ++trInd ) {
-    // TODO get world transforms here
-    Transform transform = TransformManager::get( updatedEntities[ trInd ] );
-    ComponentIndex spriteCompInd = componentMap.lookup( updatedEntities[ trInd ] );
-    componentMap.components[ spriteCompInd ].transform.position = transform.position;
-    componentMap.components[ spriteCompInd ].transform.scale = transform.scale;
-    componentMap.components[ spriteCompInd ].transform.orientation = transform.orientation;
+  LookupResult spriteLookup;
+  componentMap.lookupAll( updatedEntities, &spriteLookup );
+  LookupResult transformLookup;
+  TransformManager::lookup( spriteLookup.entities, &transformLookup );
+  VALIDATE_ENTITIES_EQUAL( spriteLookup.entities, transformLookup.entities );
+  // TODO get world transforms here
+  std::vector< Transform > updatedTransforms;
+  TransformManager::get( transformLookup.indices, &updatedTransforms );
+  for ( u32 trInd = 0; trInd < updatedTransforms.size(); ++trInd ) {
+    ComponentIndex spriteInd = spriteLookup.indices[ trInd ];
+    componentMap.components[ spriteInd ].transform = updatedTransforms[ trInd ];
   }
   // build vertex buffer and render for sprites with same texture
   glUseProgram( renderInfo.shaderProgramId );

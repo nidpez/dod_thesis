@@ -27,7 +27,8 @@ public:
   static void translate( EntityHandle entity, Vec2 translation );
   static void scale( EntityHandle entity, Vec2 scale );
   static void update( EntityHandle entity, Transform transform );
-  static Transform get( EntityHandle entity );
+  static void get( const std::vector< ComponentIndex >& indices, std::vector< Transform >* result );
+  static void lookup( const std::vector< EntityHandle >& entities, LookupResult* result );
   static std::vector< EntityHandle > getLastUpdated();
 };
 
