@@ -78,9 +78,7 @@ struct ComponentMap {
   ComponentMap();
   void set( EntityHandle entity, T component, RmvCompCallback rmvComp );
   void remove( EntityHandle entity );
-  std::vector< EntityHandle > have( const std::vector< EntityHandle >& entities );
-  ComponentIndex lookup( EntityHandle entity );
-  void lookupAll( const std::vector< EntityHandle >& entities, LookupResult* result );
+  void lookup( const std::vector< EntityHandle >& entities, LookupResult* result );
 };
 
 template< typename T >
@@ -119,29 +117,7 @@ void ComponentMap< T >::remove( EntityHandle entity ) {
 }
 
 template< typename T >
-std::vector< EntityHandle > ComponentMap< T >::have( const std::vector< EntityHandle >& entities ) {
-  PROFILE;
-  VALIDATE_ENTITIES( entities );  
-  std::vector< EntityHandle > result;
-  for ( u32 entInd = 0; entInd < entities.size(); ++entInd ) {
-    if ( map.count( entities[ entInd ] ) ) {
-      result.push_back( entities[ entInd ] );
-    }
-  }
-  return result;
-}
-
-template< typename T >
-ComponentIndex ComponentMap< T >::lookup( EntityHandle entity ) {
-  PROFILE;
-  VALIDATE_ENTITY( entity );
-  auto iterator = map.find( entity );
-  ASSERT( iterator != map.end(), "Entity %d has no given component", entity );
-  return iterator->second;
-}
-
-template< typename T >
-void ComponentMap< T >::lookupAll( const std::vector< EntityHandle >& entities, LookupResult* result ) {
+void ComponentMap< T >::lookup( const std::vector< EntityHandle >& entities, LookupResult* result ) {
   PROFILE;
   VALIDATE_ENTITIES( entities );
   u32 maxSize = entities.size();

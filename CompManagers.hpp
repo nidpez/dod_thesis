@@ -22,11 +22,11 @@ public:
   static void shutdown();
   static void set( EntityHandle entity, Transform transform );
   static void remove( EntityHandle entity );
-  static void rotate( EntityHandle entity, float rotation );
-  static void rotateAround( EntityHandle entity, Vec2 point, float rotation );
-  static void translate( EntityHandle entity, Vec2 translation );
-  static void scale( EntityHandle entity, Vec2 scale );
-  static void update( EntityHandle entity, Transform transform );
+  static void rotate( const std::vector< ComponentIndex >& indices, const std::vector< float >& rotations );
+  static void rotateAround( const std::vector< ComponentIndex >& indices, const std::vector< std::pair< Vec2, float > >& rotations );
+  static void translate( const std::vector< ComponentIndex >& indices, const std::vector< Vec2 >& translations );
+  static void scale( const std::vector< ComponentIndex >& indices, const std::vector< Vec2 >& scales );
+  static void update( const std::vector< ComponentIndex >& indices, const std::vector< Transform >& transforms );
   static void get( const std::vector< ComponentIndex >& indices, std::vector< Transform >* result );
   static void lookup( const std::vector< EntityHandle >& entities, LookupResult* result );
   static std::vector< EntityHandle > getLastUpdated();
@@ -77,6 +77,7 @@ public:
   static void remove( EntityHandle entity );
   static void fitCircleToSprite( EntityHandle entity );
   static void updateAndCollide();
+  static void lookup( const std::vector< EntityHandle >& entities, LookupResult* result );
   static bool collide( Shape shapeA, Shape shapeB );
   static bool collide( Shape shapeA, Shape shapeB, Collision& collision );
   static bool circleCircleCollide( Circle circleA, Circle circleB );
@@ -85,7 +86,7 @@ public:
   static bool aaRectCircleCollide( Rect aaRect, Circle circle, Vec2& normalA, Vec2& normalB );
   static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB );
   static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& normalA, Vec2& normalB );
-  static std::vector< std::vector< Collision > > getCollisions( const std::vector< EntityHandle > entities );
+  static std::vector< std::vector< Collision > > getCollisions( const std::vector< EntityHandle >& entities );
 };
 
 struct SolidBody {
@@ -103,9 +104,10 @@ public:
   static void shutdown();
   static void set( EntityHandle entity, SolidBody solidBody );
   static void remove( EntityHandle entity );
-  static void setSpeed( EntityHandle entity, Vec2 speed );
-  static SolidBody get( EntityHandle entity );
+  static void setSpeed( const std::vector< ComponentIndex >& indices, std::vector< Vec2 >& speeds );
+  static void get( const std::vector< ComponentIndex >& indices, std::vector< SolidBody >* result );
   static void update( double detlaT );
+  static void lookup( const std::vector< EntityHandle >& entities, LookupResult* result );
 };
 
 struct Sprite {
@@ -139,9 +141,10 @@ public:
   static void shutdown();
   static void set( EntityHandle entity, AssetIndex textureId, Rect texCoords );
   static void remove( EntityHandle entity );
-  static Sprite get( EntityHandle entity );
+  static void get( const std::vector< ComponentIndex >& indices, std::vector< Sprite >* result );
   static void updateAndRender();
   static void setOrthoProjection( float aspectRatio, float height );
+  static void lookup( const std::vector< EntityHandle >& entities, LookupResult* result );
 };
 
 typedef u32 AnimationHandle;

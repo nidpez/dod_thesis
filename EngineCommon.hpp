@@ -113,6 +113,7 @@ struct RenderInfo {
 #include <deque>
 #include <stack>
 #include <list>
+#include <utility>
 
 #include "Debug.hpp"
 #include "Asset.hpp"

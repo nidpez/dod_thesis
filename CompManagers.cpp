@@ -16,46 +16,56 @@ void TransformManager::remove( EntityHandle entity ) {
   componentMap.remove( entity );
 }
 
-void TransformManager::rotate( EntityHandle entity, float rotation ) {
+// TODO verify that component indices have not been invalidated
+void TransformManager::rotate( const std::vector< ComponentIndex >& indices, const std::vector< float >& rotations ) {
   PROFILE;
-  ComponentIndex componentInd = componentMap.lookup( entity );
-  componentMap.components[ componentInd ].local.orientation += rotation;
-  // TODO mark transform component as updated
+  ASSERT( indices.size() == rotations.size(), "" );
+  for ( u32 i = 0; i < indices.size(); ++i ) {
+    componentMap.components[ indices[ i ] ].local.orientation += rotations[ i ];
+    // TODO mark transform component as updated
+  }
 }
 
-void TransformManager::rotateAround( EntityHandle entity, Vec2 point, float rotation ) {
+void TransformManager::rotateAround( const std::vector< ComponentIndex >& indices, const std::vector< std::pair< Vec2, float > >& rotations ) {
   PROFILE;
-  ComponentIndex componentInd = componentMap.lookup( entity );
-  Transform transform = componentMap.components[ componentInd ].local;
-  transform.orientation += rotation;
-  transform.position = rotateVec2( transform.position - point, rotation ) + point;
-  componentMap.components[ componentInd ].local = transform;
-  // TODO mark transform component as updated
+  ASSERT( indices.size() == rotations.size(), "" );
+  for ( u32 i = 0; i < indices.size(); ++i ) {  
+    ComponentIndex componentInd = indices[ i ];
+    Transform transform = componentMap.components[ componentInd ].local;
+    Vec2 point = rotations[ i ].first;
+    float rotation = rotations[ i ].second;
+    transform.orientation += rotation;
+    transform.position = rotateVec2( transform.position - point, rotation ) + point;
+    componentMap.components[ componentInd ].local = transform;
+    // TODO mark transform component as updated
+  }
 }
 
-void TransformManager::translate( EntityHandle entity, Vec2 translation ) {
+void TransformManager::translate( const std::vector< ComponentIndex >& indices, const std::vector< Vec2 >& translations ) {
   PROFILE;
-  ComponentIndex componentInd = componentMap.lookup( entity );
-  componentMap.components[ componentInd ].local.position += translation;
-  // TODO mark transform component as updated
+  ASSERT( indices.size() == translations.size(), "" );
+  for ( u32 i = 0; i < indices.size(); ++i ) {
+    componentMap.components[ indices[ i ] ].local.position += translations[ i ];
+    // TODO mark transform component as updated
+  }
 }
 
-void TransformManager::scale( EntityHandle entity, Vec2 scale ) {
+void TransformManager::scale( const std::vector< ComponentIndex >& indices, const std::vector< Vec2 >& scales ) {
   PROFILE;
-  ComponentIndex componentInd = componentMap.lookup( entity );
-  componentMap.components[ componentInd ].local.scale = scale;
-  // TODO mark transform component as updated
+  ASSERT( indices.size() == scales.size(), "" );
+  for ( u32 i = 0; i < indices.size(); ++i ) {
+    componentMap.components[ indices[ i ] ].local.scale = scales[ i ];
+    // TODO mark transform component as updated
+  }
 }
 
-void TransformManager::update( EntityHandle entity, Transform transform ) {
+void TransformManager::update( const std::vector< ComponentIndex >& indices, const std::vector< Transform >& transforms ) {
   PROFILE;
-  ComponentIndex componentInd = componentMap.lookup( entity );
-  Transform local = componentMap.components[ componentInd ].local;
-  local.position = transform.position;
-  local.scale = transform.scale;
-  local.orientation = transform.orientation;
-  componentMap.components[ componentInd ].local = local;
-  // TODO mark transform component as updated
+  ASSERT( indices.size() == transforms.size(), "" );
+  for ( u32 i = 0; i < indices.size(); ++i ) {
+    componentMap.components[ indices[ i ] ].local = transforms[ i ];
+    // TODO mark transform component as updated
+  }
 }
 
 // TODO verify that component indices have not been invalidated
@@ -69,7 +79,7 @@ void TransformManager::get( const std::vector< ComponentIndex >& indices, std::v
 
 void TransformManager::lookup( const std::vector< EntityHandle >& entities, LookupResult* result ) {
   PROFILE;
-  return componentMap.lookupAll( entities, result );
+  return componentMap.lookup( entities, result );
 }
 
 std::vector< EntityHandle > TransformManager::getLastUpdated() {
@@ -235,7 +245,7 @@ void ColliderManager::updateAndCollide() {
   // update local transform cache
   std::vector< EntityHandle > updatedEntities = TransformManager::getLastUpdated();
   LookupResult colliderLookup;
-  componentMap.lookupAll( updatedEntities, &colliderLookup );
+  componentMap.lookup( updatedEntities, &colliderLookup );
   LookupResult transformLookup;
   TransformManager::lookup( colliderLookup.entities, &transformLookup );
   VALIDATE_ENTITIES_EQUAL( colliderLookup.entities, transformLookup.entities );
@@ -300,12 +310,20 @@ void ColliderManager::updateAndCollide() {
   }
 }
 
-std::vector< std::vector< Collision > > ColliderManager::getCollisions( const std::vector< EntityHandle > entities ) {
+void ColliderManager::lookup( const std::vector< EntityHandle >& entities, LookupResult* result ) {
   PROFILE;
+  return componentMap.lookup( entities, result );
+}
+
+std::vector< std::vector< Collision > > ColliderManager::getCollisions( const std::vector< EntityHandle >& entities ) {
+  PROFILE;
+  LookupResult lookupResult;
+  componentMap.lookup( entities, &lookupResult );
+  VALIDATE_ENTITIES_EQUAL( entities, lookupResult.entities );
   std::vector< std::vector< Collision > > requestedCollisions;
   requestedCollisions.reserve( entities.size() );
   for ( u32 entI = 0; entI < entities.size(); ++entI ) {
-    ComponentIndex compInd = componentMap.lookup( entities[ entI ] );
+    ComponentIndex compInd = lookupResult.indices[ entI ];
     requestedCollisions.push_back( collisions[ compInd ] );
   }
   return requestedCollisions;
@@ -445,7 +463,13 @@ bool ColliderManager::aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& nor
 }
 
 void ColliderManager::fitCircleToSprite( EntityHandle entity ) {
-  Vec2 size = SpriteManager::get( entity ).size;
+  std::vector< EntityHandle > entities = { entity };
+  LookupResult lookupResult;
+  SpriteManager::lookup( entities, &lookupResult );
+  VALIDATE_ENTITIES_EQUAL( entities, lookupResult.entities );
+  std::vector< Sprite > sprites;
+  SpriteManager::get( lookupResult.indices, &sprites );
+  Vec2 size = sprites[ 0 ].size;
   float maxSize = ( size.x > size.y ) ? size.x : size.y;
   Circle circleCollider = { {}, maxSize / 2.0f };
   addCircle( entity, circleCollider );
@@ -467,30 +491,37 @@ void SolidBodyManager::remove( EntityHandle entity ) {
   componentMap.remove( entity );
 }
 
-void SolidBodyManager::setSpeed( EntityHandle entity, Vec2 speed ) {
+void SolidBodyManager::setSpeed( const std::vector< ComponentIndex >& indices, std::vector< Vec2 >& speeds ) {
   PROFILE;
-  ComponentIndex compInd = componentMap.lookup( entity );
-  componentMap.components[ compInd ].speed = speed;
+  ASSERT( indices.size() == speeds.size(), "" );
+  for ( u32 i = 0; i < indices.size(); ++i ) {
+    componentMap.components[ indices[ i ] ].speed = speeds[ i ];
+  }
 }
 
-SolidBody SolidBodyManager::get( EntityHandle entity ) {
+void SolidBodyManager::get( const std::vector< ComponentIndex >& indices, std::vector< SolidBody >* result ) {
   PROFILE;
-  SolidBodyComp comp = componentMap.components[ componentMap.lookup( entity ) ];
-  return { comp.speed };
+  result->reserve( indices.size() );
+  for ( u32 i = 0; i < indices.size(); ++i ) {
+    SolidBody solidBody = { componentMap.components[ indices[ i ] ].speed };
+    result->push_back( solidBody );
+  }
 }
 
 void SolidBodyManager::update( double deltaT ) {
   PROFILE;
   std::vector< EntityHandle > entities;
   entities.reserve( componentMap.components.size() );
-  // TODO detect collisions and correct positions
+  // detect collisions and correct positions
   for ( u32 compI = 1; compI < componentMap.components.size(); ++compI ) {
     SolidBodyComp solidBodyComp = componentMap.components[ compI ];
     entities.push_back( solidBodyComp.entity );
   }
   std::vector< std::vector< Collision > > collisions = ColliderManager::getCollisions( entities );
   ASSERT( entities.size() == collisions.size(), "Have %d solid bodies but %d collision sets", entities.size(), collisions.size() );
-  // TODO move solid bodies
+  // move solid bodies
+  std::vector< Vec2 > translations;
+  translations.reserve( componentMap.components.size() );
   for ( u32 compI = 1; compI < componentMap.components.size(); ++compI ) {
     std::vector< Collision > collisionsI = collisions[ compI - 1 ];
     Vec2 normal = {};
@@ -506,9 +537,17 @@ void SolidBodyManager::update( double deltaT ) {
       float vDotN = dot( solidBodyComp.speed, normal );
       componentMap.components[ compI ].speed = solidBodyComp.speed - 2.0f * vDotN * normal;
     }
-    EntityHandle entity = solidBodyComp.entity;
-    TransformManager::translate( entity, solidBodyComp.speed * deltaT );
+    translations.push_back( solidBodyComp.speed * deltaT );
   }
+  LookupResult transformLookup;
+  TransformManager::lookup( entities, &transformLookup );
+  VALIDATE_ENTITIES_EQUAL( entities, transformLookup.entities );
+  TransformManager::translate( transformLookup.indices, translations );
+}
+
+void SolidBodyManager::lookup( const std::vector< EntityHandle >& entities, LookupResult* result ) {
+  PROFILE;
+  return componentMap.lookup( entities, result );
 }
 
 ComponentMap< SpriteManager::SpriteComp > SpriteManager::componentMap;
@@ -566,12 +605,14 @@ void SpriteManager::remove( EntityHandle entity ) {
   componentMap.remove( entity );
 }
 
-Sprite SpriteManager::get( EntityHandle entity ) {
+void SpriteManager::get( const std::vector< ComponentIndex >& indices, std::vector< Sprite >* result ) {
   PROFILE;
-  ComponentIndex componentInd = componentMap.lookup( entity );
-  return static_cast< Sprite >( componentMap.components[ componentInd ] );
+  result->reserve( indices.size() );
+  for ( u32 i = 0; i < indices.size(); ++i ) {
+    result->push_back( static_cast< Sprite >( componentMap.components[ indices[ i ] ] ) );
+  }
 }
-    
+
 void SpriteManager::setOrthoProjection( float aspectRatio, float height ) {
   float halfHeight = height / 2.0f;
   glUseProgram( renderInfo.shaderProgramId );
@@ -589,7 +630,7 @@ void SpriteManager::updateAndRender() {
   // update local transform cache
   std::vector< EntityHandle > updatedEntities = TransformManager::getLastUpdated();
   LookupResult spriteLookup;
-  componentMap.lookupAll( updatedEntities, &spriteLookup );
+  componentMap.lookup( updatedEntities, &spriteLookup );
   LookupResult transformLookup;
   TransformManager::lookup( spriteLookup.entities, &transformLookup );
   VALIDATE_ENTITIES_EQUAL( spriteLookup.entities, transformLookup.entities );
@@ -672,4 +713,9 @@ void SpriteManager::updateAndRender() {
   // render the last sub-buffer
   u32 spriteCountInSubBuffer = spritesToRenderCount - currentSubBufferStart;
   glDrawArrays( GL_TRIANGLES, vertsPerSprite * currentSubBufferStart, vertsPerSprite * spriteCountInSubBuffer );
+}
+
+void SpriteManager::lookup( const std::vector< EntityHandle >& entities, LookupResult* result ) {
+  PROFILE;
+  return componentMap.lookup( entities, result );
 }
