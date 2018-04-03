@@ -69,11 +69,11 @@ struct LookupResult {
   std::vector< EntityHandle > entities;
   std::vector< ComponentIndex > indices;
 };
-  
+
 template< typename T >
 struct ComponentMap {
   std::vector< T > components;
-  std::unordered_map< u32, ComponentIndex > map;
+  ComponentIndex map[ MAX_ENTITIES ];
 
   ComponentMap();
   void set( EntityHandle entity, T component, RmvCompCallback rmvComp );
@@ -91,11 +91,7 @@ void ComponentMap< T >::set( EntityHandle entity, T component, RmvCompCallback r
   VALIDATE_ENTITY( entity );
   components.push_back( component );
   u32 compInd = components.size() - 1;
-  bool inserted = map.insert( { entity, compInd } ).second;
-  ASSERT( inserted, "Could not map entity %d to component index %d", entity, compInd );
-#ifdef NDEBUG
-  UNUSED( inserted );
-#endif
+  map[ entity ] = compInd;
   // tell the EntityManager how to remove this component
   // for when it needs to destroy the entity
   EntityManager::removeComponentCallbacks.insert( { entity, rmvComp } );
@@ -104,34 +100,32 @@ void ComponentMap< T >::set( EntityHandle entity, T component, RmvCompCallback r
 template< typename T >
 void ComponentMap< T >::remove( EntityHandle entity ) {
   VALIDATE_ENTITY( entity );
-  auto iterator = map.find( entity );
-  ASSERT( iterator != map.end(), "Entity %d has no given component", entity );
+  ComponentIndex compInd = map[ entity ];
+  ASSERT( compInd > 0, "Entity %d has no given component", entity );
   // replace comp-to-remove with last one, thus removing it,
   // and erase last element
-  components[ iterator->second ] = components[ components.size() - 1 ];
+  components[ compInd ] = components[ components.size() - 1 ];
   components.erase( components.end() - 1 );
   // ...update comp-not-to-remove in map
-  map.at( components[ iterator->second ].entity ) = iterator->second;
+  map[ components[ compInd ].entity ] = compInd;
   // and remove comp-to-remove in map
-  map.erase( iterator );
+  map[ entity ] = 0;
 }
 
 template< typename T >
 void ComponentMap< T >::lookup( const std::vector< EntityHandle >& entities, LookupResult* result ) {
   PROFILE;
   VALIDATE_ENTITIES( entities );
+  ASSERT( result->entities.size() == 0 && result->indices.size() == 0, "" );
   u32 maxSize = entities.size();
-  result->entities.clear();
   result->entities.reserve( maxSize );
-  result->indices.clear();
   result->indices.reserve( maxSize );
-  auto end = map.end();
   for ( u32 entInd = 0; entInd < maxSize; ++entInd ) {
     EntityHandle entity = entities[ entInd ];
-    auto iterator = map.find( entity );
-    if ( iterator != end ) {
+    ComponentIndex compInd = map[ entity ];
+    if ( compInd > 0 ) {
       result->entities.push_back( entity );
-      result->indices.push_back( iterator->second );
+      result->indices.push_back( compInd );
     }
   }
 }
