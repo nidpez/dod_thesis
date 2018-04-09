@@ -449,10 +449,11 @@ bool ColliderManager::aaRectCircleCollide( Rect aaRect, Circle circle, Vec2& nor
   return sqrMagnitude( circleToRect ) <= circle.radius * circle.radius;
 }
 
-// TODO implement
 bool ColliderManager::aaRectAARectCollide( Rect aaRectA, Rect aaRectB ) {
-  aaRectA = aaRectB = {};
-  return true;
+  PROFILE;
+  bool xOverlap = aaRectA.min.x <= aaRectB.max.x && aaRectA.max.x >= aaRectB.min.x;
+  bool yOverlap = aaRectA.min.y <= aaRectB.max.y && aaRectA.max.y >= aaRectB.min.y;
+  return xOverlap && yOverlap;
 }
 
 // TODO implement

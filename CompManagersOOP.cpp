@@ -245,10 +245,11 @@ bool Collider::aaRectCircleCollide( Rect aaRect, Circle circle, Vec2& normalA, V
   return circleToRect.sqrMagnitude() <= circle.getRadius() * circle.getRadius();
 }
 
-// TODO implement
 bool Collider::aaRectAARectCollide( Rect aaRectA, Rect aaRectB ) {
-  aaRectA = aaRectB = Rect();
-  return true;
+  PROFILE;
+  bool xOverlap = aaRectA.getMin().getX() <= aaRectB.getMax().getX() && aaRectA.getMax().getX() >= aaRectB.getMin().getX();
+  bool yOverlap = aaRectA.getMin().getY() <= aaRectB.getMax().getY() && aaRectA.getMax().getY() >= aaRectB.getMin().getY();
+  return xOverlap && yOverlap;
 }
 
 // TODO implement
