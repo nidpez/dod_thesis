@@ -259,8 +259,10 @@ int Profiler::perfCounters;
 const s32 Profiler::PERF_COUNTER_CODES[] = {
   PAPI_L1_TCM, // Level 1 cache misses
   PAPI_L2_TCM, // Level 2 cache misses
-  PAPI_L3_TCM  // Level 3 cache misses
+  //PAPI_L3_TCM, // Level 3 cache misses
+  PAPI_BR_MSP, // Conditional branch instructions mispredicted
 };
+const char* Profiler::PERF_COUNTER_NAMES[] = { "L1", "L2"/*, "L3"*/, "BRANCH MISP" };
 
 void Profiler::initialize() {
 #ifdef PROFILING
@@ -436,7 +438,11 @@ bool Profiler::returnFromSampleNode( const SampleNodeIndex nodeInd ) {
 void Profiler::updateOutputsAndReset() {
 #ifdef PROFILING
   // TODO standarize writing to logs and handling their file size
-  fprintf( profilerLog, "%d \tCALL COUNT \tACUM INCL \tACUM EXCL \tAVG INCL \tAVG EXCL \tL1 INCL \tL1 EXCL \tL2 INCL \tL2 EXCL \tL3 INCL \tL3 EXCL \n", frameNumber );
+  fprintf( profilerLog, "%d \tCALL COUNT \tACUM INCL \tACUM EXCL \tAVG INCL \tAVG EXCL", frameNumber );
+  for ( u8 i = 0; i < NUM_PERF_COUNTERS; ++i ) {
+    fprintf( profilerLog, " \t%s", PERF_COUNTER_NAMES[ i ] );
+  }
+  fprintf( profilerLog, "\n" );
   std::deque< SampleNodeIndex > nodeIndsToProcess;
   // index 0 is null
   nodeIndsToProcess.push_front( 1 );
@@ -451,18 +457,11 @@ void Profiler::updateOutputsAndReset() {
     u32 dataInd = node.dataInd;
     ProfileSample sample = samples[ dataInd ];
     u64 acumExclusiveNanos = sample.elapsedNanos;
-    long long acumExclusiveDeltaPerfCounts[ NUM_PERF_COUNTERS ];
-    for ( u8 i = 0; i < NUM_PERF_COUNTERS; ++i ) {
-      acumExclusiveDeltaPerfCounts[ i ] = sample.deltaPerfCounts[ i ];
-    }
     // add all its children to the front of the deque
     SampleNodeIndex childNodeInd = node.firstChild;
     while ( childNodeInd != 0 ) {
       // also calculate exclusive values
       acumExclusiveNanos -= samples[ sampleTree[ childNodeInd ].dataInd ].elapsedNanos;
-      for ( u8 i = 0; i < NUM_PERF_COUNTERS; ++i ) {
-        acumExclusiveDeltaPerfCounts[ i ] -= samples[ sampleTree[ childNodeInd ].dataInd ].deltaPerfCounts[ i ];
-      }
       nodeIndsToProcess.push_front( childNodeInd );
       depths.push_front( depth + 1 );
       childNodeInd = sampleTree[ childNodeInd ].nextSibling;
@@ -474,10 +473,10 @@ void Profiler::updateOutputsAndReset() {
       for ( u32 i = 0; i < depth; ++i ) {
         fprintf( profilerLog, "-- " );
       }
-      fprintf( profilerLog, "%s\t%d\t%ld\t%ld\t%ld\t%ld", node.name, sample.callCount, sample.elapsedNanos, acumExclusiveNanos, sample.elapsedNanos / sample.callCount, acumExclusiveNanos / sample.callCount );
+      fprintf( profilerLog, "%s\t%d\t%ld\t%ld\t%ld\t%ld", node.name, sample.callCount,
+               sample.elapsedNanos, acumExclusiveNanos, sample.elapsedNanos / sample.callCount, acumExclusiveNanos / sample.callCount );
       for ( u8 i = 0; i < NUM_PERF_COUNTERS; ++i ) {
         fprintf( profilerLog, "\t%lld", sample.deltaPerfCounts[ i ] );
-        fprintf( profilerLog, "\t%lld", acumExclusiveDeltaPerfCounts[ i ] );
       }
       fprintf( profilerLog, "\n" );
     }

@@ -102,6 +102,7 @@ class Profiler {
   
   static constexpr const u8 NUM_PERF_COUNTERS = 3;
   static const s32 PERF_COUNTER_CODES[ NUM_PERF_COUNTERS ];
+  static const char* PERF_COUNTER_NAMES[ NUM_PERF_COUNTERS ];
   static s32 perfCounters;
   
   struct ProfileSample {
