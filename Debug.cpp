@@ -13,9 +13,14 @@ std::vector< Debug::DebugRect > Debug::rectBufferData;
 
 void Debug::initializeLogger() {
 #ifndef NDEBUG
-  //logging stuff
   log = fopen( LOG_FILE_NAME, "a" );
   write( "Logging system initialized.\n" );
+#endif
+}
+
+void Debug::shutdownLogger() {
+#ifndef NDEBUG
+  fclose( log );
 #endif
 }
 
@@ -51,15 +56,15 @@ void Debug::writeError( const char* format, va_list args ) {
 void Debug::haltWithMessage( const char* failedCond, const char* file, const char* function, s32 line, ... ) {  
   std::time_t now = std::time( nullptr );
   char* date = std::ctime( &now );
-  Debug::writeError( "%s\tAssertion \"%s\" failed\n\tat %s,\n\t\t%s, line %d:\n\t\t",
-		      date, failedCond, file, function, line ); 
+  writeError( "%s\tAssertion \"%s\" failed\n\tat %s,\n\t\t%s, line %d:\n\t\t",
+              date, failedCond, file, function, line ); 
   va_list args;
   va_start( args, line );
   char* msgFormat = va_arg( args, char* );
-  Debug::writeError( msgFormat, args );
+  writeError( msgFormat, args );
   va_end( args );
-  Debug::writeError( "\n" );
-  Debug::shutdown();
+  writeError( "\n" );
+  shutdownLogger();
   std::abort();
 }
 
@@ -135,7 +140,7 @@ void Debug::shutdown() {
   glDeleteVertexArrays( 1, &rectRenderInfo.vaoId );
   glDeleteBuffers( 1, &rectRenderInfo.vboIds[ 0 ] );
   // logging stuff
-  fclose( log );
+  shutdownLogger();
 #endif
 }
 
@@ -250,6 +255,12 @@ std::vector< Profiler::SampleNode > Profiler::sampleTree;
 Profiler::SampleNodeIndex Profiler::currentNodeInd;
 FILE* Profiler::profilerLog;
 u32 Profiler::frameNumber;
+int Profiler::perfCounters;
+const s32 Profiler::PERF_COUNTER_CODES[] = {
+  PAPI_L1_TCM, // Level 1 cache misses
+  PAPI_L2_TCM, // Level 2 cache misses
+  PAPI_L3_TCM  // Level 3 cache misses
+};
 
 void Profiler::initialize() {
 #ifdef PROFILING
@@ -257,25 +268,62 @@ void Profiler::initialize() {
   // push whatever to index 0 of the lists so the real
   // data starts at index 1
   // TODO standarize indices starting at 1
-  samples.push_back( { TimePoint(), 0, 0, 0 } );
+  samples.push_back( { {}, {}, TimePoint(), 0, 0, 0 } );
   sampleTree.push_back( { 0, 0, 0, nullptr, 0 } );
   currentNodeInd = addChildSampleNode( 0, "ROOT" );
   profilerLog = fopen( PROFILER_LOG_FILE_NAME, "w" );
-  // TODO standarize writing to logs and handling their file size
-  fprintf( profilerLog, "FUNCTION \tCALL COUNT \tACUM INCL \tACUM EXCL \tAVG INCL \tAVG EXCL \n" );
+  // initialize Performance API
+  s32 result = PAPI_library_init( PAPI_VER_CURRENT );
+  ASSERT( result > 0, "Error initializing PAPI library" ); 
+  ASSERT( result == PAPI_VER_CURRENT, "PAPI lib version mismatch (found %d, but required %d)", result, PAPI_VER_CURRENT );
+  result = PAPI_is_initialized();
+  ASSERT( result == PAPI_LOW_LEVEL_INITED, "Error initializing PAPI library" );
+  perfCounters = PAPI_NULL;
+  result = PAPI_create_eventset( &perfCounters );
+  ASSERT( result == PAPI_OK, "PAPI_create_eventset failed" );
+  result = PAPI_add_events( perfCounters, const_cast< s32* >(PERF_COUNTER_CODES), NUM_PERF_COUNTERS );
+  const char* errorDesc;
+  switch ( result ) {
+  case PAPI_EINVAL:
+    errorDesc = "One or more of the arguments is invalid"; break;
+  case PAPI_ENOMEM:
+    errorDesc = "Insufficient memory to complete the operation"; break;
+  case PAPI_ENOEVST:
+    errorDesc = "The event set specified does not exist"; break;
+  case PAPI_EISRUN:
+    errorDesc = "The event set is currently counting events"; break;
+  case PAPI_ECNFLCT:
+    errorDesc = "The underlying counter hardware can not count this event and other events in the event set simultaneously"; break;
+  case PAPI_ENOEVNT:
+    errorDesc = "The PAPI preset is not available on the underlying hardware"; break;
+  case PAPI_EBUG:
+    errorDesc = "Internal error"; break;
+  default:
+    char buffer[ 100 ];
+    sprintf( buffer, "%d consecutive elements succeeded before the error", result );
+    errorDesc = buffer;
+  }
+  ASSERT( result == PAPI_OK, "PAPI_add_events failed (%s)", errorDesc );
+  result = PAPI_start( perfCounters );
+  ASSERT( result == PAPI_OK, "PAPI_start failed" );
+#ifdef NDEBUG
+  UNUSED( result );
+  UNUSED( errorDesc );
+#endif
   Debug::write( "Profiler initialized.\n" );
 #endif
 }
 
 void Profiler::shutdown() {
 #ifdef PROFILING
+  PAPI_shutdown();
   fclose( profilerLog );
 #endif
 }
 
 Profiler::SampleNodeIndex Profiler::addChildSampleNode( SampleNodeIndex nodeInd, const char* name ) {
 #ifdef PROFILING
-  ProfileSample newSample = { TimePoint(), 0, 0, 0 };
+  ProfileSample newSample = { {}, {}, TimePoint(), 0, 0, 0 };
   samples.push_back( newSample ); // uninitialized yet
   ProfileSampleIndex dataInd = samples.size() - 1;
   SampleNode newNode = { nodeInd, 0, 0, name, dataInd };
@@ -350,6 +398,11 @@ void Profiler::callSampleNode( const SampleNodeIndex nodeInd ) {
   // or if the function isn't recursive
   // we can start measuring time
   if ( sample.recursionCount++ == 0 ) {
+    s32 result = PAPI_read( perfCounters, sample.startPerfCounts );
+    ASSERT( result == PAPI_OK, "PAPI_read failed" );
+#ifdef NDEBUG
+    UNUSED( result );
+#endif
     sample.startTime = Clock::now();
   }
   samples[ sampleTree[ nodeInd ].dataInd ] = sample;
@@ -364,6 +417,15 @@ bool Profiler::returnFromSampleNode( const SampleNodeIndex nodeInd ) {
   if ( --sample.recursionCount == 0 && sample.callCount != 0 ) {
     TimePoint endTime = Clock::now();
     sample.elapsedNanos += std::chrono::duration_cast< std::chrono::nanoseconds >( endTime - sample.startTime ).count();
+    long long endPerfCounts[ NUM_PERF_COUNTERS ];
+    s32 result = PAPI_read( perfCounters, endPerfCounts );
+    ASSERT( result == PAPI_OK, "PAPI_read failed" );
+#ifdef NDEBUG
+    UNUSED( result );
+#endif
+    for ( u8 i = 0; i < NUM_PERF_COUNTERS; ++i ) {
+      sample.deltaPerfCounts[ i ] += endPerfCounts[ i ] - sample.startPerfCounts[ i ];
+    }
   }
   samples[ sampleTree[ nodeInd ].dataInd ] = sample;
   // also return whether the function is recursing
@@ -373,7 +435,8 @@ bool Profiler::returnFromSampleNode( const SampleNodeIndex nodeInd ) {
 
 void Profiler::updateOutputsAndReset() {
 #ifdef PROFILING
-  fprintf( profilerLog, "%d\n", frameNumber );
+  // TODO standarize writing to logs and handling their file size
+  fprintf( profilerLog, "%d \tCALL COUNT \tACUM INCL \tACUM EXCL \tAVG INCL \tAVG EXCL \tL1 INCL \tL1 EXCL \tL2 INCL \tL2 EXCL \tL3 INCL \tL3 EXCL \n", frameNumber );
   std::deque< SampleNodeIndex > nodeIndsToProcess;
   // index 0 is null
   nodeIndsToProcess.push_front( 1 );
@@ -385,33 +448,52 @@ void Profiler::updateOutputsAndReset() {
     SampleNode node = sampleTree[ nodeInd ];
     u32 depth = depths.front();
     depths.pop_front();
+    u32 dataInd = node.dataInd;
+    ProfileSample sample = samples[ dataInd ];
+    u64 acumExclusiveNanos = sample.elapsedNanos;
+    long long acumExclusiveDeltaPerfCounts[ NUM_PERF_COUNTERS ];
+    for ( u8 i = 0; i < NUM_PERF_COUNTERS; ++i ) {
+      acumExclusiveDeltaPerfCounts[ i ] = sample.deltaPerfCounts[ i ];
+    }
     // add all its children to the front of the deque
     SampleNodeIndex childNodeInd = node.firstChild;
-    u64 acumChildNanos = 0;
     while ( childNodeInd != 0 ) {
-      // also calculate exclusive execution time
-      acumChildNanos += samples[ sampleTree[ childNodeInd ].dataInd ].elapsedNanos;
+      // also calculate exclusive values
+      acumExclusiveNanos -= samples[ sampleTree[ childNodeInd ].dataInd ].elapsedNanos;
+      for ( u8 i = 0; i < NUM_PERF_COUNTERS; ++i ) {
+        acumExclusiveDeltaPerfCounts[ i ] -= samples[ sampleTree[ childNodeInd ].dataInd ].deltaPerfCounts[ i ];
+      }
       nodeIndsToProcess.push_front( childNodeInd );
       depths.push_front( depth + 1 );
       childNodeInd = sampleTree[ childNodeInd ].nextSibling;
     }
     // display sample
-    u32 dataInd = node.dataInd;
-    ProfileSample sample = samples[ dataInd ];
     // don't render unused nodes
     if ( sample.callCount > 0 ) {
       // crappy way of expressing call depth
       for ( u32 i = 0; i < depth; ++i ) {
         fprintf( profilerLog, "-- " );
       }
-      u64 acumExclusiveNanos = sample.elapsedNanos - acumChildNanos;
-      fprintf( profilerLog, "%s\t%d\t%ld\t%ld\t%ld\t%ld\n", node.name, sample.callCount, sample.elapsedNanos, acumExclusiveNanos, sample.elapsedNanos / sample.callCount, acumExclusiveNanos / sample.callCount );
+      fprintf( profilerLog, "%s\t%d\t%ld\t%ld\t%ld\t%ld", node.name, sample.callCount, sample.elapsedNanos, acumExclusiveNanos, sample.elapsedNanos / sample.callCount, acumExclusiveNanos / sample.callCount );
+      for ( u8 i = 0; i < NUM_PERF_COUNTERS; ++i ) {
+        fprintf( profilerLog, "\t%lld", sample.deltaPerfCounts[ i ] );
+        fprintf( profilerLog, "\t%lld", acumExclusiveDeltaPerfCounts[ i ] );
+      }
+      fprintf( profilerLog, "\n" );
     }
     // reset counters
     samples[ dataInd ].callCount = 0;
     samples[ dataInd ].elapsedNanos = 0;
     samples[ dataInd ].recursionCount = 0;
-  }  
+    for ( u8 i = 0; i < NUM_PERF_COUNTERS; ++i ) {
+      samples[ dataInd ].deltaPerfCounts[ i ] = 0;
+    }
+  }
   ++frameNumber;
+  int result = PAPI_reset( perfCounters );
+  ASSERT( result == PAPI_OK, "PAPI_reset failed" );
+#ifdef NDEBUG
+  UNUSED( result );
+#endif
 #endif
 }

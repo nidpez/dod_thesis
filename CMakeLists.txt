@@ -29,6 +29,12 @@ include_directories(${OPENGL_INCLUDE_DIR})
 # lookup OpenGL Extension Wrangler
 find_package(GLEW REQUIRED)
 
+# lookup Performance API
+if (PROFILING)
+  pkg_search_module(PAPI REQUIRED papi)
+  include_directories(${PAPI_INCLUDE_DIRS})
+endif()
+
 # build the game
 if (${TECHNIQUE} STREQUAL "DOD")
   add_definitions(-DDOD)
@@ -41,7 +47,7 @@ endif()
 # add the static library for Simple Opengl Image Library 2, and include its header
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-target_link_libraries(GAME ${GLEW_LIBRARIES} ${GLFW_STATIC_LIBRARIES} ${CMAKE_CURRENT_SOURCE_DIR}/lib/libsoil2-debug.a)
+target_link_libraries(GAME ${GLEW_LIBRARIES} ${GLFW_STATIC_LIBRARIES} ${PAPI_LIBRARIES} ${CMAKE_CURRENT_SOURCE_DIR}/lib/libsoil2-debug.a)
 
 # set an output directory for our binaries
 set(BIN_DIR ${SpaceAdventure_SOURCE_DIR})

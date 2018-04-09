@@ -1,7 +1,7 @@
 #pragma once
 
 class TestScene {
-  static constexpr const u32 NUM_ENTITIES = 3000;
+  static constexpr const u32 NUM_ENTITIES = 1000;
   static constexpr const Rect TEST_AREA = { { -420, -240 }, { 420, 240 } };
   static std::vector< EntityHandle > entities;
 public:

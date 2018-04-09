@@ -4,6 +4,10 @@
 #include <chrono>
 #include <string>
 
+#ifdef PROFILING
+#include "papi.h"
+#endif
+
 /////////////////////// Error handling and logging ////////////////////
 /////////////////////// and Drawing debug shapes //////////////////////
 
@@ -32,6 +36,7 @@ public:
   static constexpr Color BLACK = { 0, 0, 0, 1 }; 
   // write messages
   static void initializeLogger();
+  static void shutdownLogger();
   static void shutdown();
   static void write( const char* format, ... );
   static void write( const char* format, va_list args );
@@ -95,7 +100,13 @@ class Profiler {
   
   static u32 frameNumber;
   
+  static constexpr const u8 NUM_PERF_COUNTERS = 3;
+  static const s32 PERF_COUNTER_CODES[ NUM_PERF_COUNTERS ];
+  static s32 perfCounters;
+  
   struct ProfileSample {
+    long long startPerfCounts[ NUM_PERF_COUNTERS ];
+    long long deltaPerfCounts[ NUM_PERF_COUNTERS ];
     TimePoint startTime;
     u64 elapsedNanos;
     u32 callCount;
