@@ -78,7 +78,6 @@ void TransformManager::get( const std::vector< ComponentIndex >& indices, std::v
 }
 
 void TransformManager::lookup( const std::vector< EntityHandle >& entities, LookupResult* result ) {
-  PROFILE;
   return componentMap.lookup( entities, result );
 }
 
@@ -100,7 +99,7 @@ std::vector< ColliderManager::QuadNode > ColliderManager::quadTree;
 
 void ColliderManager::buildQuadTree(Rect boundary) {
   PROFILE;
-  quadTree = std::vector< QuadNode >();
+  quadTree.clear();
   quadTree.push_back( {} );
   QuadNode rootNode = {};
   rootNode.boundary.aaRect = boundary;
@@ -283,7 +282,7 @@ void ColliderManager::updateAndCollide() {
   // TODO calculate the boundary dynamically 
   Rect boundary = { { -420, -240 }, { 420, 240 } };
   buildQuadTree( boundary );
-
+  
   // detect collisions
   collisions.clear();
   collisions.resize( componentMap.components.size(), {} );
@@ -311,19 +310,15 @@ void ColliderManager::updateAndCollide() {
 }
 
 void ColliderManager::lookup( const std::vector< EntityHandle >& entities, LookupResult* result ) {
-  PROFILE;
   return componentMap.lookup( entities, result );
 }
 
-std::vector< std::vector< Collision > > ColliderManager::getCollisions( const std::vector< EntityHandle >& entities ) {
+std::vector< std::vector< Collision > > ColliderManager::getCollisions( const std::vector< ComponentIndex >& indices ) {
   PROFILE;
-  LookupResult lookupResult;
-  componentMap.lookup( entities, &lookupResult );
-  VALIDATE_ENTITIES_EQUAL( entities, lookupResult.entities );
   std::vector< std::vector< Collision > > requestedCollisions;
-  requestedCollisions.reserve( entities.size() );
-  for ( u32 entI = 0; entI < entities.size(); ++entI ) {
-    ComponentIndex compInd = lookupResult.indices[ entI ];
+  requestedCollisions.reserve( indices.size() );
+  for ( u32 entI = 0; entI < indices.size(); ++entI ) {
+    ComponentIndex compInd = indices[ entI ];
     requestedCollisions.push_back( collisions[ compInd ] );
   }
   return requestedCollisions;
@@ -518,8 +513,10 @@ void SolidBodyManager::update( double deltaT ) {
     SolidBodyComp solidBodyComp = componentMap.components[ compI ];
     entities.push_back( solidBodyComp.entity );
   }
-  std::vector< std::vector< Collision > > collisions = ColliderManager::getCollisions( entities );
-  ASSERT( entities.size() == collisions.size(), "Have %d solid bodies but %d collision sets", entities.size(), collisions.size() );
+  LookupResult colliderLookup;
+  ColliderManager::lookup( entities, &colliderLookup );
+  VALIDATE_ENTITIES_EQUAL( entities, colliderLookup.entities );
+  std::vector< std::vector< Collision > > collisions = ColliderManager::getCollisions( colliderLookup.indices );
   // move solid bodies
   std::vector< Vec2 > translations;
   translations.reserve( componentMap.components.size() );
@@ -547,7 +544,6 @@ void SolidBodyManager::update( double deltaT ) {
 }
 
 void SolidBodyManager::lookup( const std::vector< EntityHandle >& entities, LookupResult* result ) {
-  PROFILE;
   return componentMap.lookup( entities, result );
 }
 
@@ -717,6 +713,5 @@ void SpriteManager::updateAndRender() {
 }
 
 void SpriteManager::lookup( const std::vector< EntityHandle >& entities, LookupResult* result ) {
-  PROFILE;
   return componentMap.lookup( entities, result );
 }

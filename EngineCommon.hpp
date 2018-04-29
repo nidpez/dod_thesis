@@ -21,13 +21,13 @@ typedef uint32_t 	u32;
 typedef uint16_t 	u16;
 typedef uint8_t 	u8;
 
+#define UNUSED( x ) ( void )( x )
+
 /////////////////////////////// Renderer common //////////////////////////////
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <SOIL2.h>
-
-#define UNUSED( x ) ( void )( x ) 
 
 const float PIXELS_PER_UNIT = 4.0f;
 

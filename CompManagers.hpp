@@ -86,7 +86,7 @@ public:
   static bool aaRectCircleCollide( Rect aaRect, Circle circle, Vec2& normalA, Vec2& normalB );
   static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB );
   static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& normalA, Vec2& normalB );
-  static std::vector< std::vector< Collision > > getCollisions( const std::vector< EntityHandle >& entities );
+  static std::vector< std::vector< Collision > > getCollisions( const std::vector< ComponentIndex >& indices );
 };
 
 struct SolidBody {

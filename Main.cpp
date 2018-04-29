@@ -56,12 +56,11 @@ s32 main() {
       if ( glfwGetKey( window, GLFW_KEY_ESCAPE ) == GLFW_PRESS ) {
         glfwSetWindowShouldClose( window, true );
       }
-
-      TestScene::update( deltaT );
     
       ColliderManager::updateAndCollide();
 
-      SolidBodyManager::update( deltaT );
+      SolidBodyManager::update( 1.0 / 30.0 /*deltaT*/ );
+      UNUSED( deltaT );
     
       // render scene
       glClear( GL_COLOR_BUFFER_BIT );

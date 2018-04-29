@@ -44,29 +44,29 @@ void TestScene::initialize() {
   enclosure[ 3 ].setCollider( Collider( bounds ) );
 
   // create actors
-  AssetIndex textureHandle = AssetManager::loadTexture( "astronaut.png" );
-  for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
-    Vec2 position( randf( TEST_AREA.getMin().getX(), TEST_AREA.getMax().getX() ),
-                   randf( TEST_AREA.getMin().getY(), TEST_AREA.getMax().getY() ) );
-    float orientation = randf( 0.0f, 2 * PI );
-    entities[ ent ].setTransform( Transform( position, Vec2::ONE, orientation ) );
+  {
+    PROFILE_BLOCK( "Create Actors" );
+    AssetIndex textureHandle = AssetManager::loadTexture( "astronaut.png" );
+    for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
+      float r1 = randf( TEST_AREA.getMin().getX(), TEST_AREA.getMax().getX() );
+      float r2 = randf( TEST_AREA.getMin().getY(), TEST_AREA.getMax().getY() );
+      Vec2 position( r1, r2 );
+      float r3 = randf( 0.0f, 2 * PI );
+      float orientation = r3;
+      entities[ ent ].setTransform( Transform( position, Vec2::ONE, orientation ) );
     
-    entities[ ent ].setSprite( Sprite( textureHandle, Rect( Vec2( 0.0f, 0.0f ), Vec2( 1.0f / 5.0f, 1.0f ) ) ) );
+      entities[ ent ].setSprite( Sprite( textureHandle, Rect( Vec2( 0.0f, 0.0f ), Vec2( 1.0f / 5.0f, 1.0f ) ) ) );
     
-    Collider collider( Circle( Vec2::ZERO, 0 ) );
-    entities[ ent ].setCollider( collider );
-    entities[ ent ].getCollider().fitCircleToSprite();
+      Collider collider( Circle( Vec2::ZERO, 0 ) );
+      entities[ ent ].setCollider( collider );
+      entities[ ent ].getCollider().fitCircleToSprite();
     
-    Vec2 direction( randf( -1.0f, 1.0f ), randf( -1.0f, 1.0f ) );
-    direction = direction.normalized() * 5;
-    entities[ ent ].setSolidBody( direction );
-  }
-}
-
-void TestScene::update( double deltaT ) {
-  // unused
-  deltaT *= 1;
-  for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
+      float r4 = randf( -1.0f, 1.0f );
+      float r5 = randf( -1.0f, 1.0f );
+      Vec2 direction( r4, r5 );
+      direction = direction.normalized() * 5;
+      entities[ ent ].setSolidBody( direction );
+    }
   }
 }
 

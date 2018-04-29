@@ -47,37 +47,34 @@ void TestScene::initialize() {
   ColliderManager::addAxisAlignedRect( enclosure[ 3 ], bounds );
 
   // create actors
-  entities.reserve( NUM_ENTITIES );
-  for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
-    entities.push_back( EntityManager::create() );
-  }
-  for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
-    Transform transform;
-    transform.position = { randf( TEST_AREA.min.x, TEST_AREA.max.x ),
-                           randf( TEST_AREA.min.y, TEST_AREA.max.y ) };
-    transform.scale = VEC2_ONE;
-    transform.orientation = randf( 0.0f, 2 * PI );
-    TransformManager::set( entities[ ent ], transform );
-  }
-  AssetIndex textureHandle = AssetManager::loadTexture( "astronaut.png" );
-  for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
-    SpriteManager::set( entities[ ent ], textureHandle,
-                        { { 0.0f, 0.0f }, { 1.0f / 5.0f, 1.0f } } );
-  }
-  for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
-    ColliderManager::fitCircleToSprite( entities[ ent ] );
-  }
-  for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
-    Vec2 direction = { randf( -1.0f, 1.0f ), randf( -1.0f, 1.0f ) };
-    direction = normalized( direction );
-    SolidBodyManager::set( entities[ ent ], { direction * 5 } );
-  }
-}
+  {
+    PROFILE_BLOCK( "Create Actors" );
+    AssetIndex textureHandle = AssetManager::loadTexture( "astronaut.png" );
+    entities.reserve( NUM_ENTITIES );
+    for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
+      EntityHandle entity = EntityManager::create();
+      entities.push_back( entity );
+      
+      Transform transform;
+      float r1 = randf( TEST_AREA.min.x, TEST_AREA.max.x );
+      float r2 = randf( TEST_AREA.min.y, TEST_AREA.max.y );
+      transform.position = { r1, r2 };
+      transform.scale = VEC2_ONE;
+      float r3 = randf( 0.0f, 2 * PI );
+      transform.orientation = r3;
+      TransformManager::set( entity, transform );
+      
+      SpriteManager::set( entity, textureHandle,
+                          { { 0.0f, 0.0f }, { 1.0f / 5.0f, 1.0f } } );
+      
+      ColliderManager::fitCircleToSprite( entity );
 
-void TestScene::update( double deltaT ) {
-  // unused
-  deltaT *= 1;
-  for ( u32 ent = 0; ent < NUM_ENTITIES; ++ent ) {
+      float r4 = randf( -1.0f, 1.0f );
+      float r5 = randf( -1.0f, 1.0f );
+      Vec2 direction = { r4, r5 };
+      direction = normalized( direction );
+      SolidBodyManager::set( entity, { direction * 5 } );
+    }
   }
 }
 
