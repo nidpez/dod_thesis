@@ -29,7 +29,7 @@ public:
   static void update( const std::vector< ComponentIndex >& indices, const std::vector< Transform >& transforms );
   static void get( const std::vector< ComponentIndex >& indices, std::vector< Transform >* result );
   static void lookup( const std::vector< EntityHandle >& entities, LookupResult* result );
-  static std::vector< EntityHandle > getLastUpdated();
+  static std::vector< EntityHandle >& getLastUpdated();
 };
 
 struct Collision {
@@ -86,7 +86,7 @@ public:
   static bool aaRectCircleCollide( Rect aaRect, Circle circle, Vec2& normalA, Vec2& normalB );
   static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB );
   static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& normalA, Vec2& normalB );
-  static std::vector< std::vector< Collision > > getCollisions( const std::vector< ComponentIndex >& indices );
+  static std::vector< std::vector< Collision > >& getCollisions( const std::vector< ComponentIndex >& indices );
 };
 
 struct SolidBody {

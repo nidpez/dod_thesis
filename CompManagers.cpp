@@ -80,12 +80,14 @@ void TransformManager::lookup( const std::vector< EntityHandle >& entities, Look
   return componentMap.lookup( entities, result );
 }
 
-std::vector< EntityHandle > TransformManager::getLastUpdated() {
+std::vector< EntityHandle >& TransformManager::getLastUpdated() {
   // TODO actually compute which transforms have been updated since last frame
   // component index 0 is not valid
-  std::vector< EntityHandle > result( componentMap.components.size() - 1 );
+  static std::vector< EntityHandle > result;
+  result.clear();
+  result.reserve( componentMap.components.size() - 1 );
   for ( u32 entInd = 1; entInd < componentMap.components.size(); ++entInd ) {
-    result[ entInd - 1 ] = componentMap.components[ entInd ].entity;
+    result.push_back( componentMap.components[ entInd ].entity );
   }
   return result;
 }
@@ -311,9 +313,10 @@ void ColliderManager::lookup( const std::vector< EntityHandle >& entities, Looku
   return componentMap.lookup( entities, result );
 }
 
-std::vector< std::vector< Collision > > ColliderManager::getCollisions( const std::vector< ComponentIndex >& indices ) {
+std::vector< std::vector< Collision > >& ColliderManager::getCollisions( const std::vector< ComponentIndex >& indices ) {
   PROFILE;
-  std::vector< std::vector< Collision > > requestedCollisions;
+  static std::vector< std::vector< Collision > > requestedCollisions;
+  requestedCollisions.clear();
   requestedCollisions.reserve( indices.size() );
   for ( u32 entI = 0; entI < indices.size(); ++entI ) {
     ComponentIndex compInd = indices[ entI ];
