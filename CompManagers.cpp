@@ -70,7 +70,6 @@ void TransformManager::update( const std::vector< ComponentIndex >& indices, con
 
 // TODO verify that component indices have not been invalidated
 void TransformManager::get( const std::vector< ComponentIndex >& indices, std::vector< Transform >* result ) {
-  PROFILE;
   result->reserve( indices.size() );
   for ( u32 i = 0; i < indices.size(); ++i ) {
     result->push_back( componentMap.components[ indices[ i ] ].local );
@@ -82,7 +81,6 @@ void TransformManager::lookup( const std::vector< EntityHandle >& entities, Look
 }
 
 std::vector< EntityHandle > TransformManager::getLastUpdated() {
-  PROFILE;
   // TODO actually compute which transforms have been updated since last frame
   // component index 0 is not valid
   std::vector< EntityHandle > result( componentMap.components.size() - 1 );
@@ -496,7 +494,6 @@ void SolidBodyManager::setSpeed( const std::vector< ComponentIndex >& indices, s
 }
 
 void SolidBodyManager::get( const std::vector< ComponentIndex >& indices, std::vector< SolidBody >* result ) {
-  PROFILE;
   result->reserve( indices.size() );
   for ( u32 i = 0; i < indices.size(); ++i ) {
     SolidBody solidBody = { componentMap.components[ indices[ i ] ].speed };
@@ -603,7 +600,6 @@ void SpriteManager::remove( EntityHandle entity ) {
 }
 
 void SpriteManager::get( const std::vector< ComponentIndex >& indices, std::vector< Sprite >* result ) {
-  PROFILE;
   result->reserve( indices.size() );
   for ( u32 i = 0; i < indices.size(); ++i ) {
     result->push_back( static_cast< Sprite >( componentMap.components[ indices[ i ] ] ) );

@@ -114,7 +114,6 @@ void ComponentMap< T >::remove( EntityHandle entity ) {
 
 template< typename T >
 void ComponentMap< T >::lookup( const std::vector< EntityHandle >& entities, LookupResult* result ) {
-  PROFILE;
   VALIDATE_ENTITIES( entities );
   ASSERT( result->entities.size() == 0 && result->indices.size() == 0, "" );
   u32 maxSize = entities.size();
