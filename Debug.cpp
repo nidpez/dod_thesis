@@ -310,10 +310,10 @@ void Profiler::initialize() {
   ASSERT( result == PAPI_OK, "PAPI_start failed" );
   // lock this process to a single core so as to avoid cache misses caused
   // by the OS switching the core in which it is executed
-  cpu_set_t firstCPU;
-  CPU_ZERO( &firstCPU );
-  CPU_SET( 0, &firstCPU );
-  result = sched_setaffinity( 0, sizeof( firstCPU ), &firstCPU );
+  cpu_set_t cpuSet;
+  CPU_ZERO( &cpuSet );
+  CPU_SET( sched_getcpu(), &cpuSet );
+  result = sched_setaffinity( 0, sizeof( cpuSet ), &cpuSet );
   ASSERT( result == 0, "sched_setaffinity failed" );
 #ifdef NDEBUG
   UNUSED( result );
