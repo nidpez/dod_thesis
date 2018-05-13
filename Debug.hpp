@@ -47,9 +47,7 @@ public:
   static void initializeRenderer();
   static void drawCircle( Circle circle, Color color );
   static void drawRect( Rect rect, Color color );
-#ifdef DOD
-  static void drawShape( Shape shape, Color color );
-#elif defined OOP
+#ifdef OOP
   static void drawShape( Shape* shape, Color color );
 #endif
   static void renderAndClear();

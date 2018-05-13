@@ -44,18 +44,18 @@ class ColliderManager {
     // transform cache
     Vec2 position;
     Vec2 scale;
-    //
-    EntityHandle entity;
   };
-  static ComponentMap< ColliderComp > componentMap;
-  static std::vector< Shape > transformedShapes;
-  static std::vector< std::vector< Collision > > collisions;
+  // static bool ( *collisionFunctions[ ShapeType::LAST ][ ShapeType::LAST ] )( Shape a, Shape b, Vec2& normalA, Vec2& normalB );
+  static ComponentMap< ColliderComp > componentMap[ ShapeType::LAST ];
+  static std::vector< EntityHandle > entities[ ShapeType::LAST ];
+  static std::vector< Shape > transformedShapes[ ShapeType::LAST ];
+  static std::array< std::vector< std::vector< Collision > >, ShapeType::LAST > collisions;
 
   struct QuadBucket {
     static const u8 CAPACITY = 16;
-    ComponentIndex _[ CAPACITY ];
-    // TODO standarize indices starting at 1
-    s8 lastInd = -1;
+    ComponentIndex _[ ShapeType::LAST ][ CAPACITY ];
+    u8 size[ ShapeType::LAST ] = {};
+    u8 totalSize = 0;
   };
   struct QuadNode {
     union {
@@ -66,9 +66,9 @@ class ColliderManager {
     bool isLeaf = true;
   };
   static std::vector< QuadNode > quadTree;
-  static void buildQuadTree(Rect boundary);
-  static void subdivideQuadNode(u32 nodeInd);
-  static void insertIntoQuadTree(ComponentIndex colliderInd);
+  static void buildQuadTree( Rect boundary );
+  static void subdivideQuadNode( u32 nodeInd );
+  static void insertIntoQuadTree( std::vector< ComponentIndex > colliderInds[ ShapeType::LAST ] );
 public:
   static void initialize();
   static void shutdown();
@@ -77,16 +77,19 @@ public:
   static void remove( EntityHandle entity );
   static void fitCircleToSprite( EntityHandle entity );
   static void updateAndCollide();
-  static void lookup( const std::vector< EntityHandle >& entities, LookupResult* result );
-  static bool collide( Shape shapeA, Shape shapeB );
-  static bool collide( Shape shapeA, Shape shapeB, Collision& collision );
+  // static bool collide( Shape shapeA, Shape shapeB );
+  // static bool collide( Shape shapeA, Shape shapeB, Collision& collision );
   static bool circleCircleCollide( Circle circleA, Circle circleB );
   static bool circleCircleCollide( Circle circleA, Circle circleB, Vec2& normalA, Vec2& normalB );
-  static bool aaRectCircleCollide( Rect aaRect, Circle circle );
-  static bool aaRectCircleCollide( Rect aaRect, Circle circle, Vec2& normalA, Vec2& normalB );
-  static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB );
-  static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& normalA, Vec2& normalB );
-  static std::vector< std::vector< Collision > >& getCollisions( const std::vector< ComponentIndex >& indices );
+  // result must be of size equal to ShapeType::LAST
+  static void lookup( const std::vector< EntityHandle >& entities, std::array< LookupResult, ShapeType::LAST >* result );
+  static bool circleCircleCollide( Shape a, Shape b );
+  static bool circleCircleCollide( Shape a, Shape b, Vec2& normalA, Vec2& normalB );
+  static bool aaRectCircleCollide( Shape a, Shape b );
+  static bool aaRectCircleCollide( Shape a, Shape b, Vec2& normalA, Vec2& normalB );
+  static bool aaRectAARectCollide( Shape a, Shape b );
+  static bool aaRectAARectCollide( Shape a, Shape b, Vec2& normalA, Vec2& normalB );
+  static std::array< std::vector< std::vector< Collision > >, ShapeType::LAST >& getCollisions();
 };
 
 struct SolidBody {

@@ -31,7 +31,7 @@ typedef uint8_t 	u8;
 
 const float PIXELS_PER_UNIT = 4.0f;
 
-enum ShapeType { CIRCLE, AARECT };
+enum ShapeType { CIRCLE = 0, AARECT, LAST };
 
 #ifdef DOD
 
@@ -114,6 +114,7 @@ struct RenderInfo {
 #include <stack>
 #include <list>
 #include <utility>
+#include <array>
 
 #include "Debug.hpp"
 #include "Asset.hpp"

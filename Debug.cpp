@@ -174,18 +174,7 @@ void Debug::drawRect( Rect rect, Color color ) {
 #endif
 }
 
-#ifdef DOD
-void Debug::drawShape( Shape shape, Color color ) {
-  switch ( shape.type ) {
-  case ShapeType::CIRCLE:
-    drawCircle( shape.circle, color );
-    break;
-  case ShapeType::AARECT:
-    drawRect( shape.aaRect, color );
-    break;
-  }
-}
-#elif defined OOP
+#ifdef OOP
 void Debug::drawShape( Shape* shape, Color color ) {
   switch ( shape->getType() ) {
   case ShapeType::CIRCLE:
