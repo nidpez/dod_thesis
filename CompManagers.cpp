@@ -92,10 +92,10 @@ std::vector< EntityHandle >& TransformManager::getLastUpdated() {
   return result;
 }
 
-ComponentMap< ColliderManager::ColliderComp > ColliderManager::componentMap[ ShapeType::LAST ];
-std::vector< EntityHandle > ColliderManager::entities[ ShapeType::LAST ];
-std::vector< Shape > ColliderManager::transformedShapes[ ShapeType::LAST ];
-std::array< std::vector< std::vector< Collision > >, ShapeType::LAST > ColliderManager::collisions;
+ComponentMap< ColliderManager::ColliderComp > ColliderManager::componentMap[ ShapeType::LAST + 1 ];
+std::vector< EntityHandle > ColliderManager::entities[ ShapeType::LAST + 1 ];
+std::vector< Shape > ColliderManager::transformedShapes[ ShapeType::LAST + 1 ];
+std::array< std::vector< std::vector< Collision > >, ShapeType::LAST + 1 > ColliderManager::collisions;
 std::vector< ColliderManager::QuadNode > ColliderManager::quadTree;
 
 void ColliderManager::buildQuadTree( Rect boundary ) {
@@ -105,8 +105,8 @@ void ColliderManager::buildQuadTree( Rect boundary ) {
   QuadNode rootNode = {};
   rootNode.boundary.aaRect = boundary;
   quadTree.push_back( rootNode );
-  std::vector< ComponentIndex > colliderInds[ ShapeType::LAST ];
-  for ( u8 shapeType = 0; shapeType < ShapeType::LAST; ++shapeType ) {
+  std::vector< ComponentIndex > colliderInds[ ShapeType::LAST + 1 ];
+  for ( u8 shapeType = 0; shapeType <= ShapeType::LAST; ++shapeType ) {
     colliderInds[ shapeType ].reserve( componentMap[ shapeType ].components.size() );
     for ( u32 colliderInd = 1; colliderInd < componentMap[ shapeType ].components.size(); ++colliderInd ) {
       colliderInds[ shapeType ].push_back( colliderInd );
@@ -160,10 +160,10 @@ void ColliderManager::subdivideQuadNode( u32 nodeInd ) {
   quadTree.push_back( child );
   quadTree[ nodeInd ].childIndices[ 3 ] = lastInd;
   // put elements inside children
-  bool ( *collisionFunctions[ ShapeType::LAST ] )( Shape a, Shape b );
+  bool ( *collisionFunctions[ ShapeType::LAST + 1 ] )( Shape a, Shape b );
   collisionFunctions[ ShapeType::CIRCLE ] = &aaRectCircleCollide;
   collisionFunctions[ ShapeType::AARECT ] = &aaRectAARectCollide;
-  for ( u8 shapeType = 0; shapeType < ShapeType::LAST; ++shapeType ) {
+  for ( u8 shapeType = 0; shapeType <= ShapeType::LAST; ++shapeType ) {
     bool ( *collide )( Shape a, Shape b ) = collisionFunctions[ shapeType ];
     for ( int elemInd = 0; elemInd < elements.size[ shapeType ]; ++elemInd ) {
       ComponentIndex colliderInd = elements._[ shapeType ][ elemInd ];
@@ -179,14 +179,14 @@ void ColliderManager::subdivideQuadNode( u32 nodeInd ) {
   }
 }
 
-void ColliderManager::insertIntoQuadTree( std::vector< ComponentIndex > colliderInds[ ShapeType::LAST ] ) {
+void ColliderManager::insertIntoQuadTree( std::vector< ComponentIndex > colliderInds[ ShapeType::LAST + 1 ] ) {
   PROFILE;
-  bool ( *collisionFunctions[ ShapeType::LAST ] )( Shape a, Shape b );
+  bool ( *collisionFunctions[ ShapeType::LAST + 1 ] )( Shape a, Shape b );
   collisionFunctions[ ShapeType::CIRCLE ] = &aaRectCircleCollide;
   collisionFunctions[ ShapeType::AARECT ] = &aaRectAARectCollide;
   
   std::deque< u32 > nextNodeInds;
-  for ( u8 shapeType = 0; shapeType < ShapeType::LAST; ++shapeType ) {
+  for ( u8 shapeType = 0; shapeType <= ShapeType::LAST; ++shapeType ) {
     bool ( *collide )( Shape a, Shape b ) = collisionFunctions[ shapeType ];
     
     for ( u32 colI = 0; colI < colliderInds[ shapeType ].size(); ++colI ) {
@@ -264,7 +264,7 @@ void ColliderManager::addAxisAlignedRect( EntityHandle entity, Rect aaRectCollid
 
 void ColliderManager::remove( EntityHandle entity ) {
   UNUSED( entity );
-  // for ( u8 shapeType = 0; shapeType < ShapeType::LAST; ++shapeType ) {
+  // for ( u8 shapeType = 0; shapeType <= ShapeType::LAST; ++shapeType ) {
   //   componentMap[ shapeType ].remove( entity );
   // }
 }
@@ -272,7 +272,7 @@ void ColliderManager::remove( EntityHandle entity ) {
 void ColliderManager::updateAndCollide() {
   PROFILE;
   // update local transform cache
-  for ( u8 shapeType = 0; shapeType < ShapeType::LAST; ++shapeType ) {
+  for ( u8 shapeType = 0; shapeType <= ShapeType::LAST; ++shapeType ) {
     std::vector< EntityHandle > _entities = entities[ shapeType ];
     LookupResult colliderLookup;
     componentMap[ shapeType ].lookup( _entities, &colliderLookup );
@@ -291,7 +291,7 @@ void ColliderManager::updateAndCollide() {
   }
 
   // update transformed shapes
-  for ( u8 shapeType = 0; shapeType < ShapeType::LAST; ++shapeType ) {
+  for ( u8 shapeType = 0; shapeType <= ShapeType::LAST; ++shapeType ) {
     transformedShapes[ shapeType ].clear();
     transformedShapes[ shapeType ].reserve( componentMap[ shapeType ].components.size() );
     transformedShapes[ shapeType ].push_back( {} );
@@ -320,7 +320,7 @@ void ColliderManager::updateAndCollide() {
   buildQuadTree( boundary );
   
   // detect collisions
-  for ( u8 shapeType = 0; shapeType < ShapeType::LAST; ++shapeType ) {
+  for ( u8 shapeType = 0; shapeType <= ShapeType::LAST; ++shapeType ) {
     collisions[ shapeType ].clear();
     collisions[ shapeType ].resize( componentMap[ shapeType ].components.size(), {} );
   }
@@ -410,13 +410,13 @@ void ColliderManager::updateAndCollide() {
 //   return false;
 // }
 
-void ColliderManager::lookup( const std::vector< EntityHandle >& entities, std::array< LookupResult, ShapeType::LAST >* result ) {
-  for ( u8 shapeType = 0; shapeType < ShapeType::LAST; ++shapeType ) {
+void ColliderManager::lookup( const std::vector< EntityHandle >& entities, std::array< LookupResult, ShapeType::LAST + 1 >* result ) {
+  for ( u8 shapeType = 0; shapeType <= ShapeType::LAST; ++shapeType ) {
     componentMap[ shapeType ].lookup( entities, &( *result )[ shapeType ] );
   }
 }
 
-std::array< std::vector< std::vector< Collision > >, ShapeType::LAST >& ColliderManager::getCollisions() {
+std::array< std::vector< std::vector< Collision > >, ShapeType::LAST + 1 >& ColliderManager::getCollisions() {
   return collisions;
 }
  
@@ -566,12 +566,12 @@ void SolidBodyManager::update( double deltaT ) {
     SolidBodyComp solidBodyComp = componentMap.components[ compI ];
     entities.push_back( solidBodyComp.entity );
   }
-  std::array< LookupResult, ShapeType::LAST > colliderLookup;
+  std::array< LookupResult, ShapeType::LAST + 1 > colliderLookup;
   ColliderManager::lookup( entities, &colliderLookup );
   // TODO assert that all entities have at least one collider
   auto collisions = ColliderManager::getCollisions();
   // move solid bodies
-  for ( u8 shapeType = 0; shapeType < ShapeType::LAST; ++shapeType ) {
+  for ( u8 shapeType = 0; shapeType <= ShapeType::LAST; ++shapeType ) {
     LookupResult solidBodyLookup;
     componentMap.lookup( colliderLookup[ shapeType ].entities, &solidBodyLookup );
     VALIDATE_ENTITIES_EQUAL( colliderLookup[ shapeType ].entities, solidBodyLookup.entities );

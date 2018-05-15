@@ -31,7 +31,7 @@ typedef uint8_t 	u8;
 
 const float PIXELS_PER_UNIT = 4.0f;
 
-enum ShapeType { CIRCLE = 0, AARECT, LAST };
+enum ShapeType { CIRCLE = 0, AARECT, LAST = AARECT };
 
 #ifdef DOD
 
