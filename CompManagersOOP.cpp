@@ -41,102 +41,6 @@ float Transform::getOrientation() {
   return orientation;
 }
 
-Collider::Collider( Circle shape ) {
-  this->shape = new Circle( shape );
-  transformedShape = new Circle( shape );
-}
-
-Collider::Collider( Rect shape ) {
-  this->shape = new Rect( shape );
-  transformedShape = new Rect( shape );
-}
-    
-bool Collider::collide( Collider colliderB ) {
-  PROFILE;
-  Shape* shapeB = colliderB.getTransformedShape();
-  return collide( shapeB );
-}
-
-bool Collider::collide( Collider colliderB, Collision& collision ) {
-  PROFILE;
-  Shape* shapeB = colliderB.getTransformedShape();
-  return collide( shapeB, collision );
-}
-
-bool Collider::collide( const Shape* shapeB ) {
-  PROFILE;
-  Shape* shapeA = getTransformedShape();
-  Circle circleA( Vec2::ZERO, 0 ), circleB( Vec2::ZERO, 0 );
-  Rect aaRectA, aaRectB;
-  switch ( shapeA->getType() ) {
-  case ShapeType::CIRCLE:
-    circleA = *static_cast< const Circle* >( shapeA );
-    switch ( shapeB->getType() ) {
-    case ShapeType::CIRCLE:
-      circleB = *static_cast< const Circle* >( shapeB );
-      return circleCircleCollide( circleA, circleB );
-    case ShapeType::AARECT:
-      aaRectB = *static_cast< const Rect* >( shapeB );
-      return aaRectCircleCollide( aaRectB, circleA );
-    }
-  case ShapeType::AARECT:
-    aaRectA = *static_cast< const Rect* >( shapeA );
-    switch ( shapeB->getType() ) {
-    case ShapeType::CIRCLE:
-      circleB = *static_cast< const Circle* >( shapeB );
-      return aaRectCircleCollide( aaRectA, circleB );
-    case ShapeType::AARECT:
-      aaRectB = *static_cast< const Rect* >( shapeB );
-      return aaRectAARectCollide( aaRectA, aaRectB );
-    }
-  }
-  return false;
-}
-
-bool Collider::collide( const Shape* shapeB, Collision& collision ) {
-  PROFILE;
-  Shape* shapeA = getTransformedShape();
-  Circle circleA( Vec2::ZERO, 0 ), circleB( Vec2::ZERO, 0 );
-  Rect aaRectA, aaRectB;
-  switch ( shapeA->getType() ) {
-  case ShapeType::CIRCLE:
-    circleA = *static_cast< const Circle* >( shapeA );
-    switch ( shapeB->getType() ) {
-    case ShapeType::CIRCLE:
-      circleB = *static_cast< const Circle* >( shapeB );
-      collision.a = this;
-      // collision.b = &colliderB;
-      return circleCircleCollide( circleA, circleB, collision.normalA, collision.normalB );
-    case ShapeType::AARECT:
-      aaRectB = *static_cast< const Rect* >( shapeB );
-      // collision.a = &colliderB;
-      collision.b = this;
-      return aaRectCircleCollide( aaRectB, circleA, collision.normalB, collision.normalA );
-    }
-  case ShapeType::AARECT:
-    aaRectA = *static_cast< const Rect* >( shapeA );
-    collision.a = this;
-    // collision.b = &colliderB;    
-    switch ( shapeB->getType() ) {
-    case ShapeType::CIRCLE:
-      circleB = *static_cast< const Circle* >( shapeB );
-      return aaRectCircleCollide( aaRectA, circleB, collision.normalA, collision.normalB );
-    case ShapeType::AARECT:
-      aaRectB = *static_cast< const Rect* >( shapeB );
-      return aaRectAARectCollide( aaRectA, aaRectB, collision.normalA, collision.normalB );
-    }
-  }
-  return false;
-}
-
-void Collider::fitCircleToSprite() {
-  ASSERT( shape->getType() == ShapeType::CIRCLE, "This method is only valid for a circle collider" );
-  Vec2 size = entity->getSprite().getSize();
-  float maxSize = ( size.getX() > size.getY() ) ? size.getX() : size.getY();
-  Circle* circle = static_cast< Circle* >( shape );
-  circle->setRadius( maxSize / 2.0f );
-}
-
 Shape* Collider::getShape() {
   return shape;
 }
@@ -302,6 +206,131 @@ void Collider::updateAndCollide() {
   }
 }
 
+CircleCollider::CircleCollider() {
+  this->shape = new Circle();
+}
+
+CircleCollider::CircleCollider( Circle shape ) {
+  this->shape = new Circle( shape );
+  transformedShape = new Circle( shape );
+}
+
+void CircleCollider::fitCircleToSprite() {
+  Vec2 size = entity->getSprite().getSize();
+  float maxSize = ( size.getX() > size.getY() ) ? size.getX() : size.getY();
+  Circle* circle = static_cast< Circle* >( shape );
+  circle->setRadius( maxSize / 2.0f );
+}
+
+bool CircleCollider::collide( Collider& colliderB ) {
+  return colliderB.collideWithCircle( *this );
+}
+
+bool CircleCollider::collide( Collider& colliderB, Collision& collision ) {
+  Collision inverted;
+  bool collided = colliderB.collideWithCircle( *this, inverted );
+  collision.a = inverted.b;
+  collision.b = inverted.a;
+  collision.normalA = inverted.normalB;
+  collision.normalB = inverted.normalA;
+  return collided;
+}
+
+bool CircleCollider::collideWithCircle( Circle circleB ) {
+  Circle circleA = *static_cast< const Circle* >( this->getTransformedShape() );
+  return Collider::circleCircleCollide( circleA, circleB );  
+}
+
+bool CircleCollider::collideWithCircle( CircleCollider colliderB ) {
+  Circle circleB = *static_cast< const Circle* >( colliderB.getTransformedShape() );
+  return collideWithCircle( circleB );
+}
+
+bool CircleCollider::collideWithCircle( CircleCollider colliderB, Collision& collision ) {
+  collision.a = this;
+  collision.b = &colliderB;
+  Circle circleA = *static_cast< const Circle* >( this->getTransformedShape() );
+  Circle circleB = *static_cast< const Circle* >( colliderB.getTransformedShape() );
+  return Collider::circleCircleCollide( circleA, circleB, collision.normalA, collision.normalB );  
+}
+
+bool CircleCollider::collideWithRect( Rect aaRect ) {
+  Circle circle = *static_cast< const Circle* >( this->getTransformedShape() );
+  return Collider::aaRectCircleCollide( aaRect, circle );  
+}
+
+bool CircleCollider::collideWithRect( RectCollider colliderB ) {
+  Rect aaRect = *static_cast< const Rect* >( colliderB.getTransformedShape() );
+  return collideWithRect( colliderB );
+}
+
+bool CircleCollider::collideWithRect( RectCollider colliderB, Collision& collision ) {
+  collision.a = this;
+  collision.b = &colliderB;
+  Rect aaRect = *static_cast< const Rect* >( colliderB.getTransformedShape() );
+  Circle circle = *static_cast< const Circle* >( this->getTransformedShape() );
+  return Collider::aaRectCircleCollide( aaRect, circle, collision.normalB, collision.normalA );  
+}
+
+RectCollider::RectCollider() {
+  shape = new Rect();
+}
+
+RectCollider::RectCollider( Rect shape ) {
+  this->shape = new Rect( shape );
+  transformedShape = new Rect( shape );
+}
+
+bool RectCollider::collide( Collider& colliderB ) {
+  return colliderB.collideWithRect( *this );
+}
+
+bool RectCollider::collide( Collider& colliderB, Collision& collision ) {
+  Collision inverted;
+  bool collided = colliderB.collideWithRect( *this, inverted );
+  collision.a = inverted.b;
+  collision.b = inverted.a;
+  collision.normalA = inverted.normalB;
+  collision.normalB = inverted.normalA;
+  return collided;
+}
+
+bool RectCollider::collideWithCircle( Circle circle ) {
+  Rect aaRect = *static_cast< const Rect* >( this->getTransformedShape() );
+  return Collider::aaRectCircleCollide( aaRect, circle );  
+}
+
+bool RectCollider::collideWithCircle( CircleCollider colliderB ) {
+  Circle circle = *static_cast< const Circle* >( colliderB.getTransformedShape() );
+  return collideWithCircle( circle );
+}
+
+bool RectCollider::collideWithCircle( CircleCollider colliderB, Collision& collision ) {
+  collision.a = this;
+  collision.b = &colliderB;
+  Rect aaRect = *static_cast< const Rect* >( this->getTransformedShape() );
+  Circle circle = *static_cast< const Circle* >( colliderB.getTransformedShape() );
+  return Collider::aaRectCircleCollide( aaRect, circle, collision.normalA, collision.normalB );  
+}
+
+bool RectCollider::collideWithRect( Rect aaRectB ) {
+  Rect aaRectA = *static_cast< const Rect* >( this->getTransformedShape() );
+  return Collider::aaRectAARectCollide( aaRectA, aaRectB );  
+}
+
+bool RectCollider::collideWithRect( RectCollider colliderB ) {
+  Rect aaRectB = *static_cast< const Rect* >( colliderB.getTransformedShape() );
+  return collideWithRect( aaRectB );
+}
+
+bool RectCollider::collideWithRect( RectCollider colliderB, Collision& collision ) {
+  collision.a = this;
+  collision.b = &colliderB;
+  Rect aaRectA = *static_cast< const Rect* >( this->getTransformedShape() );
+  Rect aaRectB = *static_cast< const Rect* >( colliderB.getTransformedShape() );
+  return Collider::aaRectAARectCollide( aaRectA, aaRectB, collision.normalA, collision.normalB );  
+}
+
 std::list< QuadTree::QuadNode > QuadTree::QuadNode::allNodes;
 
 QuadTree::QuadTree( Rect boundary, std::vector< Collider* >& colliders ) : rootNode( boundary ) {
@@ -356,7 +385,7 @@ void QuadTree::QuadNode::subdivide() {
     Collider* collider = __elements._[ elemInd ];
     for ( int childI = 0; childI < 4; ++childI ) {
       QuadNode* child = children[ childI ];
-      if ( collider->collide( &child->boundary ) ) {
+      if ( collider->collideWithRect( child->boundary ) ) {
         child->elements._[ ++child->elements.lastInd ] = collider;
       }
     }
@@ -366,7 +395,7 @@ void QuadTree::QuadNode::subdivide() {
 void QuadTree::insert( Collider* collider ) {
   PROFILE;
   std::deque< QuadNode* > nextNodes = std::deque< QuadNode* >();
-  if ( collider->collide( &rootNode.boundary ) ) {
+  if ( collider->collideWithRect( rootNode.boundary ) ) {
     nextNodes.push_front( &rootNode );
   }
 #ifndef NDEBUG
@@ -393,7 +422,7 @@ void QuadTree::insert( Collider* collider ) {
       // and add them to the deque
       for ( int i = 0; i < 4; ++i ) {
         QuadNode* child = node->children[ i ];
-        if ( collider->collide( &child->boundary ) ) {
+        if ( collider->collideWithRect( child->boundary ) ) {
           nextNodes.push_front( child );
         }
       }

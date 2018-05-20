@@ -33,22 +33,26 @@ public:
   float getOrientation();
 };
 
-class Collision;
+class CircleCollider;
+class RectCollider;
+
+struct Collision;
 
 class Collider : public Component {
+protected:
   Shape* shape;
   Shape* transformedShape;
   std::vector< Collision > collisions;
   void addCollision( Collision collision );
 public:
-  Collider() {}
-  Collider( Circle shape );
-  Collider( Rect shape );
-  bool collide( Collider colliderB );
-  bool collide( Collider colliderB, Collision& collision );
-  bool collide( const Shape* shape );
-  bool collide( const Shape* shape, Collision& collision );
-  void fitCircleToSprite();
+  virtual bool collide( Collider& colliderB ) = 0;
+  virtual bool collide( Collider& colliderB, Collision& collision ) = 0;
+  virtual bool collideWithCircle( Circle circle ) = 0;
+  virtual bool collideWithCircle( CircleCollider colliderB ) = 0;
+  virtual bool collideWithCircle( CircleCollider colliderB, Collision& collision ) = 0;
+  virtual bool collideWithRect( Rect rect ) = 0;
+  virtual bool collideWithRect( RectCollider colliderB ) = 0;
+  virtual bool collideWithRect( RectCollider colliderB, Collision& collision ) = 0;
   Shape* getShape();
   Shape* getTransformedShape();
   std::vector< Collision > getCollisions();
@@ -60,6 +64,35 @@ public:
   static bool aaRectCircleCollide( Rect aaRect, Circle circle, Vec2& normalA, Vec2& normalB );
   static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB );
   static bool aaRectAARectCollide( Rect aaRectA, Rect aaRectB, Vec2& normalA, Vec2& normalB );
+};
+
+class CircleCollider : public Collider {
+public:
+  CircleCollider();
+  CircleCollider( Circle shape );
+  void fitCircleToSprite();
+  bool collide( Collider& colliderB );
+  bool collide( Collider& colliderB, Collision& collision );
+  bool collideWithCircle( Circle circle );
+  bool collideWithCircle( CircleCollider colliderB );
+  bool collideWithCircle( CircleCollider colliderB, Collision& collision );
+  bool collideWithRect( Rect rect );
+  bool collideWithRect( RectCollider colliderB );
+  bool collideWithRect( RectCollider colliderB, Collision& collision );
+};
+
+class RectCollider : public Collider {
+public:
+  RectCollider();
+  RectCollider( Rect shape );
+  bool collide( Collider& colliderB );
+  bool collide( Collider& colliderB, Collision& collision );
+  bool collideWithCircle( Circle circle );
+  bool collideWithCircle( CircleCollider colliderB );
+  bool collideWithCircle( CircleCollider colliderB, Collision& collision );
+  bool collideWithRect( Rect rect );
+  bool collideWithRect( RectCollider colliderB );
+  bool collideWithRect( RectCollider colliderB, Collision& collision );
 };
 
 struct Collision {

@@ -3,7 +3,9 @@
 class Entity {
   Transform transform;
   bool hasT = false;
-  Collider collider;
+  CircleCollider circleCollider;
+  RectCollider rectCollider;
+  Collider* collider = nullptr;
   bool hasC = false;
   SolidBody solidBody;
   bool hasSB = false;
@@ -18,9 +20,16 @@ public:
     this->transform = transform;
     hasT = true;
   }
-  void setCollider( Collider collider ) { 
+  void setCircleCollider( CircleCollider collider ) { 
     collider.setEntity( this );
-    this->collider = collider;
+    circleCollider = collider;
+    this->collider = &circleCollider;
+    hasC = true;
+  }
+  void setRectCollider( RectCollider collider ) { 
+    collider.setEntity( this );
+    rectCollider = collider;
+    this->collider = &rectCollider;
     hasC = true;
   }
   void setSolidBody( SolidBody solidBody ) {
@@ -53,7 +62,7 @@ public:
   }
   Collider& getCollider() {
     ASSERT( hasC, "" );
-    return collider;
+    return *collider;
   }
   SolidBody& getSolidBody() {
     ASSERT( hasSB, "" );

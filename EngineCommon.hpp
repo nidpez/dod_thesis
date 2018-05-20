@@ -68,6 +68,7 @@ protected:
   Vec2 center;
   float radius;
 public:
+  Circle() : center(), radius( 0.0f ) {}
   Circle( Vec2 center, float radius ) : center( center ), radius( radius ) {}
   void setCenter( Vec2 center ) { this->center = center; }
   void setRadius( float radius ) { this->radius = radius; }

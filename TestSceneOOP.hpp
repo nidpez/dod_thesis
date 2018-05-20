@@ -29,19 +29,19 @@ void TestScene::initialize() {
   enclosure[ 0 ].setTransform( Transform( position, Vec2::ONE, {} ) );
   Rect bounds( Vec2( TEST_AREA.getMin().getX(), 0.0f ),
                Vec2( TEST_AREA.getMax().getX(), WALL_THICKNESS ) );
-  enclosure[ 0 ].setCollider( Collider( bounds ) );
+  enclosure[ 0 ].setRectCollider( RectCollider( bounds ) );
   // bottom wall
   enclosure[ 1 ].setTransform( Transform( Vec2( position.getX(), TEST_AREA.getMin().getY() - WALL_THICKNESS ), Vec2::ONE, {} ) );
-  enclosure[ 1 ].setCollider( Collider( bounds ) );
+  enclosure[ 1 ].setRectCollider( RectCollider( bounds ) );
   // right wall
   position = Vec2( TEST_AREA.getMax().getX(), 0.0f );
   enclosure[ 2 ].setTransform( Transform( position, Vec2::ONE, {} ) );
   bounds = Rect( Vec2( 0.0f, TEST_AREA.getMin().getY() ),
                  Vec2( WALL_THICKNESS, TEST_AREA.getMax().getY() ) );
-  enclosure[ 2 ].setCollider( Collider( bounds ) );
+  enclosure[ 2 ].setRectCollider( RectCollider( bounds ) );
   // left wall
   enclosure[ 3 ].setTransform( Transform( Vec2( TEST_AREA.getMin().getX() - WALL_THICKNESS, position.getY() ), Vec2::ONE, {} ) );
-  enclosure[ 3 ].setCollider( Collider( bounds ) );
+  enclosure[ 3 ].setRectCollider( RectCollider( bounds ) );
 
   // create actors
   {
@@ -57,9 +57,9 @@ void TestScene::initialize() {
     
       entities[ ent ].setSprite( Sprite( textureHandle, Rect( Vec2( 0.0f, 0.0f ), Vec2( 1.0f / 5.0f, 1.0f ) ) ) );
     
-      Collider collider( Circle( Vec2::ZERO, 0 ) );
-      entities[ ent ].setCollider( collider );
-      entities[ ent ].getCollider().fitCircleToSprite();
+      CircleCollider collider( Circle( Vec2::ZERO, 0 ) );
+      entities[ ent ].setCircleCollider( collider );
+      static_cast< CircleCollider& >( entities[ ent ].getCollider() ).fitCircleToSprite();
     
       float r4 = randf( -1.0f, 1.0f );
       float r5 = randf( -1.0f, 1.0f );
