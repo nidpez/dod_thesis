@@ -31,7 +31,8 @@ typedef uint8_t 	u8;
 
 const float PIXELS_PER_UNIT = 4.0f;
 
-enum ShapeType { CIRCLE = 0, AARECT, LAST = AARECT };
+enum ShapeType { CIRCLE = 0, AARECT = 1,
+                 RANGE_FIRST = CIRCLE, RANGE_LAST = AARECT, RANGE_SIZE = RANGE_LAST - RANGE_FIRST + 1 };
 
 #ifdef DOD
 

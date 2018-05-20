@@ -45,16 +45,16 @@ class ColliderManager {
     Vec2 position;
     Vec2 scale;
   };
-  // static bool ( *collisionFunctions[ ShapeType::LAST + 1 ][ ShapeType::LAST + 1 ] )( Shape a, Shape b, Vec2& normalA, Vec2& normalB );
-  static ComponentMap< ColliderComp > componentMap[ ShapeType::LAST + 1 ];
-  static std::vector< EntityHandle > entities[ ShapeType::LAST + 1 ];
-  static std::vector< Shape > transformedShapes[ ShapeType::LAST + 1 ];
-  static std::array< std::vector< std::vector< Collision > >, ShapeType::LAST + 1 > collisions;
+  // static bool ( *collisionFunctions[ ShapeType::RANGE_SIZE ][ ShapeType::RANGE_SIZE ] )( Shape a, Shape b, Vec2& normalA, Vec2& normalB );
+  static ComponentMap< ColliderComp > componentMap[ ShapeType::RANGE_SIZE ];
+  static std::vector< EntityHandle > entities[ ShapeType::RANGE_SIZE ];
+  static std::vector< Shape > transformedShapes[ ShapeType::RANGE_SIZE ];
+  static std::array< std::vector< std::vector< Collision > >, ShapeType::RANGE_SIZE > collisions;
 
   struct QuadBucket {
     static const u8 CAPACITY = 16;
-    ComponentIndex _[ ShapeType::LAST + 1 ][ CAPACITY ];
-    u8 size[ ShapeType::LAST + 1 ] = {};
+    ComponentIndex _[ ShapeType::RANGE_SIZE ][ CAPACITY ];
+    u8 size[ ShapeType::RANGE_SIZE ] = {};
     u8 totalSize = 0;
   };
   struct QuadNode {
@@ -68,7 +68,7 @@ class ColliderManager {
   static std::vector< QuadNode > quadTree;
   static void buildQuadTree( Rect boundary );
   static void subdivideQuadNode( u32 nodeInd );
-  static void insertIntoQuadTree( std::vector< ComponentIndex > colliderInds[ ShapeType::LAST + 1 ] );
+  static void insertIntoQuadTree( std::vector< ComponentIndex > colliderInds[ ShapeType::RANGE_SIZE ] );
 public:
   static void initialize();
   static void shutdown();
@@ -81,14 +81,14 @@ public:
   // static bool collide( Shape shapeA, Shape shapeB, Collision& collision );
   static bool circleCircleCollide( Circle circleA, Circle circleB );
   static bool circleCircleCollide( Circle circleA, Circle circleB, Vec2& normalA, Vec2& normalB );
-  static void lookup( const std::vector< EntityHandle >& entities, std::array< LookupResult, ShapeType::LAST + 1 >* result );
+  static void lookup( const std::vector< EntityHandle >& entities, std::array< LookupResult, ShapeType::RANGE_SIZE >* result );
   static bool circleCircleCollide( Shape a, Shape b );
   static bool circleCircleCollide( Shape a, Shape b, Vec2& normalA, Vec2& normalB );
   static bool aaRectCircleCollide( Shape a, Shape b );
   static bool aaRectCircleCollide( Shape a, Shape b, Vec2& normalA, Vec2& normalB );
   static bool aaRectAARectCollide( Shape a, Shape b );
   static bool aaRectAARectCollide( Shape a, Shape b, Vec2& normalA, Vec2& normalB );
-  static std::array< std::vector< std::vector< Collision > >, ShapeType::LAST + 1 >& getCollisions();
+  static std::array< std::vector< std::vector< Collision > >, ShapeType::RANGE_SIZE >& getCollisions();
 };
 
 struct SolidBody {
