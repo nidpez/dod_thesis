@@ -445,19 +445,16 @@ bool Profiler::returnFromSampleNode( const SampleNodeIndex nodeInd ) {
 bool Profiler::updateOutputsAndReset() {
 #ifdef PROFILING
   // TODO standarize writing to logs and handling their file size
-  if ( frameNumber == 0 ) {
-    ++frameNumber;    
-    return true;
-  }
-  if ( frameNumber > 201 ) {
+  if ( frameNumber > 100 ) {
     return false;
   }
-  
-  fprintf( profilerLog, "%d \tCALL COUNT \tACUM INCL \tACUM EXCL \tAVG INCL \tAVG EXCL", frameNumber );
-  for ( u8 i = 0; i < NUM_PERF_COUNTERS; ++i ) {
-    fprintf( profilerLog, " \t%s", PERF_COUNTER_NAMES[ i ] );
+  if ( frameNumber > 0 ) {
+    fprintf( profilerLog, "%d \tCALL COUNT \tACUM INCL \tACUM EXCL \tAVG INCL \tAVG EXCL", frameNumber );
+    for ( u8 i = 0; i < NUM_PERF_COUNTERS; ++i ) {
+      fprintf( profilerLog, " \t%s", PERF_COUNTER_NAMES[ i ] );
+    }
+    fprintf( profilerLog, "\n" );
   }
-  fprintf( profilerLog, "\n" );
   std::deque< SampleNodeIndex > nodeIndsToProcess;
   // index 0 is null
   nodeIndsToProcess.push_front( 1 );
@@ -483,7 +480,8 @@ bool Profiler::updateOutputsAndReset() {
     }
     // display sample
     // don't render unused nodes
-    if ( sample.callCount > 0 ) {
+    // ... and don't render the first frame, for now
+    if ( frameNumber > 0 && sample.callCount > 0 ) {
       // crappy way of expressing call depth
       for ( u32 i = 0; i < depth; ++i ) {
         fprintf( profilerLog, "-- " );
