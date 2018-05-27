@@ -70,7 +70,6 @@ struct Collision {
 class QuadTree {
   class QuadNode {
   public:
-    static std::list< QuadNode > allNodes;
     struct QuadBucket {
       static const u8 CAPACITY = 16;
       Collider* _[ CAPACITY ];
