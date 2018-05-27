@@ -442,9 +442,17 @@ bool Profiler::returnFromSampleNode( const SampleNodeIndex nodeInd ) {
 #endif
 }
 
-void Profiler::updateOutputsAndReset() {
+bool Profiler::updateOutputsAndReset() {
 #ifdef PROFILING
   // TODO standarize writing to logs and handling their file size
+  if ( frameNumber == 0 ) {
+    ++frameNumber;    
+    return true;
+  }
+  if ( frameNumber > 201 ) {
+    return false;
+  }
+  
   fprintf( profilerLog, "%d \tCALL COUNT \tACUM INCL \tACUM EXCL \tAVG INCL \tAVG EXCL", frameNumber );
   for ( u8 i = 0; i < NUM_PERF_COUNTERS; ++i ) {
     fprintf( profilerLog, " \t%s", PERF_COUNTER_NAMES[ i ] );
@@ -502,4 +510,5 @@ void Profiler::updateOutputsAndReset() {
   UNUSED( result );
 #endif
 #endif
+  return true;
 }

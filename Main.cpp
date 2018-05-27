@@ -85,7 +85,9 @@ s32 main() {
       t1 = t2;
     }
 
-    Profiler::updateOutputsAndReset();
+    if ( !Profiler::updateOutputsAndReset() ) {
+      break;
+    }
   }
   Debug::write( "Main loop exited.\n" );
   

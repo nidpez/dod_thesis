@@ -140,7 +140,7 @@ public:
   static void shutdown();
   static void startProfile( const char* name );
   static void stopProfile();
-  static void updateOutputsAndReset();  
+  static bool updateOutputsAndReset();  
 };
 
 #ifndef PROFILING
