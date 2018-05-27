@@ -176,13 +176,10 @@ void Debug::drawRect( Rect rect, Color color ) {
 
 #ifdef OOP
 void Debug::drawShape( Shape* shape, Color color ) {
-  switch ( shape->getType() ) {
-  case ShapeType::CIRCLE:
+  if ( shape->getType() == ShapeType::CIRCLE ) {
     drawCircle( *static_cast< Circle* >( shape ), color );
-    break;
-  case ShapeType::AARECT:
+  } else if ( shape->getType() == ShapeType::AARECT ) {
     drawRect( *static_cast< Rect* >( shape ), color );
-    break;
   }
 }
 #endif

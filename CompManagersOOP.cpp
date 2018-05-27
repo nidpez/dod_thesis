@@ -47,9 +47,7 @@ Shape* Collider::getShape() {
 
 Shape* Collider::getTransformedShape() {
   Transform transform = entity->getTransform();
-  switch ( shape->getType() ) {
-  case ShapeType::CIRCLE:
-    {
+  if ( shape->getType() == ShapeType::CIRCLE ) {
       Circle circle = *static_cast< Circle* >( shape );
       float scaleX = transform.getScale().getX(), scaleY = transform.getScale().getY();
       float maxScale = ( scaleX > scaleY ) ? scaleX : scaleY;
@@ -58,16 +56,13 @@ Shape* Collider::getTransformedShape() {
       Circle* transformedCircle = static_cast< Circle* >( transformedShape );
       *transformedCircle = Circle( position, radius );
       return transformedShape;
-    }
-  case ShapeType::AARECT:
-    {
+  } else if ( shape->getType() == ShapeType::AARECT ) {
       Rect aaRect = *static_cast< Rect* >( shape );
       Vec2 min = aaRect.getMin() * transform.getScale() + transform.getPosition();
       Vec2 max = aaRect.getMax() * transform.getScale() + transform.getPosition();
       Rect* transformedRect = static_cast< Rect* >( transformedShape );
       *transformedRect = Rect( min, max );
       return transformedShape;
-    }
   }
   ASSERT( false, "Tried to transform a shape of an unrecognized type" );
   return nullptr;
