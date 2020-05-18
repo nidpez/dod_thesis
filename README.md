@@ -17,5 +17,4 @@ On the data locality (or cache coherency) aspect of DOD this work is not very co
 On the other hand it has been proven that existence based processing does provide important performance boosts to applications that would otherwise contain thousands of conditional branches causing the processor to flush the half executed instructions from the mis-predicted branches off of the pipeline, which can get very expensive. These performance benefits do also come at the cost of increased complexity.
 
 ## Document
-
-https://docs.google.com/document/d/1BRIE19bvRncOpmqxIiLKMN9eTNmVWy1xXvWhOd7xGmw/edit?usp=sharing
+https://drive.google.com/file/d/1C5OOetgIcYEep_eCVWgdSZSA6p4kFK97/view?usp=sharing
